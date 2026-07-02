@@ -18,12 +18,12 @@
 
 **Purpose**: Initialize the Python CLI project, package layout, durable input/output directories, and local developer defaults.
 
-- [ ] T001 Create Python project metadata with Typer, Pydantic, qdrant-client, openai, tiktoken, rank-bm25, pytest, and console script `raglab` in pyproject.toml
-- [ ] T002 Create package and test directory structure in src/rag_quality_lab/__init__.py and tests/
-- [ ] T003 [P] Create domain package directories with __init__.py files in src/rag_quality_lab/corpus/, src/rag_quality_lab/routing/, src/rag_quality_lab/retrieval/, src/rag_quality_lab/rag/, src/rag_quality_lab/eval/, and src/rag_quality_lab/schemas/
-- [ ] T004 [P] Create durable input and artifact directories with placeholder files in corpus/sources/, golden/, artifacts/traces/, and artifacts/eval/
-- [ ] T005 [P] Add local environment example for Azure OpenAI and Qdrant settings in .env.example
-- [ ] T006 [P] Configure pytest defaults and test discovery in pyproject.toml
+- [X] T001 Create Python project metadata with Typer, Pydantic, qdrant-client, openai, tiktoken, rank-bm25, pytest, and console script `raglab` in pyproject.toml
+- [X] T002 Create package and test directory structure in src/rag_quality_lab/__init__.py and tests/
+- [X] T003 [P] Create domain package directories with __init__.py files in src/rag_quality_lab/corpus/, src/rag_quality_lab/routing/, src/rag_quality_lab/retrieval/, src/rag_quality_lab/rag/, src/rag_quality_lab/eval/, and src/rag_quality_lab/schemas/
+- [X] T004 [P] Create durable input and artifact directories with placeholder files in corpus/sources/, golden/, artifacts/traces/, and artifacts/eval/
+- [X] T005 [P] Add local environment example for Azure OpenAI and Qdrant settings in .env.example
+- [X] T006 [P] Configure pytest defaults and test discovery in pyproject.toml
 
 ---
 

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rag-quality-lab"
+version = "0.1.0"
+description = "CLI-first RAG quality engineering lab with reproducible retrieval, traces, and evaluation."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  { name = "RAG Quality Lab contributors" }
+]
+dependencies = [
+  "typer[rich]>=0.12",
+  "pydantic>=2.7",
+  "qdrant-client>=1.9",
+  "openai>=1.35",
+  "tiktoken>=0.7",
+  "rank-bm25>=0.2.2"
+]
+
+[project.scripts]
+raglab = "rag_quality_lab.cli:app"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2"
+]
+
+[tool.pytest.ini_options]
+minversion = "8.2"
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+  "-ra"
+]
+markers = [
+  "contract: CLI and artifact contract tests",
+  "integration: tests that exercise workflow boundaries or external-service fakes",
+  "unit: fast isolated domain and schema tests"
+]
