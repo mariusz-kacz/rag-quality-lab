@@ -39,7 +39,7 @@
 - [X] T010 [P] Implement artifact JSON write/read helpers with schema_version support in src/rag_quality_lab/schemas/artifacts.py
 - [X] T011 [P] Implement Azure OpenAI embedding and chat provider wrappers in src/rag_quality_lab/providers.py
 - [X] T012 Implement base Typer application, shared options, and error-to-exit-code handling in src/rag_quality_lab/cli.py
-- [ ] T013 [P] Add pytest fixtures for temporary corpus, golden data, traces, and fake provider clients in tests/conftest.py
+- [X] T013 [P] Add pytest fixtures for temporary corpus, golden data, traces, and fake provider clients in tests/conftest.py
 
 **Checkpoint**: Foundation ready - user story implementation can now begin according to dependencies below.
 
