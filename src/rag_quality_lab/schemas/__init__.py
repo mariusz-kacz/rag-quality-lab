@@ -1,6 +1,14 @@
 """Shared Pydantic schemas for artifacts and domain records."""
 
-from rag_quality_lab.schemas.artifacts import CorpusSummaryArtifact, IngestionSummaryArtifact
+from rag_quality_lab.schemas.artifacts import (
+    DEFAULT_SCHEMA_VERSION,
+    ArtifactIOError,
+    ArtifactSchemaVersionError,
+    CorpusSummaryArtifact,
+    IngestionSummaryArtifact,
+    read_json_artifact,
+    write_json_artifact,
+)
 from rag_quality_lab.schemas.corpus import (
     REQUIRED_KNOWLEDGE_CATEGORIES,
     Chunk,
@@ -34,11 +42,14 @@ __all__ = [
     "REQUIRED_EVALUATION_METRICS",
     "REQUIRED_KNOWLEDGE_CATEGORIES",
     "AnswerResult",
+    "ArtifactIOError",
+    "ArtifactSchemaVersionError",
     "Chunk",
     "CitationValidation",
     "ContextBuild",
     "ContextChunk",
     "CorpusSummaryArtifact",
+    "DEFAULT_SCHEMA_VERSION",
     "EvaluationArtifactPaths",
     "EvaluationMetrics",
     "EvaluationQuestionResult",
@@ -55,4 +66,6 @@ __all__ = [
     "RouteDecision",
     "SourcePage",
     "SourceSection",
+    "read_json_artifact",
+    "write_json_artifact",
 ]

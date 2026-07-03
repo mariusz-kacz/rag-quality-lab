@@ -36,8 +36,8 @@
 - [X] T007 Implement environment and runtime configuration loading with clear missing-setting errors in src/rag_quality_lab/config.py
 - [X] T008 [P] Implement shared corpus, routing, retrieval, context, answer, trace, and evaluation Pydantic schemas in src/rag_quality_lab/schemas/corpus.py, src/rag_quality_lab/schemas/trace.py, src/rag_quality_lab/schemas/eval.py, and src/rag_quality_lab/schemas/artifacts.py
 - [X] T009 [P] Define the five required knowledge categories and descriptions in src/rag_quality_lab/routing/categories.py
-- [ ] T010 [P] Implement artifact JSON write/read helpers with schema_version support in src/rag_quality_lab/schemas/artifacts.py
-- [ ] T011 [P] Implement Azure OpenAI embedding and chat provider wrappers in src/rag_quality_lab/providers.py
+- [X] T010 [P] Implement artifact JSON write/read helpers with schema_version support in src/rag_quality_lab/schemas/artifacts.py
+- [X] T011 [P] Implement Azure OpenAI embedding and chat provider wrappers in src/rag_quality_lab/providers.py
 - [ ] T012 Implement base Typer application, shared options, and error-to-exit-code handling in src/rag_quality_lab/cli.py
 - [ ] T013 [P] Add pytest fixtures for temporary corpus, golden data, traces, and fake provider clients in tests/conftest.py
 
