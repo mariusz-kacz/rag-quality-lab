@@ -33,7 +33,7 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T007 Implement environment and runtime configuration loading with clear missing-setting errors in src/rag_quality_lab/config.py
+- [X] T007 Implement environment and runtime configuration loading with clear missing-setting errors in src/rag_quality_lab/config.py
 - [ ] T008 [P] Implement shared corpus, routing, retrieval, context, answer, trace, and evaluation Pydantic schemas in src/rag_quality_lab/schemas/corpus.py, src/rag_quality_lab/schemas/trace.py, src/rag_quality_lab/schemas/eval.py, and src/rag_quality_lab/schemas/artifacts.py
 - [ ] T009 [P] Define the five required knowledge categories and descriptions in src/rag_quality_lab/routing/categories.py
 - [ ] T010 [P] Implement artifact JSON write/read helpers with schema_version support in src/rag_quality_lab/schemas/artifacts.py
