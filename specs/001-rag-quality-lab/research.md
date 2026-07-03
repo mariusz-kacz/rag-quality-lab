@@ -6,6 +6,20 @@
 
 **Alternatives considered**: Multiple sources were rejected because the MVP requires one corpus source. Live website crawling was rejected because reproducibility requires pinned local references. A synthetic corpus was rejected because reviewer value depends on real source provenance.
 
+### Corpus sufficiency assessment
+
+DAIR.AI Prompt Engineering Guide is not sufficient by itself for the unmodified five-category taxonomy. It is still a good primary source for prompting techniques and a useful supporting source for RAG, security, and LLM settings, but it does not fully cover `RAG evaluation and quality` or `LLM settings, cost, and tokens` at the depth needed for balanced golden questions and retrieval comparisons.
+
+To keep the existing category names, the corpus should become a curated multi-source corpus rather than a single-source DAIR.AI corpus. This changes the earlier MVP constraint of "exactly one corpus source" and requires follow-up updates to the manifest task and validation rules. Recommended source set:
+
+- `prompting techniques`: introduction, basics, prompt elements, general tips, examples, and technique pages.
+- `RAG and context handling`: DAIR.AI RAG pages plus OpenAI Cookbook RAG examples and Microsoft Generative AI for Beginners RAG/vector-database lesson.
+- `RAG evaluation and quality`: OpenAI Cookbook evaluation examples plus Microsoft Generative AI for Beginners lifecycle/metrics lesson.
+- `LLM security and risks`: OWASP Top 10 for LLM Applications plus DAIR.AI adversarial prompting pages.
+- `LLM settings, cost, and tokens`: Google Gemini API token counting, billing, rate limit, context caching, and optimization documentation plus OpenAI Cookbook token/cost examples.
+
+Quality judgment: DAIR.AI remains useful but should not be presented as fully covering the selected categories. A better portfolio corpus is 20-30 pinned local snapshots from 3-4 openly licensed/documented sources: DAIR.AI Prompt Engineering Guide, OpenAI Cookbook, OWASP Top 10 for LLM Applications, and either Google Gemini API docs or Microsoft Generative AI for Beginners. The manifest should prefer substantive explanatory pages and avoid thin navigation, course-marketing, translation duplicates, and model-specific news pages unless they directly support a golden question.
+
 ## Decision: Represent corpus provenance with a manifest plus local snapshots
 
 **Rationale**: A manifest makes license, URL, source slug, category, pinned commit, and local reference auditable before ingestion. Local snapshots make repeated runs reproducible even if the upstream website changes.
