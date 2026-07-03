@@ -55,7 +55,7 @@
 
 - [X] T014 [P] [US1] Add contract tests for `raglab corpus inspect` JSON and failure output in tests/contract/test_cli_corpus_inspect.py
 - [X] T015 [P] [US1] Add contract tests for `raglab corpus ingest` JSON and failure output in tests/contract/test_cli_corpus_ingest.py
-- [ ] T016 [P] [US1] Add unit tests for manifest source count, category, provenance, license, URL, pinned version, and local_ref validation in tests/unit/test_manifest.py
+- [X] T016 [P] [US1] Add unit tests for manifest source count, category, provenance, license, URL, pinned version, and local_ref validation in tests/unit/test_manifest.py
 - [ ] T017 [P] [US1] Add unit tests for deterministic chunk IDs, content hashes, section metadata, and token estimates in tests/unit/test_chunking.py
 - [ ] T018 [P] [US1] Add integration test for clean corpus inspection and Qdrant-backed ingestion using fake embeddings in tests/integration/test_corpus_ingest_workflow.py
 
