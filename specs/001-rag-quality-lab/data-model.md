@@ -19,7 +19,7 @@ Represents one selected page from the pinned corpus source.
 
 - `source_slug`, `category`, `url`, `license`, `pinned_version`, and `local_ref` are required.
 - `category` must match exactly one known category.
-- The corpus must contain 15-30 `SourcePage` records.
+- The MVP corpus target is 15-30 `SourcePage` records for manual reviewability and bounded local evaluation, but manifest loading must not fail solely because the count is outside that range.
 - `local_ref` must resolve to a local readable file before ingestion.
 
 ## KnowledgeCategory

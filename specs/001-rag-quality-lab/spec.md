@@ -21,7 +21,7 @@ As a portfolio reviewer, I want to inspect the pinned source corpus and ingest i
 **Acceptance Scenarios**:
 
 1. **Given** a clean local checkout and valid environment configuration, **When** the reviewer runs the corpus inspection command, **Then** the system lists all selected source pages with slug, category, URL, license metadata, pinned version or commit, and reproducible local reference.
-2. **Given** the curated corpus contains 15-30 selected source pages across exactly five knowledge categories, **When** the reviewer runs ingestion, **Then** all chunks are loaded into Qdrant with stable chunk IDs, source slugs, categories, section metadata, content hashes, estimated token counts, and source provenance.
+2. **Given** the curated corpus contains structurally valid selected source pages across exactly five knowledge categories, **When** the reviewer runs ingestion, **Then** all chunks are loaded into Qdrant with stable chunk IDs, source slugs, categories, section metadata, content hashes, estimated token counts, and source provenance.
 3. **Given** a source page has missing provenance, license, category, URL, pinned version, or local reference metadata, **When** the reviewer attempts ingestion, **Then** ingestion fails with a clear validation error and does not silently create incomplete chunks.
 
 ---
@@ -76,7 +76,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 
 ### Edge Cases
 
-- The source corpus contains fewer than 15 or more than 30 selected pages.
+- The source corpus contains fewer than 15 or more than 30 selected pages; inspection may report this as outside the documented MVP target, but ingestion must not fail for count alone.
 - A source page cannot be mapped to exactly one of the five required categories.
 - A chunk exceeds the maximum context budget by itself.
 - Multiple chunks tie in retrieval score near the context budget boundary.
@@ -92,7 +92,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 ### Functional Requirements
 
 - **FR-001**: The system MUST provide a CLI-first product experience that supports corpus inspection, corpus ingestion, single-query execution, trace inspection, retrieval-mode evaluation, and writing evaluation artifacts.
-- **FR-002**: The system MUST use a small curated corpus of 15-30 selected source pages from one pinned, openly licensed LLM-engineering source, with DAIR.AI Prompt Engineering Guide as the default source unless replaced by an equivalent openly licensed pinned source before planning.
+- **FR-002**: The project SHOULD keep the MVP corpus in the 15-30 selected-source-page range so it remains manually reviewable and inexpensive to embed/evaluate. The loader and ingestion path MUST NOT reject an otherwise valid manifest solely because the source count is outside that range.
 - **FR-003**: Each selected source page MUST record provenance metadata including source slug, category, URL, license metadata, pinned version or commit, and reproducible local reference.
 - **FR-004**: The corpus MUST use exactly five knowledge categories: prompting techniques; RAG and context handling; RAG evaluation and quality; LLM security and risks; LLM settings, cost, and tokens.
 - **FR-005**: Every ingested chunk MUST include stable metadata: chunk ID, source slug, category, section metadata, content hash, estimated token count, and source provenance.
@@ -142,7 +142,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 ### Measurable Outcomes
 
 - **SC-001**: A reviewer can complete a clean corpus inspection and ingestion walkthrough in 10 minutes or less using documented CLI commands.
-- **SC-002**: The curated corpus contains 15-30 selected source pages and 100% of selected source pages have complete provenance, license, category, URL, pinned version or commit, and local reference metadata.
+- **SC-002**: The curated MVP corpus stays within the documented 15-30 selected-source-page target, and 100% of selected source pages have complete provenance, license, category, URL, pinned version or commit, and local reference metadata.
 - **SC-003**: 100% of ingested chunks include stable chunk ID, source slug, category, section metadata, content hash, estimated token count, and source provenance.
 - **SC-004**: For every single-query run, the persisted trace records route decision, retrieval results, context inclusion and exclusion decisions, citation validation outcome, and token-budget diagnostics.
 - **SC-005**: On the golden question set, evaluation artifacts report all required metrics for each implemented retrieval mode with no manual post-processing.

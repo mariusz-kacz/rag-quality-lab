@@ -37,7 +37,7 @@ raglab corpus inspect --json
 
 Expected outcome:
 
-- 15-30 selected source pages are reported.
+- Selected source pages are reported. The documented MVP target is 15-30 source pages, but ingestion should not fail solely because a structurally valid manifest is outside that range.
 - Exactly five categories are present.
 - Every source has slug, category, URL, license metadata, pinned version or commit, and local reference.
 - Missing metadata or local files fail before ingestion.

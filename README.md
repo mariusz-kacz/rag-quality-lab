@@ -16,7 +16,7 @@ The project is currently in an early implementation stage. The curated corpus, s
 
 ## Corpus
 
-The corpus is intentionally small and pinned so reviewers can inspect exactly what the system is allowed to know. It contains 27 source snapshots across five categories:
+The corpus is intentionally small and pinned so reviewers can inspect exactly what the system is allowed to know. The MVP target is 15-30 selected source pages: large enough to cover the five categories, but small enough to review manually and embed cheaply. That range is a curation guideline documented here and in the spec, not a hard ingestion invariant. The current corpus contains 27 source snapshots across five categories:
 
 - `prompting techniques`
 - `RAG and context handling`

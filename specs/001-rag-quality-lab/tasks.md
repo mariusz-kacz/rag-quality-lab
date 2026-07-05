@@ -55,7 +55,7 @@
 
 - [X] T014 [P] [US1] Add contract tests for `raglab corpus inspect` JSON and failure output in tests/contract/test_cli_corpus_inspect.py
 - [X] T015 [P] [US1] Add contract tests for `raglab corpus ingest` JSON and failure output in tests/contract/test_cli_corpus_ingest.py
-- [X] T016 [P] [US1] Add unit tests for manifest source count, category, provenance, license, URL, pinned version, and local_ref validation in tests/unit/test_manifest.py
+- [X] T016 [P] [US1] Add unit tests for manifest source count reporting, category, provenance, license, URL, pinned version, and local_ref validation in tests/unit/test_manifest.py
 - [X] T017 [P] [US1] Add unit tests for deterministic chunk IDs, content hashes, section metadata, and token estimates in tests/unit/test_chunking.py
 - [X] T018 [P] [US1] Add integration test for clean corpus inspection and Qdrant-backed ingestion using fake embeddings in tests/integration/test_corpus_ingest_workflow.py
 
@@ -92,7 +92,7 @@
 - [X] T021.25 [P] [US1] Generate, review, and correct normalized source snapshot for openai-handle-rate-limits in corpus/sources/openai-handle-rate-limits.md
 - [X] T021.26 [P] [US1] Generate, review, and correct normalized source snapshot for openai-prompt-caching in corpus/sources/openai-prompt-caching.md
 - [X] T021.27 [P] [US1] Generate, review, and correct normalized source snapshot for owasp-llm04-data-model-poisoning in corpus/sources/owasp-llm04-data-model-poisoning.md
-- [ ] T022 [US1] Implement manifest loading and validation for SourcePage and KnowledgeCategory records in src/rag_quality_lab/corpus/manifest.py
+- [X] T022 [US1] Implement manifest loading and validation for SourcePage and KnowledgeCategory records in src/rag_quality_lab/corpus/manifest.py
 - [ ] T023 [US1] Implement corpus inspection summaries and JSON artifact shape in src/rag_quality_lab/corpus/inspect.py
 - [ ] T024 [US1] Implement deterministic section-aware chunking, normalized content hashing, chunk IDs, and token estimates in src/rag_quality_lab/corpus/chunking.py
 - [ ] T025 [US1] Implement Qdrant collection creation, payload mapping, vector upsert, and availability checks in src/rag_quality_lab/retrieval/qdrant_store.py
@@ -244,7 +244,7 @@
 ```bash
 Task: "T014 [P] [US1] Add contract tests for `raglab corpus inspect` JSON and failure output in tests/contract/test_cli_corpus_inspect.py"
 Task: "T015 [P] [US1] Add contract tests for `raglab corpus ingest` JSON and failure output in tests/contract/test_cli_corpus_ingest.py"
-Task: "T016 [P] [US1] Add unit tests for manifest source count, category, provenance, license, URL, pinned version, and local_ref validation in tests/unit/test_manifest.py"
+Task: "T016 [P] [US1] Add unit tests for manifest source count reporting, category, provenance, license, URL, pinned version, and local_ref validation in tests/unit/test_manifest.py"
 Task: "T017 [P] [US1] Add unit tests for deterministic chunk IDs, content hashes, section metadata, and token estimates in tests/unit/test_chunking.py"
 Task: "T018 [P] [US1] Add integration test for clean corpus inspection and Qdrant-backed ingestion using fake embeddings in tests/integration/test_corpus_ingest_workflow.py"
 ```

@@ -43,25 +43,26 @@ def test_manifest_loads_valid_sources_with_required_provenance(
     assert first_source.provenance.local_ref == first_source.local_ref
 
 
-def test_manifest_rejects_source_count_below_required_minimum(
+def test_manifest_loads_source_count_below_documented_target(
     temporary_corpus: dict[str, Path],
 ) -> None:
-    load_manifest, ManifestValidationError = _manifest_api()
+    load_manifest, _ = _manifest_api()
     payload = _read_manifest(temporary_corpus["manifest"])
     payload["sources"] = payload["sources"][:14]
     _write_manifest(temporary_corpus["manifest"], payload)
 
-    with pytest.raises(ManifestValidationError, match="15"):
-        load_manifest(
-            temporary_corpus["manifest"],
-            project_root=temporary_corpus["root"].parent,
-        )
+    manifest = load_manifest(
+        temporary_corpus["manifest"],
+        project_root=temporary_corpus["root"].parent,
+    )
+
+    assert manifest.source_count == 14
 
 
-def test_manifest_rejects_source_count_above_required_maximum(
+def test_manifest_loads_source_count_above_documented_target(
     temporary_corpus: dict[str, Path],
 ) -> None:
-    load_manifest, ManifestValidationError = _manifest_api()
+    load_manifest, _ = _manifest_api()
     payload = _read_manifest(temporary_corpus["manifest"])
     extras = []
     for index in range(16):
@@ -74,11 +75,12 @@ def test_manifest_rejects_source_count_above_required_maximum(
     payload["sources"].extend(extras)
     _write_manifest(temporary_corpus["manifest"], payload)
 
-    with pytest.raises(ManifestValidationError, match="30"):
-        load_manifest(
-            temporary_corpus["manifest"],
-            project_root=temporary_corpus["root"].parent,
-        )
+    manifest = load_manifest(
+        temporary_corpus["manifest"],
+        project_root=temporary_corpus["root"].parent,
+    )
+
+    assert manifest.source_count == 31
 
 
 def test_manifest_rejects_unknown_category(

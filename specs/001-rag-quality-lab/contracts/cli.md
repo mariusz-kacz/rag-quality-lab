@@ -19,7 +19,7 @@ Inspect the curated corpus manifest and local source snapshots.
 
 **Success Output**
 
-- selected source count
+- selected source count, with any corpus-size policy warning reported by inspection rather than manifest loading
 - category counts
 - license summary
 - pinned version or commit
@@ -27,7 +27,6 @@ Inspect the curated corpus manifest and local source snapshots.
 
 **Failure Cases**
 
-- fewer than 15 or more than 30 source pages
 - missing provenance or license metadata
 - category outside the five allowed categories
 - missing local source snapshot
