@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "categories": [
+    {
+      "name": "prompting techniques",
+      "description": "Prompt design, instruction patterns, few-shot examples, chain-of-thought style reasoning, prompt templates, and practical methods for improving model responses through input design.",
+      "embedding_ref": "category:prompting-techniques"
+    },
+    {
+      "name": "RAG and context handling",
+      "description": "Retrieval augmented generation concepts, document retrieval, chunk selection, grounding, context-window management, and using external evidence to answer questions.",
+      "embedding_ref": "category:rag-and-context-handling"
+    },
+    {
+      "name": "RAG evaluation and quality",
+      "description": "RAG quality measurement, retrieval metrics, answer evaluation, golden datasets, diagnostics, and methods for comparing retrieval or generation strategies.",
+      "embedding_ref": "category:rag-evaluation-and-quality"
+    },
+    {
+      "name": "LLM security and risks",
+      "description": "Prompt injection, jailbreaks, data leakage, unsafe model behavior, adversarial inputs, and security controls or risk mitigations for LLM applications.",
+      "embedding_ref": "category:llm-security-and-risks"
+    },
+    {
+      "name": "LLM settings, cost, and tokens",
+      "description": "Model parameters, tokenization, context limits, latency, pricing, cost tradeoffs, temperature, sampling settings, and operational budget considerations.",
+      "embedding_ref": "category:llm-settings-cost-and-tokens"
+    }
+  ]
+}

@@ -1,0 +1,626 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "source_slug": "azure-openai-prompt-engineering-techniques",
+      "title": "Prompt engineering techniques",
+      "category": "prompting techniques",
+      "url": "https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/prompt-engineering",
+      "license": "CC BY 4.0 content / MIT code examples",
+      "pinned_version": "microsoft-azure-ai-docs@main",
+      "local_ref": "corpus/sources/azure-openai-prompt-engineering-techniques.md",
+      "sections": [
+        {
+          "heading": "Prompt components and instruction design",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "prompt-components-and-instruction-design"
+        },
+        {
+          "heading": "Examples, separators, decomposition, and grounding cautions",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "examples-separators-decomposition-and-grounding-cautions"
+        }
+      ]
+    },
+    {
+      "source_slug": "microsoft-advanced-prompts",
+      "title": "Advanced prompts",
+      "category": "prompting techniques",
+      "url": "https://github.com/microsoft/generative-ai-for-beginners/tree/main/05-advanced-prompts",
+      "license": "MIT",
+      "pinned_version": "microsoft-generative-ai-for-beginners@75d89e41403186a1e3613297b1c5483c7d087e5f",
+      "local_ref": "corpus/sources/microsoft-advanced-prompts.md",
+      "sections": [
+        {
+          "heading": "Advanced prompt patterns",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "advanced-prompt-patterns"
+        },
+        {
+          "heading": "Iterative prompting methods and tradeoffs",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "iterative-prompting-methods-and-tradeoffs"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-gpt41-prompting-guide",
+      "title": "GPT-4.1 prompting guide",
+      "category": "prompting techniques",
+      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/gpt4-1_prompting_guide.ipynb",
+      "license": "MIT",
+      "pinned_version": "openai-cookbook@8730772",
+      "local_ref": "corpus/sources/openai-gpt41-prompting-guide.md",
+      "sections": [
+        {
+          "heading": "Instruction following and agentic workflows",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "instruction-following-and-agentic-workflows"
+        },
+        {
+          "heading": "Long context guidance and prompt migration",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "long-context-guidance-and-prompt-migration"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-o-series-prompting-guide",
+      "title": "o-series prompting guide",
+      "category": "prompting techniques",
+      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/o-series/o3o4-mini_prompting_guide.ipynb",
+      "license": "MIT",
+      "pinned_version": "openai-cookbook@8730772",
+      "local_ref": "corpus/sources/openai-o-series-prompting-guide.md",
+      "sections": [
+        {
+          "heading": "Reasoning model instruction design",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "reasoning-model-instruction-design"
+        },
+        {
+          "heading": "Concise instructions versus detailed constraints",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "concise-instructions-versus-detailed-constraints"
+        }
+      ]
+    },
+    {
+      "source_slug": "azure-openai-structured-outputs",
+      "title": "Structured outputs",
+      "category": "prompting techniques",
+      "url": "https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/structured-outputs",
+      "license": "CC BY 4.0 content / MIT code examples",
+      "pinned_version": "microsoft-azure-ai-docs@main",
+      "local_ref": "corpus/sources/azure-openai-structured-outputs.md",
+      "sections": [
+        {
+          "heading": "Schema constrained outputs",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "schema-constrained-outputs"
+        },
+        {
+          "heading": "Constraints, model support, and compact examples",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "constraints-model-support-and-compact-examples"
+        }
+      ]
+    },
+    {
+      "source_slug": "azure-ai-search-rag-overview",
+      "title": "Retrieval-augmented generation in Azure AI Search",
+      "category": "RAG and context handling",
+      "url": "https://learn.microsoft.com/en-us/azure/search/retrieval-augmented-generation-overview",
+      "license": "CC BY 4.0 content / MIT code examples",
+      "pinned_version": "microsoft-azure-docs@main",
+      "local_ref": "corpus/sources/azure-ai-search-rag-overview.md",
+      "sections": [
+        {
+          "heading": "RAG architecture and query understanding",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "rag-architecture-and-query-understanding"
+        },
+        {
+          "heading": "Token constraints, security trimming, and retrieval patterns",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "token-constraints-security-trimming-and-retrieval-patterns"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-embedding-wikipedia-search",
+      "title": "Embedding Wikipedia articles for search",
+      "category": "RAG and context handling",
+      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/Embedding_Wikipedia_articles_for_search.ipynb",
+      "license": "MIT",
+      "pinned_version": "openai-cookbook@8730772",
+      "local_ref": "corpus/sources/openai-embedding-wikipedia-search.md",
+      "sections": [
+        {
+          "heading": "Document collection and cleaning",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "document-collection-and-cleaning"
+        },
+        {
+          "heading": "Token-budget chunking, embedding, and storage",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "token-budget-chunking-embedding-and-storage"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-question-answering-embeddings",
+      "title": "Question answering using embeddings",
+      "category": "RAG and context handling",
+      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/Question_answering_using_embeddings.ipynb",
+      "license": "MIT",
+      "pinned_version": "openai-cookbook@8730772",
+      "local_ref": "corpus/sources/openai-question-answering-embeddings.md",
+      "sections": [
+        {
+          "heading": "Search-Ask retrieval workflow",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "search-ask-retrieval-workflow"
+        },
+        {
+          "heading": "Context assembly, answer grounding, and no-answer behavior",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "context-assembly-answer-grounding-and-no-answer-behavior"
+        }
+      ]
+    },
+    {
+      "source_slug": "azure-ai-search-vector-relevance-ranking",
+      "title": "Relevance in vector search",
+      "category": "RAG and context handling",
+      "url": "https://learn.microsoft.com/en-us/azure/search/vector-search-ranking",
+      "license": "CC BY 4.0 content / MIT code examples",
+      "pinned_version": "microsoft-azure-docs@main",
+      "local_ref": "corpus/sources/azure-ai-search-vector-relevance-ranking.md",
+      "sections": [
+        {
+          "heading": "KNN, ANN, and similarity metrics",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "knn-ann-and-similarity-metrics"
+        },
+        {
+          "heading": "Score interpretation, k selection, chunk tuning, and hybrid ranking",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "score-interpretation-k-selection-chunk-tuning-and-hybrid-ranking"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-file-search-responses",
+      "title": "File search with responses",
+      "category": "RAG and context handling",
+      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/File_Search_Responses.ipynb",
+      "license": "MIT",
+      "pinned_version": "openai-cookbook@8730772",
+      "local_ref": "corpus/sources/openai-file-search-responses.md",
+      "sections": [
+        {
+          "heading": "Managed file-search workflow",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "managed-file-search-workflow"
+        },
+        {
+          "heading": "Vector-store retrieval and context delivery",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "vector-store-retrieval-and-context-delivery"
+        }
+      ]
+    },
+    {
+      "source_slug": "microsoft-foundry-rag-evaluators",
+      "title": "Retrieval-Augmented Generation evaluators",
+      "category": "RAG evaluation and quality",
+      "url": "https://learn.microsoft.com/en-us/azure/foundry/concepts/evaluation-evaluators/rag-evaluators",
+      "license": "CC BY 4.0 content / MIT code examples",
+      "pinned_version": "microsoft-azure-ai-docs@main",
+      "local_ref": "corpus/sources/microsoft-foundry-rag-evaluators.md",
+      "sections": [
+        {
+          "heading": "Process and system evaluation taxonomy",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "process-and-system-evaluation-taxonomy"
+        },
+        {
+          "heading": "Retrieval quality, groundedness, relevance, and thresholds",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "retrieval-quality-groundedness-relevance-and-thresholds"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-evaluation-flywheel",
+      "title": "Building resilient prompts using an evaluation flywheel",
+      "category": "RAG evaluation and quality",
+      "url": "https://developers.openai.com/cookbook/examples/evaluation/building_resilient_prompts_using_an_evaluation_flywheel",
+      "license": "MIT",
+      "pinned_version": "openai-cookbook@8730772",
+      "local_ref": "corpus/sources/openai-evaluation-flywheel.md",
+      "sections": [
+        {
+          "heading": "Failure-mode discovery and annotation",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "failure-mode-discovery-and-annotation"
+        },
+        {
+          "heading": "Automatic graders, prompt improvement, and test expansion",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "automatic-graders-prompt-improvement-and-test-expansion"
+        }
+      ]
+    },
+    {
+      "source_slug": "trec-common-evaluation-measures",
+      "title": "Common evaluation measures",
+      "category": "RAG evaluation and quality",
+      "url": "https://trec.nist.gov/pubs/trec15/appendices/CE.MEASURES06.pdf",
+      "license": "Public/government documentation, reuse metadata pending snapshot verification",
+      "pinned_version": "trec-common-evaluation-measures-2006",
+      "local_ref": "corpus/sources/trec-common-evaluation-measures.md",
+      "sections": [
+        {
+          "heading": "Recall, precision, and ranked-list evaluation",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "recall-precision-and-ranked-list-evaluation"
+        },
+        {
+          "heading": "Average precision, R-precision, bpref, and GMAP",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "average-precision-r-precision-bpref-and-gmap"
+        }
+      ]
+    },
+    {
+      "source_slug": "wikipedia-ir-evaluation-measures",
+      "title": "Evaluation measures for information retrieval",
+      "category": "RAG evaluation and quality",
+      "url": "https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)",
+      "license": "CC BY-SA 4.0",
+      "pinned_version": "wikipedia@current-snapshot",
+      "local_ref": "corpus/sources/wikipedia-ir-evaluation-measures.md",
+      "sections": [
+        {
+          "heading": "Precision, recall, F-score, and precision at k",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "precision-recall-f-score-and-precision-at-k"
+        },
+        {
+          "heading": "MAP, DCG, nDCG, MRR, hit rate, and metric caveats",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "map-dcg-ndcg-mrr-hit-rate-and-metric-caveats"
+        }
+      ]
+    },
+    {
+      "source_slug": "huggingface-evaluate-choosing-metric",
+      "title": "Choosing a metric for your task",
+      "category": "RAG evaluation and quality",
+      "url": "https://huggingface.co/docs/evaluate/main/en/choosing_a_metric",
+      "license": "Apache-2.0",
+      "pinned_version": "huggingface-evaluate@main",
+      "local_ref": "corpus/sources/huggingface-evaluate-choosing-metric.md",
+      "sections": [
+        {
+          "heading": "Generic, task-specific, and dataset-specific metrics",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "generic-task-specific-and-dataset-specific-metrics"
+        },
+        {
+          "heading": "Selecting retrieval, answer, benchmark, and custom checks",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "selecting-retrieval-answer-benchmark-and-custom-checks"
+        }
+      ]
+    },
+    {
+      "source_slug": "huggingface-evaluate-considerations",
+      "title": "Considerations for model evaluation",
+      "category": "RAG evaluation and quality",
+      "url": "https://huggingface.co/docs/evaluate/main/en/considerations",
+      "license": "Apache-2.0",
+      "pinned_version": "huggingface-evaluate@main",
+      "local_ref": "corpus/sources/huggingface-evaluate-considerations.md",
+      "sections": [
+        {
+          "heading": "Evaluation splits, imbalance, and metric combinations",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "evaluation-splits-imbalance-and-metric-combinations"
+        },
+        {
+          "heading": "Offline evaluation, interpretability, resource tradeoffs, and limitations",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "offline-evaluation-interpretability-resource-tradeoffs-and-limitations"
+        }
+      ]
+    },
+    {
+      "source_slug": "owasp-llm01-prompt-injection",
+      "title": "LLM01 Prompt Injection",
+      "category": "LLM security and risks",
+      "url": "https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/blob/0205957/2_0_vulns/LLM01_PromptInjection.md",
+      "license": "CC BY-SA 4.0",
+      "pinned_version": "owasp-llm-top-10@0205957",
+      "local_ref": "corpus/sources/owasp-llm01-prompt-injection.md",
+      "sections": [
+        {
+          "heading": "Prompt injection risks",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "prompt-injection-risks"
+        },
+        {
+          "heading": "Examples, scenarios, and mitigations",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "examples-scenarios-and-mitigations"
+        }
+      ]
+    },
+    {
+      "source_slug": "owasp-llm02-sensitive-information-disclosure",
+      "title": "LLM02 Sensitive Information Disclosure",
+      "category": "LLM security and risks",
+      "url": "https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/blob/0205957/2_0_vulns/LLM02_SensitiveInformationDisclosure.md",
+      "license": "CC BY-SA 4.0",
+      "pinned_version": "owasp-llm-top-10@0205957",
+      "local_ref": "corpus/sources/owasp-llm02-sensitive-information-disclosure.md",
+      "sections": [
+        {
+          "heading": "Sensitive information disclosure risks",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "sensitive-information-disclosure-risks"
+        },
+        {
+          "heading": "Data leakage scenarios and mitigations",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "data-leakage-scenarios-and-mitigations"
+        }
+      ]
+    },
+    {
+      "source_slug": "owasp-llm04-data-model-poisoning",
+      "title": "LLM04 Data and Model Poisoning",
+      "category": "LLM security and risks",
+      "url": "https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/blob/0205957/2_0_vulns/LLM04_DataModelPoisoning.md",
+      "license": "CC BY-SA 4.0",
+      "pinned_version": "owasp-llm-top-10@0205957",
+      "local_ref": "corpus/sources/owasp-llm04-data-model-poisoning.md",
+      "sections": [
+        {
+          "heading": "Data and model poisoning risks",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "data-and-model-poisoning-risks"
+        },
+        {
+          "heading": "Lifecycle, scenarios, and mitigation controls",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "lifecycle-scenarios-and-mitigation-controls"
+        }
+      ]
+    },
+    {
+      "source_slug": "owasp-llm06-excessive-agency",
+      "title": "LLM06 Excessive Agency",
+      "category": "LLM security and risks",
+      "url": "https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/blob/0205957/2_0_vulns/LLM06_ExcessiveAgency.md",
+      "license": "CC BY-SA 4.0",
+      "pinned_version": "owasp-llm-top-10@0205957",
+      "local_ref": "corpus/sources/owasp-llm06-excessive-agency.md",
+      "sections": [
+        {
+          "heading": "Tool-use and excessive agency risks",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "tool-use-and-excessive-agency-risks"
+        },
+        {
+          "heading": "Permission boundaries and mitigations",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "permission-boundaries-and-mitigations"
+        }
+      ]
+    },
+    {
+      "source_slug": "owasp-llm08-vector-embedding-weaknesses",
+      "title": "LLM08 Vector and Embedding Weaknesses",
+      "category": "LLM security and risks",
+      "url": "https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/blob/0205957/2_0_vulns/LLM08_VectorAndEmbeddingWeaknesses.md",
+      "license": "CC BY-SA 4.0",
+      "pinned_version": "owasp-llm-top-10@0205957",
+      "local_ref": "corpus/sources/owasp-llm08-vector-embedding-weaknesses.md",
+      "sections": [
+        {
+          "heading": "Vector and embedding weaknesses",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "vector-and-embedding-weaknesses"
+        },
+        {
+          "heading": "Retrieval-specific risks and mitigations",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "retrieval-specific-risks-and-mitigations"
+        }
+      ]
+    },
+    {
+      "source_slug": "nist-generative-ai-risk-profile",
+      "title": "Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile",
+      "category": "LLM security and risks",
+      "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
+      "license": "Public NIST publication, reuse metadata pending snapshot verification",
+      "pinned_version": "nist-ai-600-1@2024-07",
+      "local_ref": "corpus/sources/nist-generative-ai-risk-profile.md",
+      "sections": [
+        {
+          "heading": "Generative AI risk taxonomy",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "generative-ai-risk-taxonomy"
+        },
+        {
+          "heading": "Risk-management actions for LLM and RAG systems",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "risk-management-actions-for-llm-and-rag-systems"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-text-generation",
+      "title": "Text generation",
+      "category": "LLM settings, cost, and tokens",
+      "url": "https://developers.openai.com/api/docs/guides/text-generation",
+      "license": "OpenAI API docs reuse terms pending snapshot verification",
+      "pinned_version": "openai-api-docs@current-snapshot",
+      "local_ref": "corpus/sources/openai-text-generation.md",
+      "sections": [
+        {
+          "heading": "Request shape and message roles",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "request-shape-and-message-roles"
+        },
+        {
+          "heading": "Instruction guidance and context-management implications",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "instruction-guidance-and-context-management-implications"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-token-counting",
+      "title": "How to count tokens with tiktoken",
+      "category": "LLM settings, cost, and tokens",
+      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/How_to_count_tokens_with_tiktoken.ipynb",
+      "license": "MIT",
+      "pinned_version": "openai-cookbook@8730772",
+      "local_ref": "corpus/sources/openai-token-counting.md",
+      "sections": [
+        {
+          "heading": "Token counting concepts",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "token-counting-concepts"
+        },
+        {
+          "heading": "Prompt budgeting and model-specific token accounting",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "prompt-budgeting-and-model-specific-token-accounting"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-latency-optimization",
+      "title": "Latency optimization",
+      "category": "LLM settings, cost, and tokens",
+      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/data/oai_docs/latency-optimization.txt",
+      "license": "MIT",
+      "pinned_version": "openai-cookbook@8730772",
+      "local_ref": "corpus/sources/openai-latency-optimization.md",
+      "sections": [
+        {
+          "heading": "Latency and efficiency principles",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "latency-and-efficiency-principles"
+        },
+        {
+          "heading": "Token reduction, fewer requests, streaming, and RAG trimming",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "token-reduction-fewer-requests-streaming-and-rag-trimming"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-handle-rate-limits",
+      "title": "How to handle rate limits",
+      "category": "LLM settings, cost, and tokens",
+      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/How_to_handle_rate_limits.ipynb",
+      "license": "MIT",
+      "pinned_version": "openai-cookbook@8730772",
+      "local_ref": "corpus/sources/openai-handle-rate-limits.md",
+      "sections": [
+        {
+          "heading": "Rate-limit causes and backoff strategies",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "rate-limit-causes-and-backoff-strategies"
+        },
+        {
+          "heading": "RPM, TPM, fallback models, max tokens, and throughput",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "rpm-tpm-fallback-models-max-tokens-and-throughput"
+        }
+      ]
+    },
+    {
+      "source_slug": "openai-prompt-caching",
+      "title": "Prompt caching",
+      "category": "LLM settings, cost, and tokens",
+      "url": "https://developers.openai.com/api/docs/guides/prompt-caching",
+      "license": "OpenAI API docs reuse terms pending snapshot verification",
+      "pinned_version": "openai-api-docs@current-snapshot",
+      "local_ref": "corpus/sources/openai-prompt-caching.md",
+      "sections": [
+        {
+          "heading": "Prompt caching mechanics",
+          "level": 1,
+          "ordinal": 0,
+          "anchor": "prompt-caching-mechanics"
+        },
+        {
+          "heading": "Static and dynamic prompt layout, cache keys, and usage observability",
+          "level": 1,
+          "ordinal": 1,
+          "anchor": "static-and-dynamic-prompt-layout-cache-keys-and-usage-observability"
+        }
+      ]
+    }
+  ]
+}

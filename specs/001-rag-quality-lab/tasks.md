@@ -61,9 +61,37 @@
 
 ### Implementation for User Story 1
 
-- [ ] T019 [P] [US1] Create curated corpus manifest with 15-30 DAIR.AI Prompt Engineering Guide source pages, one pinned version, five categories, license metadata, URLs, and local references in corpus/manifest.json
-- [ ] T020 [P] [US1] Create category definitions matching the five required categories in corpus/categories.json
-- [ ] T021 [US1] Add pinned local source snapshots for every manifest entry under corpus/sources/
+- [X] T019 [P] [US1] 
+- Create curated corpus manifest from the approved T019 multi-source proposal with 15-30 source pages, five categories, license metadata, URLs, pinned versions, and local references in corpus/manifest.json
+- [X] T020 [P] [US1] Create category definitions matching the five required categories in corpus/categories.json
+- [X] T021 [US1] Complete the document-level corpus generation plan in specs/001-rag-quality-lab/corpus-generation-plan.md for every manifest entry under corpus/sources/
+- [X] T021.01 [P] [US1] Generate, review, and correct normalized source snapshot for azure-openai-prompt-engineering-techniques in corpus/sources/azure-openai-prompt-engineering-techniques.md
+- [X] T021.02 [P] [US1] Generate, review, and correct normalized source snapshot for microsoft-advanced-prompts in corpus/sources/microsoft-advanced-prompts.md
+- [X] T021.03 [P] [US1] Generate, review, and correct normalized source snapshot for openai-gpt41-prompting-guide in corpus/sources/openai-gpt41-prompting-guide.md
+- [X] T021.04 [P] [US1] Generate, review, and correct normalized source snapshot for openai-o-series-prompting-guide in corpus/sources/openai-o-series-prompting-guide.md
+- [X] T021.05 [P] [US1] Generate, review, and correct normalized source snapshot for azure-openai-structured-outputs in corpus/sources/azure-openai-structured-outputs.md
+- [X] T021.06 [P] [US1] Generate, review, and correct normalized source snapshot for azure-ai-search-rag-overview in corpus/sources/azure-ai-search-rag-overview.md
+- [X] T021.07 [P] [US1] Generate, review, and correct normalized source snapshot for openai-embedding-wikipedia-search in corpus/sources/openai-embedding-wikipedia-search.md
+- [X] T021.08 [P] [US1] Generate, review, and correct normalized source snapshot for openai-question-answering-embeddings in corpus/sources/openai-question-answering-embeddings.md
+- [X] T021.09 [P] [US1] Generate, review, and correct normalized source snapshot for azure-ai-search-vector-relevance-ranking in corpus/sources/azure-ai-search-vector-relevance-ranking.md
+- [X] T021.10 [P] [US1] Generate, review, and correct normalized source snapshot for openai-file-search-responses in corpus/sources/openai-file-search-responses.md
+- [X] T021.11 [P] [US1] Generate, review, and correct normalized source snapshot for microsoft-foundry-rag-evaluators in corpus/sources/microsoft-foundry-rag-evaluators.md
+- [X] T021.12 [P] [US1] Generate, review, and correct normalized source snapshot for openai-evaluation-flywheel in corpus/sources/openai-evaluation-flywheel.md
+- [X] T021.13 [P] [US1] Generate, review, and correct normalized source snapshot for trec-common-evaluation-measures in corpus/sources/trec-common-evaluation-measures.md
+- [X] T021.14 [P] [US1] Generate, review, and correct normalized source snapshot for wikipedia-ir-evaluation-measures in corpus/sources/wikipedia-ir-evaluation-measures.md
+- [X] T021.15 [P] [US1] Generate, review, and correct normalized source snapshot for huggingface-evaluate-choosing-metric in corpus/sources/huggingface-evaluate-choosing-metric.md
+- [X] T021.16 [P] [US1] Generate, review, and correct normalized source snapshot for huggingface-evaluate-considerations in corpus/sources/huggingface-evaluate-considerations.md
+- [X] T021.17 [P] [US1] Generate, review, and correct normalized source snapshot for owasp-llm01-prompt-injection in corpus/sources/owasp-llm01-prompt-injection.md
+- [X] T021.18 [P] [US1] Generate, review, and correct normalized source snapshot for owasp-llm02-sensitive-information-disclosure in corpus/sources/owasp-llm02-sensitive-information-disclosure.md
+- [X] T021.19 [P] [US1] Generate, review, and correct normalized source snapshot for owasp-llm06-excessive-agency in corpus/sources/owasp-llm06-excessive-agency.md
+- [X] T021.20 [P] [US1] Generate, review, and correct normalized source snapshot for owasp-llm08-vector-embedding-weaknesses in corpus/sources/owasp-llm08-vector-embedding-weaknesses.md
+- [X] T021.21 [P] [US1] Generate, review, and correct normalized source snapshot for nist-generative-ai-risk-profile in corpus/sources/nist-generative-ai-risk-profile.md
+- [X] T021.22 [P] [US1] Generate, review, and correct normalized source snapshot for openai-text-generation in corpus/sources/openai-text-generation.md
+- [X] T021.23 [P] [US1] Generate, review, and correct normalized source snapshot for openai-token-counting in corpus/sources/openai-token-counting.md
+- [X] T021.24 [P] [US1] Generate, review, and correct normalized source snapshot for openai-latency-optimization in corpus/sources/openai-latency-optimization.md
+- [X] T021.25 [P] [US1] Generate, review, and correct normalized source snapshot for openai-handle-rate-limits in corpus/sources/openai-handle-rate-limits.md
+- [X] T021.26 [P] [US1] Generate, review, and correct normalized source snapshot for openai-prompt-caching in corpus/sources/openai-prompt-caching.md
+- [X] T021.27 [P] [US1] Generate, review, and correct normalized source snapshot for owasp-llm04-data-model-poisoning in corpus/sources/owasp-llm04-data-model-poisoning.md
 - [ ] T022 [US1] Implement manifest loading and validation for SourcePage and KnowledgeCategory records in src/rag_quality_lab/corpus/manifest.py
 - [ ] T023 [US1] Implement corpus inspection summaries and JSON artifact shape in src/rag_quality_lab/corpus/inspect.py
 - [ ] T024 [US1] Implement deterministic section-aware chunking, normalized content hashing, chunk IDs, and token estimates in src/rag_quality_lab/corpus/chunking.py
@@ -203,7 +231,7 @@
 
 - Setup tasks T003-T006 can run in parallel after T001-T002 are understood.
 - Foundational tasks T008-T011 and T013 can run in parallel.
-- US1 tests T014-T018 can run in parallel, and corpus file tasks T019-T020 can run in parallel.
+- US1 tests T014-T018 can run in parallel, corpus file tasks T019-T020 can run in parallel, and T021.06-T021.27 source snapshot generation/review subtasks can run independently by document according to specs/001-rag-quality-lab/corpus-generation-plan.md.
 - US2 tests T028-T034 can run in parallel before implementation.
 - US3 tests T045-T049 can run in parallel before implementation.
 - US4 documentation test T058 can run in parallel with README drafting tasks T059-T062.
