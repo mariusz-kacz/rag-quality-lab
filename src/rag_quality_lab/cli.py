@@ -13,8 +13,15 @@ import typer
 
 from rag_quality_lab import __version__
 from rag_quality_lab.config import ConfigurationError, InvalidConfigurationError, MissingSettingError
+from rag_quality_lab.corpus.ingest import IngestionError, ingest_corpus
+from rag_quality_lab.corpus.inspect import CorpusInspectionError, inspect_corpus
 from rag_quality_lab.providers import ProviderError
-from rag_quality_lab.schemas import ArtifactIOError, ArtifactSchemaVersionError
+from rag_quality_lab.schemas import (
+    ArtifactIOError,
+    ArtifactSchemaVersionError,
+    CorpusSummaryArtifact,
+    IngestionSummaryArtifact,
+)
 
 
 class ExitCode(IntEnum):
@@ -77,6 +84,46 @@ def version() -> None:
     """Print the installed package version."""
 
     typer.echo(__version__)
+
+
+@corpus_app.command("inspect")
+def corpus_inspect(
+    json_output: JsonOutputOption = False,
+) -> None:
+    """Inspect the curated corpus manifest and local source snapshots."""
+
+    summary = run_cli_command(
+        inspect_corpus,
+        json_output=json_output,
+    )
+    if json_output:
+        _echo_json_artifact(summary)
+        return
+    _echo_corpus_summary(summary)
+
+
+@corpus_app.command("ingest")
+def corpus_ingest(
+    collection: Annotated[
+        str | None,
+        typer.Option("--collection", help="Target Qdrant collection."),
+    ] = None,
+    recreate: Annotated[
+        bool,
+        typer.Option("--recreate", help="Recreate the target collection before ingestion."),
+    ] = False,
+    json_output: JsonOutputOption = False,
+) -> None:
+    """Validate, chunk, embed, and load the corpus into Qdrant."""
+
+    summary = run_cli_command(
+        lambda: ingest_corpus(collection=collection, recreate=recreate),
+        json_output=json_output,
+    )
+    if json_output:
+        _echo_json_artifact(summary)
+        return
+    _echo_ingestion_summary(summary)
 
 
 def build_shared_options(json_output: bool = False) -> SharedOptions:
@@ -146,6 +193,10 @@ def stage_for_error(error: Exception) -> str:
 
     if isinstance(error, MissingSettingError):
         return error.stage
+    if isinstance(error, CorpusInspectionError):
+        return "corpus inspect"
+    if isinstance(error, IngestionError):
+        return "corpus ingest"
     if isinstance(error, ConfigurationError):
         return "configuration"
     if isinstance(error, ArtifactIOError):
@@ -153,6 +204,45 @@ def stage_for_error(error: Exception) -> str:
     if isinstance(error, ProviderError):
         return "provider"
     return "application"
+
+
+def _echo_json_artifact(artifact: CorpusSummaryArtifact | IngestionSummaryArtifact) -> None:
+    typer.echo(artifact.model_dump_json(indent=2))
+
+
+def _echo_corpus_summary(summary: CorpusSummaryArtifact) -> None:
+    typer.echo("Corpus inspection")
+    typer.echo(f"Sources: {summary.source_count}")
+    typer.echo(f"Pinned version: {summary.pinned_version or 'mixed'}")
+    typer.echo("Categories:")
+    for category, count in summary.categories.items():
+        typer.echo(f"  - {category}: {count}")
+    typer.echo("Licenses:")
+    for license_name, count in summary.license_summary.items():
+        typer.echo(f"  - {license_name}: {count}")
+    if summary.validation_errors:
+        typer.echo("Validation errors:")
+        for error in summary.validation_errors:
+            typer.echo(f"  - {error}")
+    else:
+        typer.echo("Validation errors: none")
+
+
+def _echo_ingestion_summary(summary: IngestionSummaryArtifact) -> None:
+    typer.echo("Corpus ingestion")
+    typer.echo(f"Collection: {summary.collection}")
+    typer.echo(f"Sources: {summary.source_count}")
+    typer.echo(f"Chunks: {summary.chunk_count}")
+    typer.echo(f"Embedding model: {summary.embedding_model}")
+    typer.echo("Categories:")
+    for category, count in summary.category_counts.items():
+        typer.echo(f"  - {category}: {count}")
+    if summary.validation_errors:
+        typer.echo("Validation errors:")
+        for error in summary.validation_errors:
+            typer.echo(f"  - {error}")
+    else:
+        typer.echo("Validation errors: none")
 
 
 if __name__ == "__main__":
