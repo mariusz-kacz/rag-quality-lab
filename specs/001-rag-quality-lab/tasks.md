@@ -96,7 +96,7 @@
 - [X] T023 [US1] Implement corpus inspection summaries and JSON artifact shape in src/rag_quality_lab/corpus/inspect.py
 - [X] T024 [US1] Implement deterministic section-aware chunking, normalized content hashing, chunk IDs, and token estimates in src/rag_quality_lab/corpus/chunking.py
 - [X] T025 [US1] Implement Qdrant collection creation, payload mapping, vector upsert, and availability checks in src/rag_quality_lab/retrieval/qdrant_store.py
-- [ ] T026 [US1] Implement corpus ingestion orchestration with validation-before-write behavior in src/rag_quality_lab/corpus/ingest.py
+- [X] T026 [US1] Implement corpus ingestion orchestration with validation-before-write behavior in src/rag_quality_lab/corpus/ingest.py
 - [ ] T027 [US1] Wire `raglab corpus inspect` and `raglab corpus ingest` commands with human and JSON output in src/rag_quality_lab/cli.py
 
 **Checkpoint**: User Story 1 is fully functional and testable independently.

@@ -69,6 +69,7 @@ dmypy.json.*
 .vscode/
 *.swp
 *.swo
+*.tmp
 *~
 
 # OS files
