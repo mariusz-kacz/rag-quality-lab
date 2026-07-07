@@ -66,7 +66,7 @@ def category_names() -> tuple[str, ...]:
     return tuple(category.name for category in REQUIRED_CATEGORIES)
 
 
-def category_descriptions() -> dict[str, str]:
+def category_descriptions() -> dict[KnowledgeCategoryName, str]:
     """Return category descriptions keyed by category name."""
 
     return {category.name: category.description for category in REQUIRED_CATEGORIES}

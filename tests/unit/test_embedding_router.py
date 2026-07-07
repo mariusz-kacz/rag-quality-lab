@@ -112,7 +112,56 @@ def test_embedding_router_rejects_empty_questions() -> None:
         router.route("  ")
 
 
+def test_embedding_router_clamps_negative_similarity_to_zero_confidence() -> None:
+    provider = FakeEmbeddingProvider(
+        query_vectors={
+            "What is unrelated to these categories?": [-1.0, -1.0, -1.0, -1.0, -1.0],
+        }
+    )
+    router = EmbeddingCategoryRouter(
+        embedding_provider=provider,
+        threshold=0.5,
+    )
+
+    decision = router.route("What is unrelated to these categories?")
+
+    assert decision.selected_category is None
+    assert decision.fallback_all_categories is True
+    assert decision.confidence == 0.0
+    assert all(score == 0.0 for score in decision.category_scores.values())
+
+
+def test_embedding_router_rejects_invalid_threshold() -> None:
+    with pytest.raises(EmbeddingRouterError, match="threshold"):
+        EmbeddingCategoryRouter(
+            embedding_provider=FakeEmbeddingProvider(query_vectors={}),
+            threshold=1.1,
+        )
+
+
+def test_embedding_router_rejects_wrong_category_embedding_count() -> None:
+    router = EmbeddingCategoryRouter(
+        embedding_provider=WrongCountEmbeddingProvider(vector_count=1),
+        threshold=0.5,
+    )
+
+    with pytest.raises(EmbeddingRouterError, match="category vector"):
+        router.route("How does RAG work?")
+
+
+def test_embedding_router_rejects_wrong_query_embedding_count() -> None:
+    router = EmbeddingCategoryRouter(
+        embedding_provider=WrongCountEmbeddingProvider(vector_count=5, query_count=0),
+        threshold=0.5,
+    )
+
+    with pytest.raises(EmbeddingRouterError, match="query vector"):
+        router.route("How does RAG work?")
+
+
 class FakeEmbeddingProvider:
+    deployment = "embedding-test"
+
     def __init__(self, *, query_vectors: dict[str, list[float]]) -> None:
         self.query_vectors = query_vectors
         self.calls: list[list[str]] = []
@@ -133,5 +182,22 @@ class FakeEmbeddingProvider:
                 self.category_vectors.get(text) or self.query_vectors[text]
                 for text in clean_texts
             ],
+            model="embedding-test",
+        )
+
+
+class WrongCountEmbeddingProvider:
+    deployment = "embedding-test"
+
+    def __init__(self, *, vector_count: int, query_count: int | None = None) -> None:
+        self.vector_count = vector_count
+        self.query_count = query_count if query_count is not None else vector_count
+        self.calls = 0
+
+    def embed_texts(self, texts: Sequence[str]) -> EmbeddingResponse:
+        self.calls += 1
+        vector_count = self.vector_count if self.calls == 1 else self.query_count
+        return EmbeddingResponse(
+            vectors=[[1.0, 0.0, 0.0, 0.0, 0.0] for _ in range(vector_count)],
             model="embedding-test",
         )
