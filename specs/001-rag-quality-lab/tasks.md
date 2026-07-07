@@ -111,13 +111,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T028 [P] [US2] Add contract tests for `raglab query` JSON output, unsupported mode errors, and trace path reporting in tests/contract/test_cli_query.py
-- [ ] T029 [P] [US2] Add contract tests for `raglab trace inspect` JSON output and trace schema fields in tests/contract/test_cli_trace.py
-- [ ] T030 [P] [US2] Add unit tests for embedding category routing confidence, fallback decisions, and all-category scores in tests/unit/test_embedding_router.py
-- [ ] T031 [P] [US2] Add unit tests for baseline-vector and routed-vector retrieval filtering and ranked result normalization in tests/unit/test_retrieval_modes.py
-- [ ] T032 [P] [US2] Add unit tests for context budget inclusion order, excluded chunk reasons, and single oversized chunk handling in tests/unit/test_context.py
-- [ ] T033 [P] [US2] Add unit tests for citation parsing, malformed citations, missing citations, and out-of-context citation invalidation in tests/unit/test_citations.py
-- [ ] T034 [P] [US2] Add integration tests for answerable and no-answer query workflows with persisted traces in tests/integration/test_query_workflow.py
+- [X] T028 [P] [US2] Add contract tests for `raglab query` JSON output, unsupported mode errors, and trace path reporting in tests/contract/test_cli_query.py
+- [X] T029 [P] [US2] Add contract tests for `raglab trace inspect` JSON output and trace schema fields in tests/contract/test_cli_trace.py
+- [X] T030 [P] [US2] Add unit tests for embedding category routing confidence, fallback decisions, and all-category scores in tests/unit/test_embedding_router.py
+- [X] T031 [P] [US2] Add unit tests for baseline-vector and routed-vector retrieval filtering and ranked result normalization in tests/unit/test_retrieval_modes.py
+- [X] T032 [P] [US2] Add unit tests for context budget inclusion order, excluded chunk reasons, and single oversized chunk handling in tests/unit/test_context.py
+- [X] T033 [P] [US2] Add unit tests for citation parsing, malformed citations, missing citations, and out-of-context citation invalidation in tests/unit/test_citations.py
+- [X] T034 [P] [US2] Add integration tests for answerable and no-answer query workflows with persisted traces in tests/integration/test_query_workflow.py
 
 ### Implementation for User Story 2
 
