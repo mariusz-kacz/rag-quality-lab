@@ -93,7 +93,9 @@ class AzureOpenAIEmbeddingProvider:
         client: AzureOpenAIClient | None = None,
     ) -> None:
         config.require_embedding()
-        self._deployment = _required(config.embedding_deployment, "embedding deployment")
+        self._deployment = _required(
+            config.embedding_deployment, "embedding deployment"
+        )
         self._client = client or create_azure_openai_client(config)
 
     @property
@@ -112,8 +114,12 @@ class AzureOpenAIEmbeddingProvider:
         if not clean_texts:
             raise ProviderError("Embedding input must include at least one text")
 
-        response = self._client.embeddings.create(model=self._deployment, input=clean_texts)
-        vectors = [_coerce_embedding_vector(item) for item in _get(response, "data", [])]
+        response = self._client.embeddings.create(
+            model=self._deployment, input=clean_texts
+        )
+        vectors = [
+            _coerce_embedding_vector(item) for item in _get(response, "data", [])
+        ]
         if len(vectors) != len(clean_texts):
             raise ProviderError(
                 f"Embedding provider returned {len(vectors)} vector(s) for {len(clean_texts)} text(s)"
@@ -193,11 +199,15 @@ def _clean_message(message: ChatMessage) -> dict[str, str]:
 def _coerce_embedding_vector(item: Any) -> list[float]:
     embedding = _get(item, "embedding")
     if not isinstance(embedding, list) or not embedding:
-        raise ProviderError("Embedding provider returned a missing or empty embedding vector")
+        raise ProviderError(
+            "Embedding provider returned a missing or empty embedding vector"
+        )
     try:
         return [float(value) for value in embedding]
     except (TypeError, ValueError) as exc:
-        raise ProviderError("Embedding provider returned a non-numeric embedding vector") from exc
+        raise ProviderError(
+            "Embedding provider returned a non-numeric embedding vector"
+        ) from exc
 
 
 def _extract_chat_content(response: Any) -> str:

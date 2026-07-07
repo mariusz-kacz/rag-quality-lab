@@ -12,7 +12,11 @@ from typing import Annotated, TypeVar
 import typer
 
 from rag_quality_lab import __version__
-from rag_quality_lab.config import ConfigurationError, InvalidConfigurationError, MissingSettingError
+from rag_quality_lab.config import (
+    ConfigurationError,
+    InvalidConfigurationError,
+    MissingSettingError,
+)
 from rag_quality_lab.corpus.ingest import IngestionError, ingest_corpus
 from rag_quality_lab.corpus.inspect import CorpusInspectionError, inspect_corpus
 from rag_quality_lab.providers import ProviderError
@@ -40,7 +44,9 @@ JsonOutputOption = Annotated[
 ]
 TopKOption = Annotated[
     int,
-    typer.Option("--top-k", min=1, help="Maximum number of retrieval results to request."),
+    typer.Option(
+        "--top-k", min=1, help="Maximum number of retrieval results to request."
+    ),
 ]
 MaxContextTokensOption = Annotated[
     int,
@@ -48,7 +54,9 @@ MaxContextTokensOption = Annotated[
 ]
 OutputTokenLimitOption = Annotated[
     int,
-    typer.Option("--output-token-limit", min=1, help="Maximum answer generation tokens."),
+    typer.Option(
+        "--output-token-limit", min=1, help="Maximum answer generation tokens."
+    ),
 ]
 TraceDirOption = Annotated[
     Path,
@@ -70,9 +78,13 @@ app = typer.Typer(
     help="CLI-first RAG quality engineering lab.",
     no_args_is_help=True,
 )
-corpus_app = typer.Typer(help="Inspect and ingest the curated corpus.", no_args_is_help=True)
+corpus_app = typer.Typer(
+    help="Inspect and ingest the curated corpus.", no_args_is_help=True
+)
 trace_app = typer.Typer(help="Inspect persisted query traces.", no_args_is_help=True)
-eval_app = typer.Typer(help="Run and compare retrieval evaluations.", no_args_is_help=True)
+eval_app = typer.Typer(
+    help="Run and compare retrieval evaluations.", no_args_is_help=True
+)
 
 app.add_typer(corpus_app, name="corpus")
 app.add_typer(trace_app, name="trace")
@@ -110,7 +122,9 @@ def corpus_ingest(
     ] = None,
     recreate: Annotated[
         bool,
-        typer.Option("--recreate", help="Recreate the target collection before ingestion."),
+        typer.Option(
+            "--recreate", help="Recreate the target collection before ingestion."
+        ),
     ] = False,
     json_output: JsonOutputOption = False,
 ) -> None:
@@ -179,7 +193,9 @@ def handle_cli_error(error: Exception, *, json_output: bool = False) -> None:
 def exit_code_for_error(error: Exception) -> ExitCode:
     """Map known project exceptions to stable process exit codes."""
 
-    if isinstance(error, (MissingSettingError, InvalidConfigurationError, ConfigurationError)):
+    if isinstance(
+        error, (MissingSettingError, InvalidConfigurationError, ConfigurationError)
+    ):
         return ExitCode.CONFIGURATION
     if isinstance(error, (ArtifactSchemaVersionError, ArtifactIOError)):
         return ExitCode.ARTIFACT
@@ -206,7 +222,9 @@ def stage_for_error(error: Exception) -> str:
     return "application"
 
 
-def _echo_json_artifact(artifact: CorpusSummaryArtifact | IngestionSummaryArtifact) -> None:
+def _echo_json_artifact(
+    artifact: CorpusSummaryArtifact | IngestionSummaryArtifact,
+) -> None:
     typer.echo(artifact.model_dump_json(indent=2))
 
 

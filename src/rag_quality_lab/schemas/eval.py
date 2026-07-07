@@ -60,8 +60,13 @@ class GoldenSet(SchemaModel):
             raise ValueError(f"golden set is missing required case types: {missing}")
 
         for question in self.questions:
-            if question.case_type == "answerable" and not question.expected_relevant_sources:
-                raise ValueError("answerable golden questions require expected_relevant_sources")
+            if (
+                question.case_type == "answerable"
+                and not question.expected_relevant_sources
+            ):
+                raise ValueError(
+                    "answerable golden questions require expected_relevant_sources"
+                )
         return self
 
 

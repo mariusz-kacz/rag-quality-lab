@@ -84,7 +84,10 @@ def test_query_json_reports_answer_route_context_and_trace_path(
     assert payload["schema_version"] == "1.0"
     assert payload["question"] == "How does RAG ground answers?"
     assert payload["retrieval_mode"] == "routed-vector"
-    assert payload["answer_text"] == "RAG grounds answers in selected context. [source-02:overview:0001]"
+    assert (
+        payload["answer_text"]
+        == "RAG grounds answers in selected context. [source-02:overview:0001]"
+    )
     assert payload["is_no_answer"] is False
     assert payload["citations"] == ["source-02:overview:0001"]
     assert payload["validation_status"] == "valid"

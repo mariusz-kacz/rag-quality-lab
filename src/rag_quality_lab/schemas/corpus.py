@@ -18,7 +18,9 @@ class KnowledgeCategoryName(StrEnum):
     LLM_SETTINGS_COST_AND_TOKENS = "LLM settings, cost, and tokens"
 
 
-REQUIRED_KNOWLEDGE_CATEGORIES: tuple[str, ...] = tuple(category.value for category in KnowledgeCategoryName)
+REQUIRED_KNOWLEDGE_CATEGORIES: tuple[str, ...] = tuple(
+    category.value for category in KnowledgeCategoryName
+)
 Answerability: TypeAlias = Literal["answerable", "no_answer"]
 CaseType: TypeAlias = Literal[
     "answerable",

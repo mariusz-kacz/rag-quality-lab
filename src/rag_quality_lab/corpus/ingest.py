@@ -74,7 +74,11 @@ def ingest_corpus(
 ) -> IngestionSummaryArtifact:
     """Validate, chunk, embed, and write the curated corpus to Qdrant."""
 
-    root = Path(project_root).resolve() if project_root is not None else Path.cwd().resolve()
+    root = (
+        Path(project_root).resolve()
+        if project_root is not None
+        else Path.cwd().resolve()
+    )
     target_collection = _resolve_collection(collection)
 
     manifest = _load_validated_inputs(
@@ -82,9 +86,13 @@ def ingest_corpus(
         categories_path,
         project_root=root,
     )
-    chunks = _build_chunks(manifest.sources, project_root=root, max_chunk_tokens=max_chunk_tokens)
+    chunks = _build_chunks(
+        manifest.sources, project_root=root, max_chunk_tokens=max_chunk_tokens
+    )
     if not chunks:
-        raise IngestionError("No corpus chunks were generated; ingestion cannot continue")
+        raise IngestionError(
+            "No corpus chunks were generated; ingestion cannot continue"
+        )
 
     provider = embedding_provider or _create_embedding_provider()
     embedding_response = provider.embed_texts([chunk.content for chunk in chunks])
@@ -163,7 +171,9 @@ def _build_chunks(
     return chunks
 
 
-def _validate_vectors(vectors: Sequence[Sequence[float]], *, expected_count: int) -> list[list[float]]:
+def _validate_vectors(
+    vectors: Sequence[Sequence[float]], *, expected_count: int
+) -> list[list[float]]:
     if len(vectors) != expected_count:
         raise IngestionError(
             f"Embedding provider returned {len(vectors)} vector(s), expected {expected_count}"

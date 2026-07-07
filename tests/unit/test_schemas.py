@@ -164,4 +164,7 @@ def test_corpus_summary_artifact_keeps_schema_version_and_sources() -> None:
     )
 
     assert artifact.schema_version == "1.0"
-    assert artifact.sources[0].local_ref == Path("corpus/sources/rag-overview.md").as_posix()
+    assert (
+        artifact.sources[0].local_ref
+        == Path("corpus/sources/rag-overview.md").as_posix()
+    )

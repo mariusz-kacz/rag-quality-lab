@@ -17,7 +17,9 @@ runner = CliRunner()
 def test_trace_inspect_json_outputs_trace_schema_fields(
     temporary_trace_file: Path,
 ) -> None:
-    result = runner.invoke(app, ["trace", "inspect", str(temporary_trace_file), "--json"])
+    result = runner.invoke(
+        app, ["trace", "inspect", str(temporary_trace_file), "--json"]
+    )
 
     assert result.exit_code == 0, result.stderr
     payload = json.loads(result.stdout)
@@ -59,7 +61,10 @@ def test_trace_inspect_json_outputs_trace_schema_fields(
     assert payload["context_build"]["max_context_tokens"] == 500
     assert payload["context_build"]["output_token_limit"] == 100
     assert payload["context_build"]["final_estimated_context_tokens"] == 10
-    assert payload["context_build"]["included_chunks"][0]["chunk_id"] == "source-02:overview:0001"
+    assert (
+        payload["context_build"]["included_chunks"][0]["chunk_id"]
+        == "source-02:overview:0001"
+    )
     assert payload["context_build"]["excluded_chunks"] == []
     assert payload["answer_result"] == {
         "answer_text": "RAG grounds answers in selected context. [source-02:overview:0001]",

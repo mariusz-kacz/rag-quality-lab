@@ -6,7 +6,10 @@ import pytest
 
 from rag_quality_lab.providers import EmbeddingResponse
 from rag_quality_lab.routing.categories import category_descriptions
-from rag_quality_lab.routing.embedding_router import EmbeddingCategoryRouter, EmbeddingRouterError
+from rag_quality_lab.routing.embedding_router import (
+    EmbeddingCategoryRouter,
+    EmbeddingRouterError,
+)
 from rag_quality_lab.schemas import REQUIRED_KNOWLEDGE_CATEGORIES
 
 
@@ -16,7 +19,13 @@ pytestmark = pytest.mark.unit
 def test_embedding_router_selects_high_confidence_category() -> None:
     provider = FakeEmbeddingProvider(
         query_vectors={
-            "How does RAG use retrieved context to ground answers?": [0.0, 1.0, 0.0, 0.0, 0.0],
+            "How does RAG use retrieved context to ground answers?": [
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
         }
     )
     router = EmbeddingCategoryRouter(
@@ -38,13 +47,21 @@ def test_embedding_router_selects_high_confidence_category() -> None:
         "LLM settings, cost, and tokens": pytest.approx(0.0),
     }
     assert provider.calls[0] == list(category_descriptions().values())
-    assert provider.calls[1] == ["How does RAG use retrieved context to ground answers?"]
+    assert provider.calls[1] == [
+        "How does RAG use retrieved context to ground answers?"
+    ]
 
 
 def test_embedding_router_falls_back_when_confidence_below_threshold() -> None:
     provider = FakeEmbeddingProvider(
         query_vectors={
-            "How do risk, tokens, retrieval, and quality interact?": [0.2, 0.2, 0.2, 0.2, 0.2],
+            "How do risk, tokens, retrieval, and quality interact?": [
+                0.2,
+                0.2,
+                0.2,
+                0.2,
+                0.2,
+            ],
         }
     )
     router = EmbeddingCategoryRouter(
@@ -59,7 +76,10 @@ def test_embedding_router_falls_back_when_confidence_below_threshold() -> None:
     assert decision.confidence == pytest.approx(0.4472135955)
     assert decision.threshold == 0.9
     assert set(decision.category_scores) == set(REQUIRED_KNOWLEDGE_CATEGORIES)
-    assert all(score == pytest.approx(0.4472135955) for score in decision.category_scores.values())
+    assert all(
+        score == pytest.approx(0.4472135955)
+        for score in decision.category_scores.values()
+    )
 
 
 def test_embedding_router_reports_all_category_scores_in_required_order() -> None:
@@ -77,7 +97,9 @@ def test_embedding_router_reports_all_category_scores_in_required_order() -> Non
 
     assert tuple(decision.category_scores) == REQUIRED_KNOWLEDGE_CATEGORIES
     assert decision.selected_category == "LLM settings, cost, and tokens"
-    assert decision.category_scores["LLM settings, cost, and tokens"] == pytest.approx(1.0)
+    assert decision.category_scores["LLM settings, cost, and tokens"] == pytest.approx(
+        1.0
+    )
 
 
 def test_embedding_router_rejects_empty_questions() -> None:

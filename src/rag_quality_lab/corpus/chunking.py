@@ -33,9 +33,13 @@ def chunk_source_page(
         raise ValueError(f"max_chunk_tokens must be >= 1, got {max_chunk_tokens}")
 
     chunks: list[Chunk] = []
-    for section in _parse_markdown_sections(markdown, fallback_heading=source_page.title):
+    for section in _parse_markdown_sections(
+        markdown, fallback_heading=source_page.title
+    ):
         section_markdown = "\n".join(section.lines)
-        for content in split_into_chunks(section_markdown, max_chunk_tokens=max_chunk_tokens):
+        for content in split_into_chunks(
+            section_markdown, max_chunk_tokens=max_chunk_tokens
+        ):
             content_hash = compute_content_hash(content)
             ordinal = len(chunks)
             chunks.append(
@@ -127,10 +131,16 @@ def _split_paragraphs_into_chunks(
             if pending_paragraphs:
                 chunks.append(" ".join(pending_paragraphs))
                 pending_paragraphs = []
-            chunks.extend(_split_long_paragraph(paragraph, max_chunk_tokens=max_chunk_tokens))
+            chunks.extend(
+                _split_long_paragraph(paragraph, max_chunk_tokens=max_chunk_tokens)
+            )
             continue
 
-        candidate = " ".join([*pending_paragraphs, paragraph]) if pending_paragraphs else paragraph
+        candidate = (
+            " ".join([*pending_paragraphs, paragraph])
+            if pending_paragraphs
+            else paragraph
+        )
         if estimate_token_count(candidate) <= max_chunk_tokens:
             pending_paragraphs.append(paragraph)
             continue
@@ -170,7 +180,9 @@ def _split_long_paragraph(
     return chunks
 
 
-def _parse_markdown_sections(markdown: str, *, fallback_heading: str) -> list[_SectionBlock]:
+def _parse_markdown_sections(
+    markdown: str, *, fallback_heading: str
+) -> list[_SectionBlock]:
     sections: list[_SectionBlock] = []
     heading_stack: list[tuple[int, str]] = []
     section_path: tuple[str, ...] = (fallback_heading,)
@@ -189,7 +201,9 @@ def _parse_markdown_sections(markdown: str, *, fallback_heading: str) -> list[_S
                 if existing_level < level
             ]
             heading_stack.append((level, heading))
-            section_path = tuple(existing_heading for _, existing_heading in heading_stack)
+            section_path = tuple(
+                existing_heading for _, existing_heading in heading_stack
+            )
             continue
 
         lines.append(raw_line)

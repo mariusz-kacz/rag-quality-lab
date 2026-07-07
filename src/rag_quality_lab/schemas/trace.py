@@ -45,11 +45,17 @@ class RouteDecision(SchemaModel):
         if actual != expected:
             missing = sorted(expected - actual)
             extra = sorted(actual - expected)
-            raise ValueError(f"category_scores must include exactly five categories; missing={missing}, extra={extra}")
+            raise ValueError(
+                f"category_scores must include exactly five categories; missing={missing}, extra={extra}"
+            )
         if self.fallback_all_categories and self.selected_category is not None:
-            raise ValueError("selected_category must be empty when routing falls back to all categories")
+            raise ValueError(
+                "selected_category must be empty when routing falls back to all categories"
+            )
         if not self.fallback_all_categories and self.selected_category is None:
-            raise ValueError("selected_category is required when routing does not fall back")
+            raise ValueError(
+                "selected_category is required when routing does not fall back"
+            )
         return self
 
 
@@ -104,7 +110,9 @@ class ContextBuild(SchemaModel):
     @model_validator(mode="after")
     def validate_budget_and_order(self) -> "ContextBuild":
         if self.final_estimated_context_tokens > self.max_context_tokens:
-            raise ValueError("final_estimated_context_tokens cannot exceed max_context_tokens")
+            raise ValueError(
+                "final_estimated_context_tokens cannot exceed max_context_tokens"
+            )
         included_ranks = [chunk.retrieval_rank for chunk in self.included_chunks]
         if included_ranks != sorted(included_ranks):
             raise ValueError("included_chunks must preserve retrieval rank order")
@@ -157,7 +165,9 @@ class QueryTrace(SchemaModel):
 
     @field_validator("retrieval_results")
     @classmethod
-    def validate_retrieval_ranks(cls, value: list[RetrievalResult]) -> list[RetrievalResult]:
+    def validate_retrieval_ranks(
+        cls, value: list[RetrievalResult]
+    ) -> list[RetrievalResult]:
         ranks = [result.rank for result in value]
         if ranks != sorted(ranks) or len(ranks) != len(set(ranks)):
             raise ValueError("retrieval_results ranks must be unique and ordered")

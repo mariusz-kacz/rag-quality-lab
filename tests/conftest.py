@@ -57,7 +57,9 @@ def sample_source_pages() -> list[SourcePage]:
 
 
 @pytest.fixture
-def temporary_corpus(tmp_path: Path, sample_source_pages: list[SourcePage]) -> dict[str, Path]:
+def temporary_corpus(
+    tmp_path: Path, sample_source_pages: list[SourcePage]
+) -> dict[str, Path]:
     corpus_dir = tmp_path / "corpus"
     sources_dir = corpus_dir / "sources"
     sources_dir.mkdir(parents=True)
@@ -77,7 +79,9 @@ def temporary_corpus(tmp_path: Path, sample_source_pages: list[SourcePage]) -> d
         json.dumps(
             {
                 "schema_version": "1.0",
-                "sources": [page.model_dump(mode="json") for page in sample_source_pages],
+                "sources": [
+                    page.model_dump(mode="json") for page in sample_source_pages
+                ],
             },
             indent=2,
         )
@@ -285,7 +289,9 @@ class FakeEmbeddingsResource:
 
 
 class FakeChatCompletionsResource:
-    def __init__(self, content: str = "Grounded answer [source-02:overview:0001]") -> None:
+    def __init__(
+        self, content: str = "Grounded answer [source-02:overview:0001]"
+    ) -> None:
         self.content = content
         self.calls: list[dict[str, object]] = []
 
@@ -308,14 +314,20 @@ class FakeChatCompletionsResource:
         return SimpleNamespace(
             model=model,
             choices=[SimpleNamespace(message=SimpleNamespace(content=self.content))],
-            usage=SimpleNamespace(prompt_tokens=20, completion_tokens=7, total_tokens=27),
+            usage=SimpleNamespace(
+                prompt_tokens=20, completion_tokens=7, total_tokens=27
+            ),
         )
 
 
 class FakeAzureOpenAIClient:
-    def __init__(self, chat_content: str = "Grounded answer [source-02:overview:0001]") -> None:
+    def __init__(
+        self, chat_content: str = "Grounded answer [source-02:overview:0001]"
+    ) -> None:
         self.embeddings = FakeEmbeddingsResource()
-        self.chat = SimpleNamespace(completions=FakeChatCompletionsResource(chat_content))
+        self.chat = SimpleNamespace(
+            completions=FakeChatCompletionsResource(chat_content)
+        )
 
 
 @pytest.fixture

@@ -63,9 +63,13 @@ class FakeChatCompletionsResource:
         return SimpleNamespace(
             model=model,
             choices=[
-                SimpleNamespace(message=SimpleNamespace(content="Grounded answer [chunk-1]"))
+                SimpleNamespace(
+                    message=SimpleNamespace(content="Grounded answer [chunk-1]")
+                )
             ],
-            usage=SimpleNamespace(prompt_tokens=10, completion_tokens=4, total_tokens=14),
+            usage=SimpleNamespace(
+                prompt_tokens=10, completion_tokens=4, total_tokens=14
+            ),
         )
 
 

@@ -34,8 +34,8 @@ class SchemaArtifact(BaseModel):
 class CorpusSummaryArtifact(SchemaArtifact):
     """Machine-readable corpus inspection summary."""
 
-    source_count: int = Field(ge=0)
     categories: dict[str, int] = Field(default_factory=dict)
+    source_count: int = Field(ge=0)
     license_summary: dict[str, int] = Field(default_factory=dict)
     pinned_version: str | None = None
     sources: list[SourcePage] = Field(default_factory=list)
@@ -78,7 +78,9 @@ def read_json_artifact(
     try:
         raw_data: Any = json.loads(artifact_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise ArtifactIOError(f"Invalid JSON artifact at {artifact_path}: {exc.msg}") from exc
+        raise ArtifactIOError(
+            f"Invalid JSON artifact at {artifact_path}: {exc.msg}"
+        ) from exc
 
     if not isinstance(raw_data, dict):
         raise ArtifactIOError(f"Artifact at {artifact_path} must contain a JSON object")

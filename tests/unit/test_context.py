@@ -4,7 +4,7 @@ import pytest
 
 from rag_quality_lab.rag.context import build_context
 from rag_quality_lab.schemas import ContextChunk
-
+from rag_quality_lab.schemas.corpus import KnowledgeCategoryName
 
 pytestmark = pytest.mark.unit
 
@@ -23,7 +23,10 @@ def test_context_builder_includes_ranked_chunks_until_budget_is_reached() -> Non
         prompt_overhead_tokens=10,
     )
 
-    assert [chunk.chunk_id for chunk in context.included_chunks] == ["chunk-1", "chunk-2"]
+    assert [chunk.chunk_id for chunk in context.included_chunks] == [
+        "chunk-1",
+        "chunk-2",
+    ]
     assert [chunk.retrieval_rank for chunk in context.included_chunks] == [1, 2]
     assert context.final_estimated_context_tokens == 80
     assert context.max_context_tokens == 100
@@ -55,7 +58,9 @@ def test_context_builder_records_all_excluded_chunk_reasons() -> None:
     assert context.final_estimated_context_tokens == 70
 
 
-def test_context_builder_handles_single_oversized_chunk_without_exceeding_budget() -> None:
+def test_context_builder_handles_single_oversized_chunk_without_exceeding_budget() -> (
+    None
+):
     candidates = [
         context_chunk("oversized", rank=1, estimated_tokens=250),
     ]
@@ -109,7 +114,7 @@ def context_chunk(chunk_id: str, *, rank: int, estimated_tokens: int) -> Context
     return ContextChunk(
         chunk_id=chunk_id,
         source_slug=f"source-{rank}",
-        category="RAG and context handling",
+        category=KnowledgeCategoryName.RAG_AND_CONTEXT_HANDLING,
         section_path=["Overview"],
         retrieval_rank=rank,
         content=f"Content for {chunk_id}.",

@@ -22,7 +22,9 @@ def corpus_summary() -> CorpusSummaryArtifact:
     )
 
 
-def test_write_json_artifact_creates_parent_directories_and_schema_version(tmp_path) -> None:
+def test_write_json_artifact_creates_parent_directories_and_schema_version(
+    tmp_path,
+) -> None:
     artifact_path = tmp_path / "nested" / "corpus-summary.json"
 
     written_path = write_json_artifact(artifact_path, corpus_summary())

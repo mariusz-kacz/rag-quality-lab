@@ -67,10 +67,12 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
         "chunk-rag-1",
         "chunk-rag-oversized",
     ]
-    assert [chunk.chunk_id for chunk in trace.context_build.included_chunks] == ["chunk-rag-1"]
-    assert [(chunk.chunk_id, chunk.reason) for chunk in trace.context_build.excluded_chunks] == [
-        ("chunk-rag-oversized", "budget_exceeded")
+    assert [chunk.chunk_id for chunk in trace.context_build.included_chunks] == [
+        "chunk-rag-1"
     ]
+    assert [
+        (chunk.chunk_id, chunk.reason) for chunk in trace.context_build.excluded_chunks
+    ] == [("chunk-rag-oversized", "budget_exceeded")]
     assert trace.context_build.max_context_tokens == 80
     assert trace.context_build.output_token_limit == 100
     assert trace.answer_result.is_no_answer is False
@@ -137,7 +139,9 @@ def test_no_answer_query_workflow_persists_not_applicable_citation_trace(
     assert trace.route_decision.fallback_all_categories is True
     assert trace.route_decision.selected_category is None
     assert [result.chunk_id for result in trace.retrieval_results] == ["chunk-scope-1"]
-    assert [chunk.chunk_id for chunk in trace.context_build.included_chunks] == ["chunk-scope-1"]
+    assert [chunk.chunk_id for chunk in trace.context_build.included_chunks] == [
+        "chunk-scope-1"
+    ]
     assert trace.answer_result.is_no_answer is True
     assert trace.answer_result.citations == []
     assert trace.answer_result.validation_status == "not_applicable"

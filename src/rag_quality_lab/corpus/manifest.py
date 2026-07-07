@@ -44,7 +44,9 @@ class CorpusManifest:
     @property
     def category_counts(self) -> dict[str, int]:
         counts = Counter(str(source.category) for source in self.sources)
-        return {category: counts[category] for category in REQUIRED_KNOWLEDGE_CATEGORIES}
+        return {
+            category: counts[category] for category in REQUIRED_KNOWLEDGE_CATEGORIES
+        }
 
     @property
     def license_summary(self) -> dict[str, int]:
@@ -79,7 +81,9 @@ def load_manifest(
 ) -> CorpusManifest:
     """Load and validate the selected corpus source manifest."""
 
-    resolved_manifest_path = _resolve_input_path(manifest_path, project_root=project_root)
+    resolved_manifest_path = _resolve_input_path(
+        manifest_path, project_root=project_root
+    )
     raw_manifest = _read_json_object(resolved_manifest_path, label="manifest")
     schema_version = _validate_schema_version(raw_manifest, resolved_manifest_path)
 
@@ -89,11 +93,18 @@ def load_manifest(
             f"Manifest at {resolved_manifest_path} must contain a sources array"
         )
 
-    sources = tuple(_validate_source(raw_source, index) for index, raw_source in enumerate(raw_sources))
+    sources = tuple(
+        _validate_source(raw_source, index)
+        for index, raw_source in enumerate(raw_sources)
+    )
     _validate_unique_source_slugs(sources)
     _validate_required_categories_present(sources)
 
-    root = Path(project_root).resolve() if project_root is not None else resolved_manifest_path.parent.parent
+    root = (
+        Path(project_root).resolve()
+        if project_root is not None
+        else resolved_manifest_path.parent.parent
+    )
     for source in sources:
         _validate_local_ref(source, project_root=root)
 
@@ -111,9 +122,15 @@ def load_categories(
 ) -> CategoryManifest:
     """Load and validate deterministic routing category definitions."""
 
-    resolved_categories_path = _resolve_input_path(categories_path, project_root=project_root)
-    raw_categories_payload = _read_json_object(resolved_categories_path, label="categories")
-    schema_version = _validate_schema_version(raw_categories_payload, resolved_categories_path)
+    resolved_categories_path = _resolve_input_path(
+        categories_path, project_root=project_root
+    )
+    raw_categories_payload = _read_json_object(
+        resolved_categories_path, label="categories"
+    )
+    schema_version = _validate_schema_version(
+        raw_categories_payload, resolved_categories_path
+    )
 
     raw_categories = raw_categories_payload.get("categories")
     if not isinstance(raw_categories, list):
@@ -122,7 +139,8 @@ def load_categories(
         )
 
     categories = tuple(
-        _validate_category(raw_category, index) for index, raw_category in enumerate(raw_categories)
+        _validate_category(raw_category, index)
+        for index, raw_category in enumerate(raw_categories)
     )
     _validate_exact_required_categories(categories)
 
@@ -146,17 +164,23 @@ def _read_json_object(path: Path, *, label: str) -> dict[str, Any]:
     except FileNotFoundError as exc:
         raise ManifestValidationError(f"Missing {label} file at {path}") from exc
     except json.JSONDecodeError as exc:
-        raise ManifestValidationError(f"Invalid JSON in {label} file at {path}: {exc.msg}") from exc
+        raise ManifestValidationError(
+            f"Invalid JSON in {label} file at {path}: {exc.msg}"
+        ) from exc
 
     if not isinstance(payload, dict):
-        raise ManifestValidationError(f"{label.capitalize()} file at {path} must contain a JSON object")
+        raise ManifestValidationError(
+            f"{label.capitalize()} file at {path} must contain a JSON object"
+        )
     return payload
 
 
 def _validate_schema_version(payload: dict[str, Any], path: Path) -> str:
     schema_version = payload.get("schema_version")
     if not isinstance(schema_version, str) or not schema_version.strip():
-        raise ManifestValidationError(f"File at {path} is missing required schema_version")
+        raise ManifestValidationError(
+            f"File at {path} is missing required schema_version"
+        )
     if schema_version != DEFAULT_SCHEMA_VERSION:
         raise ManifestValidationError(
             f"File at {path} uses schema_version {schema_version!r}; "
@@ -167,7 +191,9 @@ def _validate_schema_version(payload: dict[str, Any], path: Path) -> str:
 
 def _validate_source(raw_source: object, index: int) -> SourcePage:
     if not isinstance(raw_source, dict):
-        raise ManifestValidationError(f"Manifest source at index {index} must be a JSON object")
+        raise ManifestValidationError(
+            f"Manifest source at index {index} must be a JSON object"
+        )
     try:
         return SourcePage.model_validate(raw_source)
     except ValidationError as exc:
@@ -178,7 +204,9 @@ def _validate_source(raw_source: object, index: int) -> SourcePage:
 
 def _validate_category(raw_category: object, index: int) -> KnowledgeCategory:
     if not isinstance(raw_category, dict):
-        raise ManifestValidationError(f"Category at index {index} must be a JSON object")
+        raise ManifestValidationError(
+            f"Category at index {index} must be a JSON object"
+        )
     try:
         return KnowledgeCategory.model_validate(raw_category)
     except ValidationError as exc:
@@ -199,7 +227,9 @@ def _validate_unique_source_slugs(sources: tuple[SourcePage, ...]) -> None:
 def _validate_required_categories_present(sources: tuple[SourcePage, ...]) -> None:
     present_categories = {str(source.category) for source in sources}
     missing_categories = [
-        category for category in REQUIRED_KNOWLEDGE_CATEGORIES if category not in present_categories
+        category
+        for category in REQUIRED_KNOWLEDGE_CATEGORIES
+        if category not in present_categories
     ]
     if missing_categories:
         raise ManifestValidationError(
@@ -207,7 +237,9 @@ def _validate_required_categories_present(sources: tuple[SourcePage, ...]) -> No
         )
 
 
-def _validate_exact_required_categories(categories: tuple[KnowledgeCategory, ...]) -> None:
+def _validate_exact_required_categories(
+    categories: tuple[KnowledgeCategory, ...],
+) -> None:
     names = [str(category.name) for category in categories]
     counts = Counter(names)
     duplicate_names = sorted(name for name, count in counts.items() if count > 1)
@@ -218,7 +250,9 @@ def _validate_exact_required_categories(categories: tuple[KnowledgeCategory, ...
 
     expected = set(REQUIRED_KNOWLEDGE_CATEGORIES)
     actual = set(names)
-    missing = [category for category in REQUIRED_KNOWLEDGE_CATEGORIES if category not in actual]
+    missing = [
+        category for category in REQUIRED_KNOWLEDGE_CATEGORIES if category not in actual
+    ]
     unexpected = sorted(actual - expected)
     if missing or unexpected:
         details: list[str] = []

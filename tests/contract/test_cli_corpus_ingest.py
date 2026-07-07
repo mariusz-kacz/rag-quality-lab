@@ -10,7 +10,10 @@ from typer.testing import CliRunner
 import rag_quality_lab.cli as cli
 from rag_quality_lab.cli import app
 from rag_quality_lab.config import MissingSettingError
-from rag_quality_lab.schemas.artifacts import DEFAULT_SCHEMA_VERSION, IngestionSummaryArtifact
+from rag_quality_lab.schemas.artifacts import (
+    DEFAULT_SCHEMA_VERSION,
+    IngestionSummaryArtifact,
+)
 from rag_quality_lab.schemas.corpus import Chunk
 
 
@@ -26,7 +29,9 @@ def test_corpus_ingest_json_reports_qdrant_ingestion_summary(
     monkeypatch.chdir(temporary_corpus["root"].parent)
     captured: dict[str, Any] = {}
 
-    def fake_ingest_corpus(*, collection: str, recreate: bool) -> IngestionSummaryArtifact:
+    def fake_ingest_corpus(
+        *, collection: str, recreate: bool
+    ) -> IngestionSummaryArtifact:
         captured["collection"] = collection
         captured["recreate"] = recreate
         chunk = Chunk(
@@ -107,7 +112,9 @@ def test_corpus_ingest_failure_reports_missing_embedding_configuration(
 ) -> None:
     monkeypatch.chdir(temporary_corpus["root"].parent)
 
-    def fake_ingest_corpus(*, collection: str, recreate: bool) -> IngestionSummaryArtifact:
+    def fake_ingest_corpus(
+        *, collection: str, recreate: bool
+    ) -> IngestionSummaryArtifact:
         raise MissingSettingError(
             ["AZURE_OPENAI_EMBEDDING_DEPLOYMENT"],
             stage="Azure OpenAI embeddings",

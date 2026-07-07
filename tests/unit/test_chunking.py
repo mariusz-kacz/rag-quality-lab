@@ -116,16 +116,20 @@ def test_split_into_chunks_rejects_non_positive_token_limit() -> None:
 
 
 def test_compute_content_hash_uses_normalized_content() -> None:
-    from rag_quality_lab.corpus.chunking import compute_content_hash, normalize_chunk_content
+    from rag_quality_lab.corpus.chunking import (
+        compute_content_hash,
+        normalize_chunk_content,
+    )
 
     noisy_content = "  Retrieval   augmented\r\n generation\tgrounds answers.  "
     normalized = normalize_chunk_content(noisy_content)
 
     assert normalized == "Retrieval augmented generation grounds answers."
     assert compute_content_hash(noisy_content) == compute_content_hash(normalized)
-    assert compute_content_hash(noisy_content) == hashlib.sha256(
-        normalized.encode("utf-8")
-    ).hexdigest()
+    assert (
+        compute_content_hash(noisy_content)
+        == hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    )
 
 
 def test_chunk_source_page_builds_valid_chunks_with_section_metadata(
@@ -137,7 +141,9 @@ def test_chunk_source_page_builds_valid_chunks_with_section_metadata(
         estimate_token_count,
     )
 
-    chunks = chunk_source_page(sample_source_page, _sample_markdown(), max_chunk_tokens=80)
+    chunks = chunk_source_page(
+        sample_source_page, _sample_markdown(), max_chunk_tokens=80
+    )
 
     assert [chunk.section_path for chunk in chunks] == [
         ["Overview"],
@@ -146,7 +152,9 @@ def test_chunk_source_page_builds_valid_chunks_with_section_metadata(
     ]
     for ordinal, chunk in enumerate(chunks):
         assert chunk.ordinal == ordinal
-        assert chunk.chunk_id.startswith(f"{sample_source_page.source_slug}:{ordinal:04d}:")
+        assert chunk.chunk_id.startswith(
+            f"{sample_source_page.source_slug}:{ordinal:04d}:"
+        )
         assert chunk.chunk_id.endswith(chunk.content_hash[:12])
         assert chunk.content_hash == compute_content_hash(chunk.content)
         assert chunk.estimated_tokens == estimate_token_count(chunk.content)
@@ -158,8 +166,12 @@ def test_chunk_source_page_builds_valid_chunks_with_section_metadata(
 def test_chunk_source_page_is_deterministic(sample_source_page: SourcePage) -> None:
     from rag_quality_lab.corpus.chunking import chunk_source_page
 
-    first_run = chunk_source_page(sample_source_page, _sample_markdown(), max_chunk_tokens=80)
-    second_run = chunk_source_page(sample_source_page, _sample_markdown(), max_chunk_tokens=80)
+    first_run = chunk_source_page(
+        sample_source_page, _sample_markdown(), max_chunk_tokens=80
+    )
+    second_run = chunk_source_page(
+        sample_source_page, _sample_markdown(), max_chunk_tokens=80
+    )
 
     assert first_run == second_run
 

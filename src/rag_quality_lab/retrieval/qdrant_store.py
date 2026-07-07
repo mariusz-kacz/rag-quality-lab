@@ -21,7 +21,9 @@ def create_qdrant_client(config: QdrantConfig) -> QdrantClient:
 
     return QdrantClient(
         url=config.url,
-        api_key=config.api_key.get_secret_value() if config.api_key is not None else None,
+        api_key=config.api_key.get_secret_value()
+        if config.api_key is not None
+        else None,
     )
 
 
@@ -56,7 +58,9 @@ class QdrantStore:
         if vector_size < 1:
             raise QdrantStoreError(f"vector_size must be >= 1, got {vector_size}")
 
-        vectors_config = models.VectorParams(size=vector_size, distance=models.Distance.COSINE)
+        vectors_config = models.VectorParams(
+            size=vector_size, distance=models.Distance.COSINE
+        )
         if recreate:
             self._call(
                 "recreate Qdrant collection",

@@ -53,5 +53,7 @@ def _summarize_pinned_versions(pinned_versions: set[str]) -> str | None:
 
 def _inspection_error_message(message: str) -> str:
     if message.startswith("Missing local snapshot for "):
-        return message.replace("Missing local snapshot", "missing local source snapshot", 1)
+        return message.replace(
+            "Missing local snapshot", "missing local source snapshot", 1
+        )
     return message

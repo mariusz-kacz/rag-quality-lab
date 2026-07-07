@@ -30,7 +30,9 @@ def test_clean_corpus_inspection_and_fake_qdrant_ingestion_workflow(
     assert inspection.categories == {
         category: 3 for category in REQUIRED_KNOWLEDGE_CATEGORIES
     }
-    assert all(source.local_ref.startswith("corpus/sources/") for source in inspection.sources)
+    assert all(
+        source.local_ref.startswith("corpus/sources/") for source in inspection.sources
+    )
 
     ingestion = ingest_corpus(
         project_root=project_root,

@@ -45,3 +45,8 @@ markers = [
   "integration: tests that exercise workflow boundaries or external-service fakes",
   "unit: fast isolated domain and schema tests"
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.20",
+]

@@ -34,7 +34,9 @@ def test_ensure_collection_recreates_collection_with_cosine_vector_config() -> N
     client = FakeQdrantClient()
     store = QdrantStore(client=client)
 
-    store.ensure_collection(collection=" rag_quality_lab ", vector_size=3, recreate=True)
+    store.ensure_collection(
+        collection=" rag_quality_lab ", vector_size=3, recreate=True
+    )
 
     assert client.calls[0][0] == "recreate_collection"
     call = client.calls[0][1]
@@ -84,7 +86,9 @@ def test_upsert_chunks_maps_chunk_payload_and_stable_point_ids() -> None:
     assert call["wait"] is True
     point = call["points"][0]
     assert uuid.UUID(point.id)
-    assert point.id == str(uuid.uuid5(uuid.NAMESPACE_URL, f"rag-quality-lab:{chunk.chunk_id}"))
+    assert point.id == str(
+        uuid.uuid5(uuid.NAMESPACE_URL, f"rag-quality-lab:{chunk.chunk_id}")
+    )
     assert point.vector == [0.0, 1.0, 2.0]
     assert point.payload == {
         "chunk_id": "rag-overview:0000:overview:abcdef123456",

@@ -7,7 +7,14 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    ValidationError,
+    field_validator,
+)
 
 
 BASE_AZURE_ENV_VARS = (
@@ -30,7 +37,9 @@ class ConfigurationError(Exception):
 class MissingSettingError(ConfigurationError):
     """Raised when one or more required environment variables are missing."""
 
-    def __init__(self, missing_settings: list[str], *, stage: str = "application") -> None:
+    def __init__(
+        self, missing_settings: list[str], *, stage: str = "application"
+    ) -> None:
         self.missing_settings = tuple(missing_settings)
         self.stage = stage
         joined = ", ".join(self.missing_settings)
@@ -60,7 +69,9 @@ class AzureOpenAIConfig(BaseModel):
     def validate_endpoint(cls, value: str) -> str:
         stripped = value.strip().rstrip("/")
         if not stripped.startswith(("https://", "http://")):
-            raise ValueError("AZURE_OPENAI_ENDPOINT must start with http:// or https://")
+            raise ValueError(
+                "AZURE_OPENAI_ENDPOINT must start with http:// or https://"
+            )
         return stripped
 
     @field_validator("api_version", "embedding_deployment", "chat_deployment")
@@ -75,7 +86,9 @@ class AzureOpenAIConfig(BaseModel):
         """Validate that embedding configuration is available for ingestion/routing."""
 
         if not self.embedding_deployment:
-            raise MissingSettingError([EMBEDDING_ENV_VAR], stage="Azure OpenAI embeddings")
+            raise MissingSettingError(
+                [EMBEDDING_ENV_VAR], stage="Azure OpenAI embeddings"
+            )
 
     def require_chat(self) -> None:
         """Validate that chat configuration is available for answer generation."""
@@ -224,13 +237,17 @@ def _read(environ: Mapping[str, str], name: str) -> str | None:
     return stripped or None
 
 
-def _raise_for_missing(environ: Mapping[str, str], names: list[str], *, stage: str) -> None:
+def _raise_for_missing(
+    environ: Mapping[str, str], names: list[str], *, stage: str
+) -> None:
     missing = [name for name in names if _read(environ, name) is None]
     if missing:
         raise MissingSettingError(missing, stage=stage)
 
 
-def _build_model[T: BaseModel](model_type: type[T], values: dict[str, Any], *, stage: str) -> T:
+def _build_model[T: BaseModel](
+    model_type: type[T], values: dict[str, Any], *, stage: str
+) -> T:
     try:
         return model_type.model_validate(values)
     except ValidationError as exc:
