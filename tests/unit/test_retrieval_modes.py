@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from rag_quality_lab.retrieval.qdrant_store import QdrantStore
+from rag_quality_lab.retrieval.qdrant_store import QdrantStore, QdrantStoreError
 
 
 pytestmark = pytest.mark.unit
@@ -91,7 +91,7 @@ def test_baseline_vector_search_normalizes_ranked_results_without_filter() -> No
     assert client.search_calls == [
         {
             "collection_name": "rag_quality_lab",
-            "query_vector": [0.1, 0.2, 0.3],
+            "query": [0.1, 0.2, 0.3],
             "limit": 2,
             "query_filter": None,
             "with_payload": True,
@@ -129,14 +129,10 @@ def test_routed_vector_search_applies_selected_category_filter() -> None:
     assert results[0].mode == "routed-vector"
     assert results[0].rank == 1
     assert results[0].category == "RAG and context handling"
-    assert client.search_calls[0]["query_filter"] == {
-        "must": [
-            {
-                "key": "category",
-                "match": {"value": "RAG and context handling"},
-            }
-        ]
-    }
+    query_filter = client.search_calls[0]["query_filter"]
+    assert query_filter is not None
+    assert query_filter.must[0].key == "category"
+    assert query_filter.must[0].match.value == "RAG and context handling"
 
 
 def test_routed_vector_search_requires_selected_category_without_fallback() -> None:
@@ -151,30 +147,85 @@ def test_routed_vector_search_requires_selected_category_without_fallback() -> N
         )
 
 
+def test_search_chunks_reports_missing_payload_field_with_rank() -> None:
+    client = FakeSearchClient(
+        points=[
+            fake_point(
+                score=0.91,
+                payload={
+                    "source_slug": "source-a",
+                    "category": "RAG and context handling",
+                    "section_path": ["Overview"],
+                },
+            )
+        ]
+    )
+    store = QdrantStore(client=client)
+
+    with pytest.raises(
+        QdrantStoreError,
+        match="Invalid Qdrant payload for retrieval result at rank 1: missing chunk_id",
+    ):
+        store.search_chunks(
+            collection="rag_quality_lab",
+            query_vector=[0.1, 0.2, 0.3],
+            mode="baseline-vector",
+            top_k=1,
+        )
+
+
+def test_search_chunks_wraps_invalid_payload_shape_with_rank() -> None:
+    client = FakeSearchClient(
+        points=[
+            fake_point(
+                score=0.91,
+                payload={
+                    "chunk_id": "chunk-a",
+                    "source_slug": "source-a",
+                    "category": "RAG and context handling",
+                    "section_path": [],
+                },
+            )
+        ]
+    )
+    store = QdrantStore(client=client)
+
+    with pytest.raises(
+        QdrantStoreError,
+        match="Invalid Qdrant payload for retrieval result at rank 1",
+    ):
+        store.search_chunks(
+            collection="rag_quality_lab",
+            query_vector=[0.1, 0.2, 0.3],
+            mode="baseline-vector",
+            top_k=1,
+        )
+
+
 class FakeSearchClient:
     def __init__(self, *, points: list[Any]) -> None:
         self.points = points
         self.search_calls: list[dict[str, Any]] = []
 
-    def search(
+    def query_points(
         self,
         *,
         collection_name: str,
-        query_vector: list[float],
+        query: list[float],
         limit: int,
         query_filter: Any = None,
         with_payload: bool = True,
-    ) -> list[Any]:
+    ) -> Any:
         self.search_calls.append(
             {
                 "collection_name": collection_name,
-                "query_vector": query_vector,
+                "query": query,
                 "limit": limit,
                 "query_filter": query_filter,
                 "with_payload": with_payload,
             }
         )
-        return self.points[:limit]
+        return type("FakeQueryResponse", (), {"points": self.points[:limit]})()
 
 
 def fake_point(*, score: float, payload: dict[str, Any]) -> Any:

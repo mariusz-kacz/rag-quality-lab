@@ -10,7 +10,7 @@ Goal: implement User Story 2 in a learning-first way, using AI as a reviewer/tut
 | [X]    | 2 | `src/rag_quality_lab/rag/context.py` | pure functions, sorting, immutable Pydantic models, list transformations | token budgeting and context inclusion/exclusion |
 | [X]    | 3 | `src/rag_quality_lab/rag/citations.py` | regex, parsing edge cases, validation result modeling | citation extraction and selected-context validation |
 | [X]    | 4 | `src/rag_quality_lab/routing/embedding_router.py` | dependency injection, vector math, protocol-by-convention style | deterministic category routing |
-| [ ]    | 5 | `src/rag_quality_lab/retrieval/qdrant_store.py` | adapter pattern around SDKs, payload normalization | baseline and routed vector search |
+| [X]    | 5 | `src/rag_quality_lab/retrieval/qdrant_store.py` | adapter pattern around SDKs, payload normalization | baseline and routed vector search |
 | [ ]    | 6 | `src/rag_quality_lab/rag/generation.py` | provider abstraction, prompt construction, simple orchestration | grounded answer and no-answer generation |
 | [ ]    | 7 | `src/rag_quality_lab/rag/traces.py` | `pathlib.Path`, JSON persistence, Pydantic serialization/deserialization | trace persistence and loading |
 | [ ]    | 8 | `src/rag_quality_lab/rag/pipeline.py` | composition, dependency injection, error boundaries | full query flow: route -> retrieve -> context -> generate -> validate -> trace |

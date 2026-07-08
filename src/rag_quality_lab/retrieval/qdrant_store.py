@@ -9,7 +9,8 @@ from typing import Any
 from qdrant_client import QdrantClient, models
 
 from rag_quality_lab.config import QdrantConfig
-from rag_quality_lab.schemas import Chunk, RetrievalResult
+from rag_quality_lab.retrieval.modes import validate_retrieval_mode
+from rag_quality_lab.schemas import Chunk, RetrievalMode, RetrievalResult
 
 
 class QdrantStoreError(Exception):
@@ -117,8 +118,60 @@ class QdrantStore:
         )
         return len(points)
 
-    def search_chunks(self) -> list[RetrievalResult]:
-        ...
+    def search_chunks(
+        self,
+        *,
+        collection: str,
+        query_vector: list[float],
+        mode: str,
+        top_k: int,
+        selected_category: str | None = None,
+        fallback_all_categories: bool = False,
+    ) -> list[RetrievalResult]:
+        result: list[RetrievalResult] = []
+        clean_collection = _clean_collection(collection)
+        validated_mode = validate_retrieval_mode(mode)
+
+        if top_k < 1:
+            raise ValueError("top_k must be >= 1")
+
+        query_filter = None
+        if validated_mode == "routed-vector":
+            if not fallback_all_categories:
+                if selected_category is None:
+                    raise ValueError(
+                        "selected_category is required for routed-vector when fallback_all_categories is false"
+                    )
+
+                query_filter = models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="category",
+                            match=models.MatchValue(value=selected_category),
+                        )
+                    ]
+                )
+
+        response = self._call(
+            "query Qdrant points",
+            self._client.query_points,
+            collection_name=clean_collection,
+            query=query_vector,
+            query_filter=query_filter,
+            limit=top_k,
+            with_payload=True,
+        )
+
+        for index, point in enumerate(response.points, start=1):
+            result.append(
+                _retrieval_result_from_point(
+                    point=point,
+                    mode=validated_mode,
+                    rank=index,
+                )
+            )
+
+        return result
 
     def _call(self, operation: str, function: Any, *args: Any, **kwargs: Any) -> Any:
         try:
@@ -134,6 +187,38 @@ def _clean_collection(collection: str) -> str:
     if not clean:
         raise QdrantStoreError("collection must be non-empty")
     return clean
+
+
+def _retrieval_result_from_point(
+    *,
+    point: Any,
+    mode: RetrievalMode,
+    rank: int,
+) -> RetrievalResult:
+    payload = point.payload or {}
+
+    try:
+        return RetrievalResult(
+            mode=mode,
+            rank=rank,
+            chunk_id=payload["chunk_id"],
+            source_slug=payload["source_slug"],
+            category=payload["category"],
+            section_path=payload["section_path"],
+            score=point.score,
+            estimated_tokens=payload.get("estimated_tokens"),
+            content=payload.get("content"),
+        )
+    except KeyError as exc:
+        missing_field = exc.args[0]
+        raise QdrantStoreError(
+            "Invalid Qdrant payload for retrieval result "
+            f"at rank {rank}: missing {missing_field}"
+        ) from exc
+    except Exception as exc:
+        raise QdrantStoreError(
+            f"Invalid Qdrant payload for retrieval result at rank {rank}: {exc}"
+        ) from exc
 
 
 def _point_id_for_chunk(chunk: Chunk) -> str:
