@@ -16,6 +16,9 @@ def supported_retrieval_modes() -> tuple[RetrievalMode, ...]:
 
 def validate_retrieval_mode(retrieval_mode: str) -> RetrievalMode:
     if retrieval_mode not in supported_retrieval_modes():
-        raise RetrievalModeError(retrieval_mode)
+        supported = ", ".join(supported_retrieval_modes())
+        raise RetrievalModeError(
+            f"unsupported retrieval mode {retrieval_mode!r}; supported modes: {supported}"
+        )
 
     return cast(RetrievalMode, retrieval_mode)

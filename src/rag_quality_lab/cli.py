@@ -16,15 +16,19 @@ from rag_quality_lab.config import (
     ConfigurationError,
     InvalidConfigurationError,
     MissingSettingError,
+    RuntimeConfig,
 )
 from rag_quality_lab.corpus.ingest import IngestionError, ingest_corpus
 from rag_quality_lab.corpus.inspect import CorpusInspectionError, inspect_corpus
 from rag_quality_lab.providers import ProviderError
+from rag_quality_lab.rag.traces import load_trace
+from rag_quality_lab.retrieval.modes import RetrievalModeError, validate_retrieval_mode
 from rag_quality_lab.schemas import (
     ArtifactIOError,
     ArtifactSchemaVersionError,
     CorpusSummaryArtifact,
     IngestionSummaryArtifact,
+    QueryTrace,
 )
 
 
@@ -98,6 +102,40 @@ def version() -> None:
     typer.echo(__version__)
 
 
+@app.command("query")
+def query(
+    question: Annotated[str, typer.Argument(help="Question to run through RAG.")],
+    mode: Annotated[
+        str,
+        typer.Option("--mode", help="Retrieval mode to use."),
+    ] = "baseline-vector",
+    top_k: TopKOption = RuntimeConfig().top_k,
+    max_context_tokens: MaxContextTokensOption = RuntimeConfig().max_context_tokens,
+    output_token_limit: OutputTokenLimitOption = RuntimeConfig().output_token_limit,
+    trace_dir: TraceDirOption = RuntimeConfig().trace_dir,
+    json_output: JsonOutputOption = False,
+) -> None:
+    """Run one traced RAG query."""
+
+    result = run_cli_command(
+        lambda: run_query(
+            question,
+            mode=validate_retrieval_mode(mode),
+            top_k=top_k,
+            max_context_tokens=max_context_tokens,
+            output_token_limit=output_token_limit,
+            trace_dir=trace_dir,
+        ),
+        json_output=json_output,
+    )
+    trace = result["trace"]
+    trace_path = Path(result["trace_path"])
+    if json_output:
+        _echo_query_result_json(trace, trace_path)
+        return
+    _echo_query_result(trace, trace_path)
+
+
 @corpus_app.command("inspect")
 def corpus_inspect(
     json_output: JsonOutputOption = False,
@@ -140,6 +178,23 @@ def corpus_ingest(
     _echo_ingestion_summary(summary)
 
 
+@trace_app.command("inspect")
+def trace_inspect(
+    trace_path: Annotated[Path, typer.Argument(help="Path to a persisted trace JSON.")],
+    json_output: JsonOutputOption = False,
+) -> None:
+    """Inspect a persisted query trace."""
+
+    trace = run_cli_command(
+        lambda: load_trace(trace_path),
+        json_output=json_output,
+    )
+    if json_output:
+        typer.echo(trace.model_dump_json(indent=2))
+        return
+    _echo_trace_summary(trace)
+
+
 def build_shared_options(json_output: bool = False) -> SharedOptions:
     """Create shared command options from Typer parameters."""
 
@@ -180,6 +235,8 @@ def handle_cli_error(error: Exception, *, json_output: bool = False) -> None:
             ),
             err=True,
         )
+        if isinstance(error, ArtifactIOError):
+            typer.echo(message, err=True)
     else:
         typer.secho(
             f"Error [{stage}]: {message}",
@@ -199,6 +256,8 @@ def exit_code_for_error(error: Exception) -> ExitCode:
         return ExitCode.CONFIGURATION
     if isinstance(error, (ArtifactSchemaVersionError, ArtifactIOError)):
         return ExitCode.ARTIFACT
+    if isinstance(error, RetrievalModeError):
+        return ExitCode.ERROR
     if isinstance(error, ProviderError):
         return ExitCode.PROVIDER
     return ExitCode.ERROR
@@ -217,15 +276,93 @@ def stage_for_error(error: Exception) -> str:
         return "configuration"
     if isinstance(error, ArtifactIOError):
         return "artifact"
+    if isinstance(error, RetrievalModeError):
+        return "retrieval mode"
     if isinstance(error, ProviderError):
         return "provider"
     return "application"
+
+
+def run_query(
+    question: str,
+    *,
+    mode: str,
+    top_k: int,
+    max_context_tokens: int,
+    output_token_limit: int,
+    trace_dir: Path,
+) -> dict[str, object]:
+    """Lazy wrapper for the query pipeline, kept patchable in CLI tests."""
+
+    from rag_quality_lab.rag.pipeline import run_query as pipeline_run_query
+
+    return pipeline_run_query(
+        question,
+        mode=mode,
+        top_k=top_k,
+        max_context_tokens=max_context_tokens,
+        output_token_limit=output_token_limit,
+        trace_dir=trace_dir,
+    )
 
 
 def _echo_json_artifact(
     artifact: CorpusSummaryArtifact | IngestionSummaryArtifact,
 ) -> None:
     typer.echo(artifact.model_dump_json(indent=2))
+
+
+def _echo_query_result_json(trace: QueryTrace, trace_path: Path) -> None:
+    payload = {
+        "schema_version": trace.schema_version,
+        "question": trace.question.text,
+        "retrieval_mode": trace.retrieval_mode,
+        "answer_text": trace.answer_result.answer_text,
+        "is_no_answer": trace.answer_result.is_no_answer,
+        "citations": trace.answer_result.citations,
+        "validation_status": trace.answer_result.validation_status,
+        "route_decision": trace.route_decision.model_dump(mode="json"),
+        "retrieval_result_count": len(trace.retrieval_results),
+        "included_chunk_count": len(trace.context_build.included_chunks),
+        "excluded_chunk_count": len(trace.context_build.excluded_chunks),
+        "final_estimated_context_tokens": (
+            trace.context_build.final_estimated_context_tokens
+        ),
+        "output_token_limit": trace.context_build.output_token_limit,
+        "trace_id": trace.trace_id,
+        "trace_path": str(trace_path),
+    }
+    typer.echo(json.dumps(payload, indent=2))
+
+
+def _echo_query_result(trace: QueryTrace, trace_path: Path) -> None:
+    typer.echo(trace.answer_result.answer_text)
+    citations = ", ".join(trace.answer_result.citations) or "none"
+    typer.echo(f"Citations: {citations}")
+    typer.echo(f"Validation: {trace.answer_result.validation_status}")
+    typer.echo(f"Trace: {trace_path}")
+
+
+def _echo_trace_summary(trace: QueryTrace) -> None:
+    route = (
+        "all categories"
+        if trace.route_decision.fallback_all_categories
+        else trace.route_decision.selected_category
+    )
+    total_tokens = (
+        trace.model_usage.total_tokens
+        if trace.model_usage is not None and trace.model_usage.total_tokens is not None
+        else "unknown"
+    )
+    typer.echo(f"Trace: {trace.trace_id}")
+    typer.echo(f"Question: {trace.question.text}")
+    typer.echo(f"Mode: {trace.retrieval_mode}")
+    typer.echo(f"Route: {route}")
+    typer.echo(f"Retrieved chunks: {len(trace.retrieval_results)}")
+    typer.echo(f"Included chunks: {len(trace.context_build.included_chunks)}")
+    typer.echo(f"Excluded chunks: {len(trace.context_build.excluded_chunks)}")
+    typer.echo(f"Citation validation: {trace.citation_validation.status}")
+    typer.echo(f"Model usage: {total_tokens} tokens")
 
 
 def _echo_corpus_summary(summary: CorpusSummaryArtifact) -> None:
