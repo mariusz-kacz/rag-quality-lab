@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from langchain_core.messages import AIMessage, BaseMessage
 import pytest
 
-from rag_quality_lab.providers import ChatResponse, TokenUsage
 from rag_quality_lab.routing.categories import REQUIRED_CATEGORIES
 from rag_quality_lab.schemas import RetrievalResult, RouteDecision
 
@@ -33,7 +33,7 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
             ),
         ]
     )
-    chat_provider = FakeChatProvider(
+    chat_model = FakeChatModel(
         "RAG grounds answers by using selected retrieved context. [chunk-rag-1]"
     )
 
@@ -46,7 +46,7 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
         trace_dir=trace_dir,
         router=router,
         retriever=retriever,
-        chat_provider=chat_provider,
+        chat_model=chat_model,
     )
 
     trace = result["trace"]
@@ -93,7 +93,7 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
             "route_decision": high_confidence_route(),
         }
     ]
-    assert chat_provider.calls[0]["max_tokens"] == 100
+    assert chat_model.calls[0]["max_tokens"] == 100
 
 
 def test_no_answer_query_workflow_persists_not_applicable_citation_trace(
@@ -112,7 +112,7 @@ def test_no_answer_query_workflow_persists_not_applicable_citation_trace(
             )
         ]
     )
-    chat_provider = FakeChatProvider(
+    chat_model = FakeChatModel(
         "I do not have enough evidence in the selected context to answer."
     )
 
@@ -125,7 +125,7 @@ def test_no_answer_query_workflow_persists_not_applicable_citation_trace(
         trace_dir=trace_dir,
         router=router,
         retriever=retriever,
-        chat_provider=chat_provider,
+        chat_model=chat_model,
     )
 
     trace = result["trace"]
@@ -187,31 +187,37 @@ class FakeRetriever:
         return self.results[:top_k]
 
 
-class FakeChatProvider:
-    deployment = "chat-test"
+class FakeChatModel:
+    deployment_name = "chat-test"
 
     def __init__(self, content: str) -> None:
         self.content = content
         self.calls: list[dict[str, Any]] = []
 
-    def complete(
+    def invoke(
         self,
-        messages: list[dict[str, str]],
+        input: list[BaseMessage],
+        config: Any | None = None,
         *,
-        temperature: float = 0.0,
         max_tokens: int | None = None,
-    ) -> ChatResponse:
+        **kwargs: Any,
+    ) -> AIMessage:
         self.calls.append(
             {
-                "messages": messages,
-                "temperature": temperature,
+                "messages": input,
+                "config": config,
                 "max_tokens": max_tokens,
+                "kwargs": kwargs,
             }
         )
-        return ChatResponse(
+        return AIMessage(
             content=self.content,
-            model="gpt-test",
-            usage=TokenUsage(input_tokens=20, output_tokens=9, total_tokens=29),
+            response_metadata={"model_name": "gpt-test"},
+            usage_metadata={
+                "input_tokens": 20,
+                "output_tokens": 9,
+                "total_tokens": 29,
+            },
         )
 
 

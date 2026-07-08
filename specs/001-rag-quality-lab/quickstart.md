@@ -6,7 +6,7 @@ This guide validates the MVP end to end from corpus inspection through ingestion
 
 - Python 3.12 installed.
 - A reachable Qdrant instance.
-- Azure OpenAI deployments for embeddings and answer generation.
+- Azure OpenAI deployments for embeddings and LangChain-backed answer generation.
 - Environment variables configured for Azure OpenAI and Qdrant.
 - Curated corpus files present under `corpus/`.
 - Golden question set present at `golden/questions.json`.

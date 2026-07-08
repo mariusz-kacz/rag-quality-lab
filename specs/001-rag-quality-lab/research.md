@@ -50,9 +50,9 @@ Quality judgment: DAIR.AI remains useful but should not be presented as fully co
 
 **Alternatives considered**: Chroma, FAISS, or in-memory vector search were rejected because the MVP excludes multiple vector stores and mandates Qdrant.
 
-## Decision: Use Azure OpenAI for embeddings and answer generation through environment configuration
+## Decision: Use Azure OpenAI for embeddings and LangChain-backed answer generation through environment configuration
 
-**Rationale**: The spec mandates Azure OpenAI and environment-based configuration. The application will keep provider calls behind a narrow interface so core routing, context budgeting, trace, and evaluation logic remains plain Python.
+**Rationale**: The spec mandates Azure OpenAI and environment-based configuration. Embeddings use a narrow local provider boundary because retrieval needs vectors directly. Answer generation uses LangChain's chat model and prompt-template boundary so the application avoids raw chat completion calls while core routing, context budgeting, trace, and evaluation logic remains plain Python.
 
 **Alternatives considered**: Multiple providers and local models were rejected by MVP scope. Hard-coded configuration was rejected because reviewers need portable local setup.
 

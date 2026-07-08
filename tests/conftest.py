@@ -7,16 +7,13 @@ from types import SimpleNamespace
 import pytest
 
 from rag_quality_lab.config import AzureOpenAIConfig
-from rag_quality_lab.providers import (
-    AzureOpenAIChatProvider,
-    AzureOpenAIEmbeddingProvider,
-)
+from rag_quality_lab.providers import AzureOpenAIEmbeddingProvider
 from rag_quality_lab.routing.categories import REQUIRED_CATEGORIES
 from rag_quality_lab.schemas import (
     REQUIRED_KNOWLEDGE_CATEGORIES,
     AnswerResult,
     CitationValidation,
-    ContextBuild,
+    SelectedContext,
     ContextChunk,
     GoldenSet,
     ModelUsage,
@@ -223,7 +220,7 @@ def sample_query_trace(
                 content=sample_context_chunk.content,
             )
         ],
-        context_build=ContextBuild(
+        context_build=SelectedContext(
             max_context_tokens=500,
             output_token_limit=100,
             included_chunks=[sample_context_chunk],
@@ -289,46 +286,9 @@ class FakeEmbeddingsResource:
         )
 
 
-class FakeChatCompletionsResource:
-    def __init__(
-        self, content: str = "Grounded answer [source-02:overview:0001]"
-    ) -> None:
-        self.content = content
-        self.calls: list[dict[str, object]] = []
-
-    def create(
-        self,
-        *,
-        model: str,
-        messages: list[dict[str, str]],
-        temperature: float,
-        max_tokens: int | None = None,
-    ) -> SimpleNamespace:
-        self.calls.append(
-            {
-                "model": model,
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-            }
-        )
-        return SimpleNamespace(
-            model=model,
-            choices=[SimpleNamespace(message=SimpleNamespace(content=self.content))],
-            usage=SimpleNamespace(
-                prompt_tokens=20, completion_tokens=7, total_tokens=27
-            ),
-        )
-
-
 class FakeAzureOpenAIClient:
-    def __init__(
-        self, chat_content: str = "Grounded answer [source-02:overview:0001]"
-    ) -> None:
+    def __init__(self) -> None:
         self.embeddings = FakeEmbeddingsResource()
-        self.chat = SimpleNamespace(
-            completions=FakeChatCompletionsResource(chat_content)
-        )
 
 
 @pytest.fixture
@@ -342,14 +302,6 @@ def fake_embedding_provider(
     fake_azure_client: FakeAzureOpenAIClient,
 ) -> AzureOpenAIEmbeddingProvider:
     return AzureOpenAIEmbeddingProvider(azure_test_config, client=fake_azure_client)
-
-
-@pytest.fixture
-def fake_chat_provider(
-    azure_test_config: AzureOpenAIConfig,
-    fake_azure_client: FakeAzureOpenAIClient,
-) -> AzureOpenAIChatProvider:
-    return AzureOpenAIChatProvider(azure_test_config, client=fake_azure_client)
 
 
 def _fake_embedding(text: str, index: int) -> list[float]:

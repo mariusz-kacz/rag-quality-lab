@@ -14,7 +14,7 @@ Build a CLI-first RAG quality engineering lab over a small pinned LLM-engineerin
 
 **Language/Version**: Python 3.12
 
-**Primary Dependencies**: Typer for CLI commands; Pydantic for validated schemas; qdrant-client for vector-store access; openai Azure client for embeddings and answer generation; tiktoken for token estimates; pytest for tests. LangChain remains optional and may only wrap provider or prompt-template boundaries if it reduces integration boilerplate.
+**Primary Dependencies**: Typer for CLI commands; Pydantic for validated schemas; qdrant-client for vector-store access; openai Azure client for embeddings; LangChain/langchain-openai for chat model invocation and prompt templates; tiktoken for token estimates; pytest for tests. Core routing, retrieval orchestration, context budgeting, citation validation, trace persistence, and evaluation remain plain Python application logic.
 
 **Storage**: Qdrant for vector chunks; repository files for pinned corpus manifests, local source snapshots, golden questions, traces, evaluation artifacts, and README sample outputs.
 

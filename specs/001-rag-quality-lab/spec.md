@@ -104,7 +104,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - **FR-012**: Hybrid lexical/vector retrieval MAY be documented as a future extension, but it MUST NOT be part of the MVP runtime contract.
 - **FR-013**: Qdrant MUST be the mandatory vector store for MVP runtime.
 - **FR-014**: Azure OpenAI MUST be used for embeddings and answer generation, configured through environment variables.
-- **FR-015**: LangChain MAY be used only as a thin integration boundary for Azure OpenAI, Qdrant, or prompt templates; core routing, retrieval orchestration, context budgeting, citation validation, trace persistence, and evaluation logic MUST remain plain Python application logic.
+- **FR-015**: Answer generation MUST use LangChain at the chat-model and prompt-template boundary instead of raw chat completion calls; core routing, retrieval orchestration, context budgeting, citation validation, trace persistence, and evaluation logic MUST remain plain Python application logic.
 - **FR-016**: The context builder MUST enforce a maximum context token budget and include retrieved chunks in ranked order until adding another chunk would exceed the budget.
 - **FR-017**: The context builder MUST record excluded chunks and the reason each chunk was excluded.
 - **FR-018**: Every query trace MUST expose token-budget decisions, including estimated chunk tokens, included chunks, excluded chunks, final estimated context size, output-token limit, and actual model usage when available.

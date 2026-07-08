@@ -97,7 +97,7 @@ class ExcludedContextChunk(ContextChunk):
     reason: str = Field(min_length=1)
 
 
-class ContextBuild(SchemaModel):
+class SelectedContext(SchemaModel):
     """Bounded context selected for answer generation."""
 
     max_context_tokens: int = Field(gt=0)
@@ -107,7 +107,7 @@ class ContextBuild(SchemaModel):
     final_estimated_context_tokens: int = Field(ge=0)
 
     @model_validator(mode="after")
-    def validate_budget_and_order(self) -> "ContextBuild":
+    def validate_budget_and_order(self) -> "SelectedContext":
         if self.final_estimated_context_tokens > self.max_context_tokens:
             raise ValueError(
                 "final_estimated_context_tokens cannot exceed max_context_tokens"
@@ -126,6 +126,11 @@ class AnswerResult(SchemaModel):
     citations: list[str] = Field(default_factory=list)
     validation_status: ValidationStatus
     validation_errors: list[str] = Field(default_factory=list)
+
+
+class GenerationResult(SchemaModel):
+    answer: AnswerResult
+    model_usage: ModelUsage | None = None
 
 
 class CitationValidation(SchemaModel):
@@ -157,7 +162,7 @@ class QueryTrace(SchemaModel):
     retrieval_mode: RetrievalMode
     route_decision: RouteDecision
     retrieval_results: list[RetrievalResult] = Field(default_factory=list)
-    context_build: ContextBuild
+    context_build: SelectedContext
     answer_result: AnswerResult
     citation_validation: CitationValidation
     model_usage: ModelUsage | None = None

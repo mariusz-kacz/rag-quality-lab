@@ -1,4 +1,4 @@
-"""Azure OpenAI provider boundaries for embeddings and chat generation."""
+"""Azure OpenAI provider boundary for embeddings."""
 
 from __future__ import annotations
 
@@ -7,9 +7,6 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from rag_quality_lab.config import AzureOpenAIConfig
-
-
-ChatMessage = Mapping[str, str]
 
 
 class ProviderError(Exception):
@@ -34,41 +31,14 @@ class EmbeddingResponse:
     usage: TokenUsage | None = None
 
 
-@dataclass(frozen=True)
-class ChatResponse:
-    """Normalized chat completion response."""
-
-    content: str
-    model: str | None = None
-    usage: TokenUsage | None = None
-
-
 class EmbeddingsResource(Protocol):
     """Subset of the OpenAI embeddings resource used by this app."""
 
     def create(self, *, model: str, input: list[str]) -> Any: ...
 
 
-class ChatCompletionsResource(Protocol):
-    """Subset of the OpenAI chat completions resource used by this app."""
-
-    def create(
-        self,
-        *,
-        model: str,
-        messages: list[dict[str, str]],
-        temperature: float,
-        max_tokens: int | None = None,
-    ) -> Any: ...
-
-
-class ChatResource(Protocol):
-    completions: ChatCompletionsResource
-
-
 class AzureOpenAIClient(Protocol):
     embeddings: EmbeddingsResource
-    chat: ChatResource
 
 
 def create_azure_openai_client(config: AzureOpenAIConfig) -> AzureOpenAIClient:
@@ -131,50 +101,6 @@ class AzureOpenAIEmbeddingProvider:
         )
 
 
-class AzureOpenAIChatProvider:
-    """Chat provider wrapper backed by an Azure OpenAI deployment."""
-
-    def __init__(
-        self,
-        config: AzureOpenAIConfig,
-        *,
-        client: AzureOpenAIClient | None = None,
-    ) -> None:
-        config.require_chat()
-        self._deployment = _required(config.chat_deployment, "chat deployment")
-        self._client = client or create_azure_openai_client(config)
-
-    @property
-    def deployment(self) -> str:
-        return self._deployment
-
-    def complete(
-        self,
-        messages: Sequence[ChatMessage],
-        *,
-        temperature: float = 0.0,
-        max_tokens: int | None = None,
-    ) -> ChatResponse:
-        """Generate one chat completion from normalized role/content messages."""
-
-        clean_messages = [_clean_message(message) for message in messages]
-        if not clean_messages:
-            raise ProviderError("Chat input must include at least one message")
-
-        response = self._client.chat.completions.create(
-            model=self._deployment,
-            messages=clean_messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        content = _extract_chat_content(response)
-        return ChatResponse(
-            content=content,
-            model=_get(response, "model"),
-            usage=_extract_usage(_get(response, "usage")),
-        )
-
-
 def _required(value: str | None, label: str) -> str:
     if not value:
         raise ProviderError(f"Azure OpenAI {label} is required")
@@ -186,14 +112,6 @@ def _clean_text(text: str) -> str:
     if not clean:
         raise ProviderError("Embedding input text cannot be empty")
     return clean
-
-
-def _clean_message(message: ChatMessage) -> dict[str, str]:
-    role = message.get("role", "").strip()
-    content = message.get("content", "").strip()
-    if not role or not content:
-        raise ProviderError("Chat messages must include non-empty role and content")
-    return {"role": role, "content": content}
 
 
 def _coerce_embedding_vector(item: Any) -> list[float]:
@@ -208,17 +126,6 @@ def _coerce_embedding_vector(item: Any) -> list[float]:
         raise ProviderError(
             "Embedding provider returned a non-numeric embedding vector"
         ) from exc
-
-
-def _extract_chat_content(response: Any) -> str:
-    choices = _get(response, "choices", [])
-    if not choices:
-        raise ProviderError("Chat provider returned no choices")
-    message = _get(choices[0], "message")
-    content = _get(message, "content")
-    if not isinstance(content, str) or not content.strip():
-        raise ProviderError("Chat provider returned an empty message")
-    return content
 
 
 def _extract_usage(usage: Any) -> TokenUsage | None:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from rag_quality_lab.schemas.query import (
-    ContextBuild,
+    SelectedContext,
     ContextChunk,
     ExcludedContextChunk,
 )
@@ -12,7 +12,7 @@ def build_context(
     max_context_tokens: int,
     output_token_limit: int,
     prompt_overhead_tokens: int,
-) -> ContextBuild:
+) -> SelectedContext:
     if max_context_tokens < prompt_overhead_tokens:
         raise ValueError("prompt_overhead_tokens cannot exceed max_context_tokens")
 
@@ -39,7 +39,7 @@ def build_context(
             )
         )
 
-    return ContextBuild(
+    return SelectedContext(
         included_chunks=included_chunks,
         excluded_chunks=excluded_chunks,
         final_estimated_context_tokens=estimated_context_tokens,

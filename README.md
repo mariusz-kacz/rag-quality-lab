@@ -2,14 +2,14 @@
 
 RAG Quality Lab is a CLI-first Python project for making retrieval-augmented generation quality visible and testable. The goal is not to build another chatbot. The goal is to show the engineering pieces behind a reliable RAG system: curated source provenance, deterministic routing, retrieval modes, context budgeting, citation validation, traces, and lightweight evaluation.
 
-The project is currently in an early implementation stage. The curated corpus, source snapshots, schemas, provider/config boundaries, tests, and planning artifacts are present. The full CLI workflows for corpus ingestion, querying, tracing, and evaluation are specified but still being implemented.
+The project is currently in an early implementation stage. The curated corpus, source snapshots, schemas, LangChain chat-model boundary, embedding/config boundaries, tests, and planning artifacts are present. The full CLI workflows for corpus ingestion, querying, tracing, and evaluation are specified but still being implemented.
 
 ## What Is In This Repo
 
 - `corpus/manifest.json`: curated source manifest with provenance, category, license, pinned version, local snapshot path, and section metadata.
 - `corpus/sources/`: normalized local source snapshots for the corpus.
 - `corpus/categories.json`: the five routing/evaluation knowledge categories.
-- `src/rag_quality_lab/`: Python package scaffold, CLI shell, schemas, configuration, provider wrappers, and category definitions.
+- `src/rag_quality_lab/`: Python package scaffold, CLI shell, schemas, configuration, LangChain chat setup, embedding provider, and category definitions.
 - `tests/`: unit, contract, and integration tests for the implemented foundation and planned behavior.
 - `specs/001-rag-quality-lab/`: product spec, implementation plan, data model, CLI/artifact contracts, quickstart, and task plan.
 - `artifacts/t019-corpus-materials-proposal.md`: rationale for the selected corpus materials.
@@ -51,7 +51,7 @@ Requirements:
 - Python 3.12+
 - `uv` or another Python environment manager
 - Qdrant for the planned ingestion/retrieval workflow
-- Azure OpenAI deployments for embeddings and chat generation
+- Azure OpenAI deployments for embeddings and LangChain-backed chat generation
 
 Install dependencies:
 
@@ -93,12 +93,12 @@ uv run raglab version
 
 ## Design Notes
 
-The MVP design keeps core RAG logic in plain Python instead of hiding behavior inside a large framework. The planned query path is:
+The MVP design keeps core RAG quality logic in plain Python and uses LangChain only at the chat-model and prompt boundary. This avoids raw chat completion calls while keeping routing, retrieval policy, context budgeting, citation validation, trace persistence, and evaluation explicit. The planned query path is:
 
 1. Route the question with deterministic category embeddings.
 2. Retrieve chunks with either all-corpus vector search or route-filtered vector search.
 3. Build a bounded context and record included/excluded chunks.
-4. Generate either a cited answer or an explicit no-answer response.
+4. Generate either a cited answer or an explicit no-answer response through a LangChain chat model.
 5. Validate citations against chunks actually included in context.
 6. Persist a trace with route, retrieval, context, citation, and token-budget details.
 
@@ -112,7 +112,7 @@ Completed or present:
 
 - Python package metadata and CLI shell.
 - Environment/configuration handling.
-- Azure OpenAI provider wrapper boundary.
+- Azure OpenAI embedding provider and LangChain Azure chat-model factory.
 - Pydantic schemas for corpus, trace, evaluation, and artifacts.
 - Five knowledge categories.
 - Curated 27-source corpus and normalized local snapshots.

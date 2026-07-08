@@ -7,7 +7,7 @@ from rag_quality_lab.schemas import (
     REQUIRED_KNOWLEDGE_CATEGORIES,
     AnswerResult,
     CitationValidation,
-    ContextBuild,
+    SelectedContext,
     ContextChunk,
     CorpusSummaryArtifact,
     QueryTrace,
@@ -93,7 +93,7 @@ def test_route_decision_requires_empty_category_for_fallback() -> None:
 
 def test_context_build_rejects_budget_overflow() -> None:
     with pytest.raises(ValidationError, match="max_context_tokens"):
-        ContextBuild(
+        SelectedContext(
             max_context_tokens=10,
             output_token_limit=50,
             included_chunks=[context_chunk()],
@@ -127,7 +127,7 @@ def test_query_trace_contains_contract_fields() -> None:
                 estimated_tokens=12,
             )
         ],
-        context_build=ContextBuild(
+        context_build=SelectedContext(
             max_context_tokens=100,
             output_token_limit=50,
             included_chunks=[context_chunk()],

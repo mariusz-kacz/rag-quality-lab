@@ -16,6 +16,8 @@ dependencies = [
   "pydantic>=2.7",
   "qdrant-client>=1.9",
   "openai>=1.35",
+  "langchain-core>=0.3",
+  "langchain-openai>=0.3",
   "tiktoken>=0.7"
 ]
 

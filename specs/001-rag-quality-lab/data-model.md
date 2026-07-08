@@ -119,7 +119,7 @@ Represents one ranked retrieved chunk.
 - Ranks must be unique and ordered within a query result.
 - Routed vector results must match the selected category unless route fallback is active.
 
-## ContextBuild
+## SelectedContext
 
 Represents the bounded context selected for answer generation.
 
@@ -165,7 +165,7 @@ Represents the persisted record of one full query workflow.
 - `question`: question text and optional question ID.
 - `route_decision`: `RouteDecision`.
 - `retrieval_results`: ranked `RetrievalResult` records.
-- `context_build`: `ContextBuild`.
+- `context_build`: `SelectedContext`.
 - `answer_result`: `AnswerResult`.
 - `model_usage`: actual token usage when available.
 - `created_at`: trace creation timestamp.
@@ -173,7 +173,7 @@ Represents the persisted record of one full query workflow.
 **Validation Rules**
 
 - Query traces must include every deterministic pipeline stage.
-- Model usage may be absent only when the provider does not return it.
+- Model usage may be absent only when the LangChain chat model does not return usage metadata.
 - Trace files must be machine-readable.
 
 ## EvaluationRun

@@ -18,7 +18,7 @@
 
 **Purpose**: Initialize the Python CLI project, package layout, durable input/output directories, and local developer defaults.
 
-- [X] T001 Create Python project metadata with Typer, Pydantic, qdrant-client, openai, tiktoken, pytest, and console script `raglab` in pyproject.toml
+- [X] T001 Create Python project metadata with Typer, Pydantic, qdrant-client, openai, LangChain chat dependencies, tiktoken, pytest, and console script `raglab` in pyproject.toml
 - [X] T002 Create package and test directory structure in src/rag_quality_lab/__init__.py and tests/
 - [X] T003 [P] Create domain package directories with __init__.py files in src/rag_quality_lab/corpus/, src/rag_quality_lab/routing/, src/rag_quality_lab/retrieval/, src/rag_quality_lab/rag/, src/rag_quality_lab/eval/, and src/rag_quality_lab/schemas/
 - [X] T004 [P] Create durable input and artifact directories with placeholder files in corpus/sources/, golden/, artifacts/traces/, and artifacts/eval/
@@ -37,7 +37,7 @@
 - [X] T008 [P] Implement shared base, category, corpus, retrieval, query workflow, trace compatibility, evaluation, and artifact Pydantic schemas in src/rag_quality_lab/schemas/base.py, src/rag_quality_lab/schemas/categories.py, src/rag_quality_lab/schemas/corpus.py, src/rag_quality_lab/schemas/retrieval.py, src/rag_quality_lab/schemas/query.py, src/rag_quality_lab/schemas/trace.py, src/rag_quality_lab/schemas/eval.py, and src/rag_quality_lab/schemas/artifacts.py
 - [X] T009 [P] Define the five required knowledge categories and descriptions in src/rag_quality_lab/routing/categories.py
 - [X] T010 [P] Implement artifact JSON write/read helpers with schema_version support in src/rag_quality_lab/schemas/artifacts.py
-- [X] T011 [P] Implement Azure OpenAI embedding and chat provider wrappers in src/rag_quality_lab/providers.py
+- [X] T011 [P] Implement Azure OpenAI embedding provider in src/rag_quality_lab/providers.py and LangChain Azure chat-model factory in src/rag_quality_lab/chat_models.py
 - [X] T012 Implement base Typer application, shared options, and error-to-exit-code handling in src/rag_quality_lab/cli.py
 - [X] T013 [P] Add pytest fixtures for temporary corpus, golden data, traces, and fake provider clients in tests/conftest.py
 
@@ -126,7 +126,7 @@
 - [ ] T037 [US2] Implement baseline-vector and routed-vector search over Qdrant with route-aware filters in src/rag_quality_lab/retrieval/qdrant_store.py
 - [X] T038 [US2] Keep hybrid lexical/vector retrieval out of the MVP runtime contract and document it only as a future extension
 - [ ] T039 [US2] Implement bounded context builder with included chunks, excluded chunks, estimated token totals, and output token limits in src/rag_quality_lab/rag/context.py
-- [ ] T040 [US2] Implement context-constrained answer generation and explicit no-answer prompt handling in src/rag_quality_lab/rag/generation.py
+- [ ] T040 [US2] Implement context-constrained LangChain answer generation and explicit no-answer prompt handling in src/rag_quality_lab/rag/generation.py
 - [ ] T041 [US2] Implement citation extraction and validation against selected context chunks in src/rag_quality_lab/rag/citations.py
 - [ ] T042 [US2] Implement query trace creation, schema validation, persistence, and trace loading in src/rag_quality_lab/rag/traces.py
 - [ ] T043 [US2] Implement end-to-end query pipeline sequence question -> route -> retrieve -> context -> generate/no-answer -> validate -> trace in src/rag_quality_lab/rag/pipeline.py
