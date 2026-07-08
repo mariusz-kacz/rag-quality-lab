@@ -4,7 +4,7 @@ import pytest
 
 from rag_quality_lab.rag.context import build_context
 from rag_quality_lab.schemas import ContextChunk
-from rag_quality_lab.schemas.corpus import KnowledgeCategoryName
+from rag_quality_lab.schemas.categories import KnowledgeCategoryName
 
 pytestmark = pytest.mark.unit
 

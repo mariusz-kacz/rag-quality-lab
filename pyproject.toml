@@ -16,17 +16,11 @@ dependencies = [
   "pydantic>=2.7",
   "qdrant-client>=1.9",
   "openai>=1.35",
-  "tiktoken>=0.7",
-  "rank-bm25>=0.2.2"
+  "tiktoken>=0.7"
 ]
 
 [project.scripts]
 raglab = "rag_quality_lab.cli:app"
-
-[project.optional-dependencies]
-dev = [
-  "pytest>=8.2"
-]
 
 [tool.pytest.ini_options]
 minversion = "8.2"
@@ -48,5 +42,6 @@ markers = [
 
 [dependency-groups]
 dev = [
+    "pytest>=8.2",
     "ruff>=0.15.20",
 ]

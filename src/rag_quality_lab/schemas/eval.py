@@ -6,10 +6,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
 
-from rag_quality_lab.schemas.corpus import CaseType, Question
-from rag_quality_lab.schemas.trace import RetrievalMode
+from rag_quality_lab.schemas.base import SchemaModel
+from rag_quality_lab.schemas.query import CaseType, Question
+from rag_quality_lab.schemas.retrieval import RetrievalMode
 
 
 REQUIRED_CASE_TYPES: tuple[str, ...] = (
@@ -39,12 +40,6 @@ MetricName: TypeAlias = Literal[
     "average_context_tokens",
     "average_included_chunks",
 ]
-
-
-class SchemaModel(BaseModel):
-    """Strict immutable base model for public schema records."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
 
 
 class GoldenSet(SchemaModel):

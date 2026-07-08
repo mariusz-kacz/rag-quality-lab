@@ -9,7 +9,6 @@ def supported_retrieval_modes() -> Tuple[str, ...]:
     return (
         "baseline-vector",
         "routed-vector",
-        "routed-hybrid",
     )
 
 

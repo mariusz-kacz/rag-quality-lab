@@ -114,18 +114,7 @@ Expected outcome:
 - Routing accuracy and fallback rate are reported.
 - Token-budget diagnostics are included.
 
-## 8. Optional Phase 1.5 Hybrid Evaluation
-
-```powershell
-raglab eval run --mode routed-hybrid --golden golden/questions.json --artifacts-dir artifacts/eval
-```
-
-Expected outcome:
-
-- If hybrid retrieval is implemented, results combine vector and BM25 rankings with reciprocal rank fusion.
-- If hybrid retrieval is not implemented, the CLI fails clearly and identifies the mode as out of scope for the current MVP phase.
-
-## 9. Compare Evaluation Artifacts
+## 8. Compare Evaluation Artifacts
 
 ```powershell
 raglab eval compare artifacts/eval/<baseline_run>.json artifacts/eval/<routed_run>.json --markdown artifacts/eval/comparison.md
@@ -134,6 +123,10 @@ raglab eval compare artifacts/eval/<baseline_run>.json artifacts/eval/<routed_ru
 Expected outcome:
 
 - A comparison table shows routing, retrieval, citation, no-answer, and token-budget metrics by mode.
+
+## Future Extension: Hybrid Retrieval
+
+Hybrid lexical/vector retrieval is intentionally outside the MVP workflow. It may be added later if exact-term matching, BM25, or rank fusion becomes worth demonstrating, but the current portfolio comparison is limited to `baseline-vector` and `routed-vector`.
 
 ## Validation References
 

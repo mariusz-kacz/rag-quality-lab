@@ -3,8 +3,8 @@ from dataclasses import dataclass
 
 from rag_quality_lab.corpus.ingest import EmbeddingProvider
 from rag_quality_lab.routing import category_descriptions
-from rag_quality_lab.schemas import RouteDecision
-from rag_quality_lab.schemas.corpus import KnowledgeCategoryName
+from rag_quality_lab.schemas.categories import KnowledgeCategoryName
+from rag_quality_lab.schemas.query import RouteDecision
 
 
 class EmbeddingRouterError(Exception):

@@ -40,7 +40,7 @@ Quality judgment: DAIR.AI remains useful but should not be presented as fully co
 
 ## Decision: Implement retrieval modes behind one retrieval interface
 
-**Rationale**: `baseline-vector`, `routed-vector`, and optional `routed-hybrid` must produce comparable ranked retrieval results. A shared interface keeps evaluation metrics independent from mode-specific implementation.
+**Rationale**: `baseline-vector` and `routed-vector` must produce comparable ranked retrieval results. A shared interface keeps evaluation metrics independent from mode-specific implementation while avoiding extra architecture for low-value optional modes.
 
 **Alternatives considered**: Separate command paths per mode were rejected because that would make metrics and trace schemas harder to compare.
 

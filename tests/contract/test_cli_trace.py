@@ -52,8 +52,8 @@ def test_trace_inspect_json_outputs_trace_schema_fields(
             "chunk_id": "source-02:overview:0001",
             "source_slug": "source-02",
             "category": "RAG and context handling",
+            "section_path": ["Overview"],
             "score": 0.91,
-            "fusion_score": None,
             "estimated_tokens": 10,
             "content": "Retrieval augmented generation grounds answers in selected context.",
         }

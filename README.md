@@ -102,6 +102,8 @@ The MVP design keeps core RAG logic in plain Python instead of hiding behavior i
 5. Validate citations against chunks actually included in context.
 6. Persist a trace with route, retrieval, context, citation, and token-budget details.
 
+The MVP intentionally supports only two retrieval modes: `baseline-vector` as the control group and `routed-vector` as the deterministic routing experiment. Hybrid lexical/vector retrieval is kept as a documented future extension rather than implemented now, because the portfolio value is clearer when the comparison stays focused.
+
 Citation validation is deliberately scoped: it proves cited chunks were present in the selected context. It does not prove every generated claim is factually correct.
 
 ## Status
@@ -131,3 +133,5 @@ See [tasks.md](specs/001-rag-quality-lab/tasks.md) for the current implementatio
 ## Scope Boundaries
 
 This is a portfolio-quality lab, not a production RAG platform. The MVP explicitly excludes a web UI, chatbot conversation state, LangGraph or agent frameworks, multi-corpus ingestion, multiple vector stores, multiple model providers, reranking, production deployment, user authentication, full internet crawling, and large evaluation frameworks.
+
+Future extensions may include hybrid lexical/vector retrieval with rank fusion if exact-term retrieval becomes worth demonstrating, but it is not part of the MVP runtime contract.

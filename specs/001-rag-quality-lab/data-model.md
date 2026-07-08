@@ -110,12 +110,12 @@ Represents one ranked retrieved chunk.
 - `chunk_id`: retrieved chunk identifier.
 - `source_slug`: parent source slug.
 - `category`: chunk category.
+- `section_path`: ordered section headings or section metadata needed for downstream context selection.
 - `score`: mode-specific retrieval score.
-- `fusion_score`: reciprocal-rank-fusion score for hybrid mode when applicable.
 
 **Validation Rules**
 
-- `mode` must be `baseline-vector`, `routed-vector`, or `routed-hybrid`.
+- `mode` must be `baseline-vector` or `routed-vector`.
 - Ranks must be unique and ordered within a query result.
 - Routed vector results must match the selected category unless route fallback is active.
 

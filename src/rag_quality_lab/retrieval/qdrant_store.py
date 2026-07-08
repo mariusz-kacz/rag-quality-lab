@@ -9,7 +9,7 @@ from typing import Any
 from qdrant_client import QdrantClient, models
 
 from rag_quality_lab.config import QdrantConfig
-from rag_quality_lab.schemas import Chunk
+from rag_quality_lab.schemas import Chunk, RetrievalResult
 
 
 class QdrantStoreError(Exception):
@@ -116,6 +116,9 @@ class QdrantStore:
             wait=True,
         )
         return len(points)
+
+    def search_chunks(self) -> list[RetrievalResult]:
+        ...
 
     def _call(self, operation: str, function: Any, *args: Any, **kwargs: Any) -> Any:
         try:

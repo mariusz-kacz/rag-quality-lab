@@ -20,7 +20,6 @@ def test_supported_retrieval_modes_validate_known_modes() -> None:
     assert supported_retrieval_modes() == (
         "baseline-vector",
         "routed-vector",
-        "routed-hybrid",
     )
     assert validate_retrieval_mode("baseline-vector") == "baseline-vector"
     assert validate_retrieval_mode("routed-vector") == "routed-vector"
@@ -38,6 +37,7 @@ def test_baseline_vector_search_normalizes_ranked_results_without_filter() -> No
                     "chunk_id": "chunk-a",
                     "source_slug": "source-a",
                     "category": "RAG and context handling",
+                    "section_path": ["Overview"],
                     "estimated_tokens": 42,
                     "content": "RAG uses retrieved context.",
                 },
@@ -48,6 +48,7 @@ def test_baseline_vector_search_normalizes_ranked_results_without_filter() -> No
                     "chunk_id": "chunk-b",
                     "source_slug": "source-b",
                     "category": "prompting techniques",
+                    "section_path": ["Prompting"],
                     "estimated_tokens": 21,
                     "content": "Prompts shape model behavior.",
                 },
@@ -70,8 +71,8 @@ def test_baseline_vector_search_normalizes_ranked_results_without_filter() -> No
             "chunk_id": "chunk-a",
             "source_slug": "source-a",
             "category": "RAG and context handling",
+            "section_path": ["Overview"],
             "score": 0.91,
-            "fusion_score": None,
             "estimated_tokens": 42,
             "content": "RAG uses retrieved context.",
         },
@@ -81,8 +82,8 @@ def test_baseline_vector_search_normalizes_ranked_results_without_filter() -> No
             "chunk_id": "chunk-b",
             "source_slug": "source-b",
             "category": "prompting techniques",
+            "section_path": ["Prompting"],
             "score": 0.82,
-            "fusion_score": None,
             "estimated_tokens": 21,
             "content": "Prompts shape model behavior.",
         },
@@ -107,6 +108,7 @@ def test_routed_vector_search_applies_selected_category_filter() -> None:
                     "chunk_id": "chunk-rag",
                     "source_slug": "source-rag",
                     "category": "RAG and context handling",
+                    "section_path": ["Grounding"],
                     "estimated_tokens": 30,
                     "content": "Retrieved evidence grounds answers.",
                 },

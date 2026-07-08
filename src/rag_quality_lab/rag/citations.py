@@ -1,6 +1,7 @@
 from __future__ import annotations
 import re
-from rag_quality_lab.schemas import ContextChunk, CitationValidation
+
+from rag_quality_lab.schemas.query import CitationValidation, ContextChunk
 
 VALID_CITATION = re.compile(r"\[([A-Za-z0-9][A-Za-z0-9:_-]*)\]")
 EMPTY_CITATION = re.compile(r"\[\s*\]")

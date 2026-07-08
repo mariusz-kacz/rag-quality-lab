@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from rag_quality_lab.schemas.corpus import KnowledgeCategory, KnowledgeCategoryName
+from rag_quality_lab.schemas.categories import KnowledgeCategory, KnowledgeCategoryName
 
 
 PROMPTING_TECHNIQUES_DESCRIPTION = (

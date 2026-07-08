@@ -66,7 +66,7 @@ Run one question through the deterministic RAG workflow.
 
 **Options**
 
-- `--mode baseline-vector|routed-vector|routed-hybrid`
+- `--mode baseline-vector|routed-vector`
 - `--top-k <n>`
 - `--max-context-tokens <n>`
 - `--output-token-limit <n>`
@@ -83,7 +83,7 @@ Run one question through the deterministic RAG workflow.
 
 **Failure Cases**
 
-- unsupported retrieval mode
+- unsupported retrieval mode, including future-extension modes that are not part of the MVP runtime contract
 - corpus not ingested
 - missing generation configuration
 - invalid citation output when strict mode is enabled
@@ -115,7 +115,7 @@ Run the golden question set for one retrieval mode.
 
 **Options**
 
-- `--mode baseline-vector|routed-vector|routed-hybrid`
+- `--mode baseline-vector|routed-vector`
 - `--golden <path>`
 - `--artifacts-dir <path>`
 - `--top-k <n>`
@@ -135,7 +135,7 @@ Run the golden question set for one retrieval mode.
 
 - golden set outside 12-15 questions
 - missing required case type
-- unsupported optional mode
+- unsupported retrieval mode, including future-extension modes that are not part of the MVP runtime contract
 - one or more traces cannot be written
 
 ## `raglab eval compare`

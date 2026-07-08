@@ -250,6 +250,7 @@ def retrieval_result(
         chunk_id=chunk_id,
         source_slug=f"source-{rank}",
         category="RAG and context handling",
+        section_path=["Overview"],
         score=1.0 - (rank / 10),
         estimated_tokens=estimated_tokens,
         content=content,

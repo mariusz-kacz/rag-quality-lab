@@ -6,8 +6,9 @@ import json
 from pathlib import Path
 from typing import Any, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
+from rag_quality_lab.schemas.base import SchemaModel
 from rag_quality_lab.schemas.corpus import Chunk, SourcePage
 
 
@@ -23,10 +24,8 @@ class ArtifactSchemaVersionError(ArtifactIOError):
     """Raised when an artifact has a missing or unsupported schema version."""
 
 
-class SchemaArtifact(BaseModel):
+class SchemaArtifact(SchemaModel):
     """Base model for JSON artifacts with explicit schema versioning."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
 
     schema_version: str = Field(default=DEFAULT_SCHEMA_VERSION, min_length=1)
 

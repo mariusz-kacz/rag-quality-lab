@@ -122,6 +122,7 @@ def test_query_trace_contains_contract_fields() -> None:
                 chunk_id="chunk-1",
                 source_slug="rag-overview",
                 category="RAG and context handling",
+                section_path=["Overview"],
                 score=0.9,
                 estimated_tokens=12,
             )

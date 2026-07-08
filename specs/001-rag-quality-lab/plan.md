@@ -14,7 +14,7 @@ Build a CLI-first RAG quality engineering lab over a small pinned LLM-engineerin
 
 **Language/Version**: Python 3.12
 
-**Primary Dependencies**: Typer for CLI commands; Pydantic for validated schemas; qdrant-client for vector-store access; openai Azure client for embeddings and answer generation; tiktoken for token estimates; rank-bm25 for optional Phase 1.5 hybrid retrieval; pytest for tests. LangChain remains optional and may only wrap provider or prompt-template boundaries if it reduces integration boilerplate.
+**Primary Dependencies**: Typer for CLI commands; Pydantic for validated schemas; qdrant-client for vector-store access; openai Azure client for embeddings and answer generation; tiktoken for token estimates; pytest for tests. LangChain remains optional and may only wrap provider or prompt-template boundaries if it reduces integration boilerplate.
 
 **Storage**: Qdrant for vector chunks; repository files for pinned corpus manifests, local source snapshots, golden questions, traces, evaluation artifacts, and README sample outputs.
 
@@ -28,7 +28,7 @@ Build a CLI-first RAG quality engineering lab over a small pinned LLM-engineerin
 
 **Constraints**: CLI-first only; no web UI or chatbot session state; exactly one corpus source for MVP; exactly five knowledge categories; Qdrant is mandatory; Azure OpenAI is the only model provider; deterministic non-LLM routing; bounded context builder must never exceed configured estimated context budget; every answer is invalid until citation validation completes.
 
-**Scale/Scope**: 15-30 source pages, expected tens to low hundreds of chunks, 12-15 golden questions, three retrieval mode labels with `routed-hybrid` optional for Phase 1.5.
+**Scale/Scope**: 15-30 source pages, expected tens to low hundreds of chunks, 12-15 golden questions, and two retrieval mode labels: `baseline-vector` and `routed-vector`.
 
 ## Constitution Check
 
@@ -70,8 +70,7 @@ src/
     |   `-- embedding_router.py
     |-- retrieval/
     |   |-- modes.py
-    |   |-- qdrant_store.py
-    |   `-- hybrid.py
+    |   `-- qdrant_store.py
     |-- rag/
     |   |-- pipeline.py
     |   |-- context.py
@@ -84,9 +83,13 @@ src/
     |   `-- reports.py
     `-- schemas/
         |-- artifacts.py
+        |-- base.py
+        |-- categories.py
         |-- corpus.py
         |-- eval.py
-        `-- trace.py
+        |-- query.py
+        |-- retrieval.py
+        `-- trace.py              # compatibility import for QueryTrace
 
 corpus/
 |-- manifest.json

@@ -217,6 +217,7 @@ def sample_query_trace(
                 chunk_id=sample_context_chunk.chunk_id,
                 source_slug=sample_context_chunk.source_slug,
                 category=sample_context_chunk.category,
+                section_path=sample_context_chunk.section_path,
                 score=0.91,
                 estimated_tokens=sample_context_chunk.estimated_tokens,
                 content=sample_context_chunk.content,

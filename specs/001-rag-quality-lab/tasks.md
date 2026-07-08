@@ -18,7 +18,7 @@
 
 **Purpose**: Initialize the Python CLI project, package layout, durable input/output directories, and local developer defaults.
 
-- [X] T001 Create Python project metadata with Typer, Pydantic, qdrant-client, openai, tiktoken, rank-bm25, pytest, and console script `raglab` in pyproject.toml
+- [X] T001 Create Python project metadata with Typer, Pydantic, qdrant-client, openai, tiktoken, pytest, and console script `raglab` in pyproject.toml
 - [X] T002 Create package and test directory structure in src/rag_quality_lab/__init__.py and tests/
 - [X] T003 [P] Create domain package directories with __init__.py files in src/rag_quality_lab/corpus/, src/rag_quality_lab/routing/, src/rag_quality_lab/retrieval/, src/rag_quality_lab/rag/, src/rag_quality_lab/eval/, and src/rag_quality_lab/schemas/
 - [X] T004 [P] Create durable input and artifact directories with placeholder files in corpus/sources/, golden/, artifacts/traces/, and artifacts/eval/
@@ -34,7 +34,7 @@
 **CRITICAL**: No user story work can begin until this phase is complete.
 
 - [X] T007 Implement environment and runtime configuration loading with clear missing-setting errors in src/rag_quality_lab/config.py
-- [X] T008 [P] Implement shared corpus, routing, retrieval, context, answer, trace, and evaluation Pydantic schemas in src/rag_quality_lab/schemas/corpus.py, src/rag_quality_lab/schemas/trace.py, src/rag_quality_lab/schemas/eval.py, and src/rag_quality_lab/schemas/artifacts.py
+- [X] T008 [P] Implement shared base, category, corpus, retrieval, query workflow, trace compatibility, evaluation, and artifact Pydantic schemas in src/rag_quality_lab/schemas/base.py, src/rag_quality_lab/schemas/categories.py, src/rag_quality_lab/schemas/corpus.py, src/rag_quality_lab/schemas/retrieval.py, src/rag_quality_lab/schemas/query.py, src/rag_quality_lab/schemas/trace.py, src/rag_quality_lab/schemas/eval.py, and src/rag_quality_lab/schemas/artifacts.py
 - [X] T009 [P] Define the five required knowledge categories and descriptions in src/rag_quality_lab/routing/categories.py
 - [X] T010 [P] Implement artifact JSON write/read helpers with schema_version support in src/rag_quality_lab/schemas/artifacts.py
 - [X] T011 [P] Implement Azure OpenAI embedding and chat provider wrappers in src/rag_quality_lab/providers.py
@@ -124,7 +124,7 @@
 - [ ] T035 [US2] Implement deterministic category embedding router with threshold fallback in src/rag_quality_lab/routing/embedding_router.py
 - [ ] T036 [US2] Implement retrieval mode interface and supported mode validation in src/rag_quality_lab/retrieval/modes.py
 - [ ] T037 [US2] Implement baseline-vector and routed-vector search over Qdrant with route-aware filters in src/rag_quality_lab/retrieval/qdrant_store.py
-- [ ] T038 [US2] Implement optional routed-hybrid interface that clearly reports not implemented until Phase 1.5 is enabled in src/rag_quality_lab/retrieval/hybrid.py
+- [X] T038 [US2] Keep hybrid lexical/vector retrieval out of the MVP runtime contract and document it only as a future extension
 - [ ] T039 [US2] Implement bounded context builder with included chunks, excluded chunks, estimated token totals, and output token limits in src/rag_quality_lab/rag/context.py
 - [ ] T040 [US2] Implement context-constrained answer generation and explicit no-answer prompt handling in src/rag_quality_lab/rag/generation.py
 - [ ] T041 [US2] Implement citation extraction and validation against selected context chunks in src/rag_quality_lab/rag/citations.py
@@ -306,6 +306,6 @@ Task: "T060 [US4] Document corpus source, license rationale, pinned provenance, 
 
 ## Notes
 
-- The optional `routed-hybrid` mode is represented as a clear unsupported-mode path for MVP unless Phase 1.5 is explicitly selected.
+- Hybrid lexical/vector retrieval is documented only as a future extension; the MVP runtime contract supports `baseline-vector` and `routed-vector`.
 - Qdrant and Azure OpenAI are mandatory runtime integrations; tests should use fakes where possible and reserve live-service checks for integration validation.
 - Citation validation proves cited chunks were included in selected context; claim-level factual correctness remains a documented limitation.

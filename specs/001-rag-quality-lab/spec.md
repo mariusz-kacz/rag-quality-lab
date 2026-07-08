@@ -55,8 +55,7 @@ As a reviewer, I want to run a lightweight evaluation over a golden question set
 
 1. **Given** a golden set with 12-15 cases, **When** the reviewer evaluates `baseline-vector`, **Then** the system reports routing accuracy where applicable, fallback rate, recall@k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks.
 2. **Given** the same golden set, **When** the reviewer evaluates `routed-vector`, **Then** the system reports the same comparable metrics and includes routing decisions for each question.
-3. **Given** the optional Phase 1.5 hybrid retrieval feature is enabled, **When** the reviewer evaluates `routed-hybrid`, **Then** the system combines vector and lexical retrieval results, reports comparable metrics, and identifies the retrieval mode in all artifacts.
-4. **Given** evaluation completes, **When** artifacts are written, **Then** reviewers can inspect both a machine-readable result and a human-readable Markdown report without rerunning the evaluation.
+3. **Given** evaluation completes, **When** artifacts are written, **Then** reviewers can inspect both a machine-readable result and a human-readable Markdown report without rerunning the evaluation.
 
 ---
 
@@ -84,7 +83,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - The golden set references an expected source slug or category that is missing from the ingested corpus.
 - The answer generator omits citations, emits malformed citations, or cites retrieved-but-excluded chunks.
 - Actual model usage metadata is unavailable for a query.
-- Optional hybrid retrieval is not implemented in the MVP but evaluation is requested for `routed-hybrid`.
+- A future-extension retrieval mode is requested even though it is not part of the MVP runtime contract.
 - Required environment configuration or the required retrieval store is unavailable.
 
 ## Requirements *(mandatory)*
@@ -102,7 +101,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - **FR-009**: The MVP router MUST NOT use an LLM.
 - **FR-010**: Retrieval MUST support `baseline-vector`, which searches across all chunks without category filtering.
 - **FR-011**: Retrieval MUST support `routed-vector`, which applies route-first category filtering before vector search in Qdrant.
-- **FR-012**: Retrieval MAY support `routed-hybrid` as a Phase 1.5 feature that combines vector retrieval and BM25 with reciprocal rank fusion.
+- **FR-012**: Hybrid lexical/vector retrieval MAY be documented as a future extension, but it MUST NOT be part of the MVP runtime contract.
 - **FR-013**: Qdrant MUST be the mandatory vector store for MVP runtime.
 - **FR-014**: Azure OpenAI MUST be used for embeddings and answer generation, configured through environment variables.
 - **FR-015**: LangChain MAY be used only as a thin integration boundary for Azure OpenAI, Qdrant, or prompt templates; core routing, retrieval orchestration, context budgeting, citation validation, trace persistence, and evaluation logic MUST remain plain Python application logic.
@@ -159,6 +158,6 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - The corpus source will be pinned before ingestion and will remain small enough for local inspection and evaluation.
 - The default curated source is DAIR.AI Prompt Engineering Guide if its selected pages and license metadata satisfy the provenance requirements during planning.
 - Required external service credentials and endpoints are provided by the reviewer through environment variables.
-- The optional `routed-hybrid` mode is not required for the core MVP unless selected for Phase 1.5 implementation.
+- Hybrid lexical/vector retrieval is not part of the core MVP; it remains a future extension if exact-term retrieval becomes worth demonstrating.
 - Exact token counts may be estimated for budgeting, while actual model usage is recorded when available from the model provider.
 - Stable outputs are expected for identifiers, traces, and evaluation schemas; natural-language answer wording may vary across model calls.

@@ -13,9 +13,9 @@ from pydantic import ValidationError
 from rag_quality_lab.schemas import (
     DEFAULT_SCHEMA_VERSION,
     REQUIRED_KNOWLEDGE_CATEGORIES,
-    KnowledgeCategory,
     SourcePage,
 )
+from rag_quality_lab.schemas.categories import KnowledgeCategory
 
 
 RECOMMENDED_MIN_SOURCE_COUNT = 15

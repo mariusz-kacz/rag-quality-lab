@@ -1,44 +1,11 @@
-"""Corpus and question schemas shared across the RAG quality workflow."""
+"""Corpus schemas shared across the RAG quality workflow."""
 
 from __future__ import annotations
 
-from enum import StrEnum
-from typing import Literal, TypeAlias
+from pydantic import Field, field_validator
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
-
-class KnowledgeCategoryName(StrEnum):
-    """Required deterministic routing categories."""
-
-    PROMPTING_TECHNIQUES = "prompting techniques"
-    RAG_AND_CONTEXT_HANDLING = "RAG and context handling"
-    RAG_EVALUATION_AND_QUALITY = "RAG evaluation and quality"
-    LLM_SECURITY_AND_RISKS = "LLM security and risks"
-    LLM_SETTINGS_COST_AND_TOKENS = "LLM settings, cost, and tokens"
-
-
-REQUIRED_KNOWLEDGE_CATEGORIES: tuple[str, ...] = tuple(
-    category.value for category in KnowledgeCategoryName
-)
-Answerability: TypeAlias = Literal["answerable", "no_answer"]
-CaseType: TypeAlias = Literal[
-    "answerable",
-    "no_answer",
-    "ambiguous_boundary",
-    "fallback_routing",
-]
-
-
-class SchemaModel(BaseModel):
-    """Strict immutable base model for public schema records."""
-
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        str_strip_whitespace=True,
-        use_enum_values=True,
-    )
+from rag_quality_lab.schemas.base import SchemaModel
+from rag_quality_lab.schemas.categories import KnowledgeCategoryName
 
 
 class SourceSection(SchemaModel):
@@ -83,14 +50,6 @@ class SourcePage(SchemaModel):
         )
 
 
-class KnowledgeCategory(SchemaModel):
-    """A deterministic routing category and its embedding reference."""
-
-    name: KnowledgeCategoryName
-    description: str = Field(min_length=1)
-    embedding_ref: str | None = None
-
-
 class Chunk(SchemaModel):
     """Stable retrievable text unit produced from a source page."""
 
@@ -110,20 +69,3 @@ class Chunk(SchemaModel):
         if any(not section.strip() for section in value):
             raise ValueError("section_path entries must be non-empty")
         return value
-
-
-class Question(SchemaModel):
-    """An ad hoc query or a golden-set case."""
-
-    text: str = Field(min_length=1)
-    question_id: str | None = None
-    expected_category: KnowledgeCategoryName | None = None
-    expected_relevant_sources: list[str] = Field(default_factory=list)
-    answerability: Answerability = "answerable"
-    case_type: CaseType = "answerable"
-
-    @model_validator(mode="after")
-    def validate_case_alignment(self) -> "Question":
-        if self.answerability == "no_answer" and self.case_type == "answerable":
-            raise ValueError("no_answer questions cannot use the answerable case type")
-        return self

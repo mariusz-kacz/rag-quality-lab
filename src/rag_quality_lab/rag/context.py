@@ -1,5 +1,10 @@
 from __future__ import annotations
-from rag_quality_lab.schemas import ContextBuild, ContextChunk, ExcludedContextChunk
+
+from rag_quality_lab.schemas.query import (
+    ContextBuild,
+    ContextChunk,
+    ExcludedContextChunk,
+)
 
 
 def build_context(
