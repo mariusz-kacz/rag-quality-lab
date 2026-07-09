@@ -25,8 +25,8 @@ ANSWER_PROMPT = ChatPromptTemplate.from_messages(
         (
             "system",
             "Answer using only the selected context. Cite every factual claim with "
-            "chunk ids in square brackets, for example [chunk-id]. If the selected "
-            "context is insufficient, say exactly: "
+            "the exact chunk ids in square brackets, for example [chunk-id]. Do not "
+            "shorten chunk ids. If the selected context is insufficient, say exactly: "
             f"{NO_ANSWER_TEXT}",
         ),
         (
@@ -117,11 +117,16 @@ def _extract_message_text(message: BaseMessage) -> str:
 
 def _is_no_answer(answer_text: str) -> bool:
     normalized = " ".join(answer_text.lower().split())
-    return (
-        "not enough evidence" in normalized
-        or "do not have enough evidence" in normalized
-        or "insufficient evidence" in normalized
-        or "selected context is insufficient" in normalized
+    return normalized.rstrip(".") in {
+        NO_ANSWER_TEXT.lower().rstrip("."),
+        "i do not have enough evidence in the selected context to answer",
+        "the selected context is insufficient to answer",
+    } or normalized.startswith(
+        (
+            "there is not enough evidence in the selected context to answer.",
+            "i do not have enough evidence in the selected context to answer.",
+            "the selected context is insufficient to answer.",
+        )
     )
 
 

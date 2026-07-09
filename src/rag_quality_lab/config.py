@@ -21,6 +21,7 @@ FOUNDRY_BASE_URL_ENV_VAR = "FOUNDRY_OPENAI_BASE_URL"
 FOUNDRY_API_KEY_ENV_VAR = "FOUNDRY_API_KEY"
 FOUNDRY_EMBEDDING_MODEL_ENV_VAR = "FOUNDRY_EMBEDDING_MODEL"
 FOUNDRY_CHAT_MODEL_ENV_VAR = "FOUNDRY_CHAT_MODEL"
+FOUNDRY_REASONING_EFFORT_ENV_VAR = "FOUNDRY_REASONING_EFFORT"
 QDRANT_REQUIRED_ENV_VARS = (
     "QDRANT_URL",
     "RAGLAB_QDRANT_COLLECTION",
@@ -59,6 +60,7 @@ class FoundryOpenAIConfig(BaseModel):
     api_key: SecretStr | None = None
     embedding_model: str | None = None
     chat_model: str | None = None
+    reasoning_effort: str | None = None
 
     @field_validator("base_url")
     @classmethod
@@ -73,13 +75,18 @@ class FoundryOpenAIConfig(BaseModel):
                 clean = clean[: -len(suffix)]
         return clean
 
-    @field_validator("embedding_model", "chat_model")
+    @field_validator("embedding_model", "chat_model", "reasoning_effort")
     @classmethod
     def strip_optional_text(cls, value: str | None) -> str | None:
         if value is None:
             return None
         stripped = value.strip()
         return stripped or None
+
+    @field_validator("reasoning_effort")
+    @classmethod
+    def normalize_reasoning_effort(cls, value: str | None) -> str | None:
+        return value.lower() if value is not None else None
 
     def require_embedding(self) -> None:
         """Validate that embedding configuration is available."""
@@ -128,7 +135,7 @@ class RuntimeConfig(BaseModel):
 
     top_k: int = Field(default=6, ge=1)
     max_context_tokens: int = Field(default=2500, ge=1)
-    output_token_limit: int = Field(default=500, ge=1)
+    output_token_limit: int = Field(default=2500, ge=1)
     router_confidence_threshold: float = Field(default=0.18, ge=0.0, le=1.0)
     trace_dir: Path = Path("artifacts/traces")
     eval_artifacts_dir: Path = Path("artifacts/eval")
@@ -182,6 +189,7 @@ def load_foundry_openai_config(
             "api_key": SecretStr(api_key) if api_key else None,
             "embedding_model": _read(env, FOUNDRY_EMBEDDING_MODEL_ENV_VAR),
             "chat_model": _read(env, FOUNDRY_CHAT_MODEL_ENV_VAR),
+            "reasoning_effort": _read(env, FOUNDRY_REASONING_EFFORT_ENV_VAR),
         },
         stage="Foundry",
     )

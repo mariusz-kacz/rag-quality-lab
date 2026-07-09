@@ -18,6 +18,7 @@ def valid_environment() -> dict[str, str]:
         "FOUNDRY_API_KEY": "test-key",
         "FOUNDRY_EMBEDDING_MODEL": "text-embedding-3-small",
         "FOUNDRY_CHAT_MODEL": "gpt-4o-mini",
+        "FOUNDRY_REASONING_EFFORT": "None",
         "QDRANT_URL": "http://localhost:6333",
         "QDRANT_API_KEY": "",
         "RAGLAB_QDRANT_COLLECTION": "rag_quality_lab",
@@ -34,6 +35,7 @@ def test_load_app_config_reads_required_environment() -> None:
     assert config.foundry_openai.api_key.get_secret_value() == "test-key"
     assert config.foundry_openai.embedding_model == "text-embedding-3-small"
     assert config.foundry_openai.chat_model == "gpt-4o-mini"
+    assert config.foundry_openai.reasoning_effort == "none"
     assert config.qdrant.url == "http://localhost:6333"
     assert config.qdrant.api_key is None
     assert config.qdrant.collection == "rag_quality_lab"

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage
@@ -20,15 +20,25 @@ def create_foundry_chat_model(
     return FoundryResponsesChatModel(
         model=config.chat_model or "",
         client=create_foundry_openai_client(config),
+        reasoning_effort=config.reasoning_effort,
     )
 
 
 class FoundryResponsesChatModel:
     """Minimal LangChain-compatible wrapper around OpenAI Responses."""
 
-    def __init__(self, *, model: str, client: Any) -> None:
+    def __init__(
+        self,
+        *,
+        model: str,
+        client: Any,
+        reasoning_effort: str | None = None,
+    ) -> None:
         self.model_name = model
         self.deployment_name = model
+        self.reasoning_effort = (
+            reasoning_effort.strip().lower() if reasoning_effort else None
+        )
         self._client = client
 
     def invoke(
@@ -43,6 +53,8 @@ class FoundryResponsesChatModel:
             "model": self.model_name,
             "input": _responses_input(input),
         }
+        if self.reasoning_effort is not None:
+            request["reasoning"] = {"effort": self.reasoning_effort}
         if max_tokens is not None:
             request["max_output_tokens"] = max_tokens
 
@@ -52,8 +64,17 @@ class FoundryResponsesChatModel:
             raise ProviderError(
                 f"Responses request failed for Foundry model {self.model_name!r}: {exc}"
             ) from exc
+        content = _response_text(response)
+        if not content.strip():
+            incomplete_reason = _response_incomplete_reason(response)
+            if incomplete_reason is not None:
+                raise ProviderError(
+                    "Responses request returned no assistant text "
+                    f"(status=incomplete, reason={incomplete_reason}). "
+                    "Increase --output-token-limit or use a non-reasoning chat model."
+                )
         return AIMessage(
-            content=_response_text(response),
+            content=content,
             response_metadata={
                 "model_name": _response_model(response) or self.model_name
             },
@@ -87,26 +108,28 @@ def _message_content(message: BaseMessage) -> str:
 
 def _response_text(response: Any) -> str:
     output_text = getattr(response, "output_text", None)
-    if isinstance(output_text, str):
+    if isinstance(output_text, str) and output_text.strip():
         return output_text
 
-    output = getattr(response, "output", None) or []
+    output = _get(response, "output", []) or []
     parts: list[str] = []
     for item in output:
-        for content in getattr(item, "content", []) or []:
-            text = getattr(content, "text", None)
+        for content in _get(item, "content", []) or []:
+            text = _get(content, "text")
             if isinstance(text, str):
                 parts.append(text)
-    return "\n".join(parts)
+    if parts:
+        return "\n".join(parts)
+    return output_text if isinstance(output_text, str) else ""
 
 
 def _response_model(response: Any) -> str | None:
-    model = getattr(response, "model", None)
+    model = _get(response, "model")
     return str(model) if model else None
 
 
 def _response_usage(response: Any) -> dict[str, int]:
-    usage = getattr(response, "usage", None)
+    usage = _get(response, "usage")
     if usage is None:
         return {}
     input_tokens = _usage_value(usage, "input_tokens")
@@ -126,8 +149,19 @@ def _response_usage(response: Any) -> dict[str, int]:
 
 
 def _usage_value(usage: Any, key: str) -> int | None:
-    if isinstance(usage, dict):
-        value = usage.get(key)
-    else:
-        value = getattr(usage, key, None)
+    value = _get(usage, key)
     return int(value) if value is not None else None
+
+
+def _response_incomplete_reason(response: Any) -> str | None:
+    if _get(response, "status") != "incomplete":
+        return None
+    details = _get(response, "incomplete_details")
+    reason = _get(details, "reason")
+    return str(reason) if reason else "unknown"
+
+
+def _get(source: Any, name: str, default: Any = None) -> Any:
+    if isinstance(source, Mapping):
+        return source.get(name, default)
+    return getattr(source, name, default)
