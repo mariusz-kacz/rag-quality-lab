@@ -34,7 +34,7 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
         ]
     )
     chat_model = FakeChatModel(
-        "RAG grounds answers by using selected retrieved context. [chunk-rag-1]"
+        "RAG grounds answers by using selected retrieved context. [C1]"
     )
 
     result = run_query(

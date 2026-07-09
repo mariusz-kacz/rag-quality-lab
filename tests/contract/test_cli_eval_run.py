@@ -128,6 +128,7 @@ def test_eval_run_human_output_reports_summary_and_artifacts(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    captured: dict[str, Any] = {}
     artifacts_dir = tmp_path / "eval"
     evaluation = sample_evaluation_run(
         mode="baseline-vector",
@@ -145,6 +146,13 @@ def test_eval_run_human_output_reports_summary_and_artifacts(
         max_context_tokens: int,
         output_token_limit: int,
     ) -> EvaluationRun:
+        captured.update(
+            {
+                "top_k": top_k,
+                "max_context_tokens": max_context_tokens,
+                "output_token_limit": output_token_limit,
+            }
+        )
         return evaluation
 
     monkeypatch.setattr(cli, "run_eval", fake_run_eval, raising=False)
@@ -162,6 +170,11 @@ def test_eval_run_human_output_reports_summary_and_artifacts(
     )
 
     assert result.exit_code == 0, result.stderr
+    assert captured == {
+        "top_k": 6,
+        "max_context_tokens": 2500,
+        "output_token_limit": 800,
+    }
     assert "Evaluation: eval-baseline-vector" in result.stdout
     assert "Mode: baseline-vector" in result.stdout
     assert "Questions: 2" in result.stdout

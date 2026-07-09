@@ -71,6 +71,7 @@ TraceDirOption = Annotated[
 ]
 
 CommandResult = TypeVar("CommandResult")
+EVAL_OUTPUT_TOKEN_LIMIT_DEFAULT = 800
 
 
 @dataclass(frozen=True)
@@ -233,7 +234,7 @@ def eval_run(
     ] = RuntimeConfig().eval_artifacts_dir,
     top_k: TopKOption = RuntimeConfig().top_k,
     max_context_tokens: MaxContextTokensOption = RuntimeConfig().max_context_tokens,
-    output_token_limit: OutputTokenLimitOption = RuntimeConfig().output_token_limit,
+    output_token_limit: OutputTokenLimitOption = EVAL_OUTPUT_TOKEN_LIMIT_DEFAULT,
     json_output: JsonOutputOption = False,
 ) -> None:
     """Run the golden question set for one retrieval mode."""

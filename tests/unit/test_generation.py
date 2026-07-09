@@ -15,7 +15,7 @@ pytestmark = pytest.mark.unit
 
 def test_generate_answer_builds_grounded_prompt_and_returns_answer_result() -> None:
     chat_model = FakeChatModel(
-        "RAG grounds answers in selected context. [chunk-rag-1]"
+        "RAG grounds answers in selected context. [C1]"
     )
     selected_context = context_with_chunks(
         [
@@ -34,9 +34,7 @@ def test_generate_answer_builds_grounded_prompt_and_returns_answer_result() -> N
         chat_model=chat_model,
     )
 
-    assert result.answer.answer_text == (
-        "RAG grounds answers in selected context. [chunk-rag-1]"
-    )
+    assert result.answer.answer_text == "RAG grounds answers in selected context. [C1]"
     assert result.answer.is_no_answer is False
     assert result.answer.citations == ["chunk-rag-1"]
     assert result.answer.validation_status == "valid"
@@ -56,7 +54,8 @@ def test_generate_answer_builds_grounded_prompt_and_returns_answer_result() -> N
     assert "If the selected context is insufficient" in messages[0].content
     assert messages[1].type == "human"
     assert "How does RAG ground answers?" in messages[1].content
-    assert "[chunk-rag-1]" in messages[1].content
+    assert "[C1]" in messages[1].content
+    assert "chunk-rag-1" not in messages[1].content
     assert "RAG grounds answers in selected context." in messages[1].content
 
 

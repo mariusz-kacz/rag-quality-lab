@@ -13,7 +13,7 @@ from rag_quality_lab.config import load_app_config
 from rag_quality_lab.providers import (
     FoundryOpenAIEmbeddingProvider,
 )
-from rag_quality_lab.rag.citations import validate_citations
+from rag_quality_lab.rag.citations import citation_aliases_for_context, validate_citations
 from rag_quality_lab.rag.context import build_context
 from rag_quality_lab.rag.generation import ChatModel, generate_answer
 from rag_quality_lab.rag.traces import new_trace_id, save_trace
@@ -261,4 +261,8 @@ def _citation_validation_for_answer(
             invalid_citations=[],
             validation_errors=[],
         )
-    return validate_citations(answer_text, included_chunks)
+    return validate_citations(
+        answer_text,
+        included_chunks,
+        citation_aliases=citation_aliases_for_context(included_chunks),
+    )

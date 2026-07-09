@@ -1,12 +1,12 @@
 from __future__ import annotations
 import re
+from collections.abc import Mapping, Sequence
 
 from rag_quality_lab.schemas.query import CitationValidation, ContextChunk
 
-VALID_CITATION = re.compile(r"\[([A-Za-z0-9][A-Za-z0-9:_-]*)\]")
+VALID_CITATION = re.compile(r"\[(C[1-9][0-9]*)\]")
 EMPTY_CITATION = re.compile(r"\[\s*\]")
-CITATION_START = re.compile(r"\[[A-Za-z0-9][A-Za-z0-9:_-]*")
-
+CITATION_START = re.compile(r"\[C[0-9]*")
 
 def extract_citations(answer_text: str) -> list[str]:
     seen = set()
@@ -43,19 +43,31 @@ def find_malformed_citations(answer_text: str) -> list[str]:
 
 
 def validate_citations(
-    answer_text: str, selected_context: list[ContextChunk]
+    answer_text: str,
+    selected_context: Sequence[ContextChunk],
+    citation_aliases: Mapping[str, str],
 ) -> CitationValidation:
     citations = extract_citations(answer_text)
     malformed_citations = find_malformed_citations(answer_text)
     context_chunk_ids = {item.chunk_id for item in selected_context}
+    aliases = dict(citation_aliases)
     cited_chunk_ids = []
     invalid_citations = []
     validation_errors = []
 
     for citation in citations:
-        cited_chunk_ids.append(citation)
+        resolved_citation = aliases.get(citation)
+        if resolved_citation is None:
+            cited_chunk_ids.append(citation)
+            invalid_citations.append(citation)
+            validation_errors.append(
+                f"Citation {citation} from answer text not found in selected context"
+            )
+            continue
 
-        if citation not in context_chunk_ids:
+        cited_chunk_ids.append(resolved_citation)
+
+        if resolved_citation not in context_chunk_ids:
             invalid_citations.append(citation)
             validation_errors.append(
                 f"Citation {citation} from answer text not found in selected context"
@@ -76,3 +88,12 @@ def validate_citations(
         invalid_citations=invalid_citations,
         validation_errors=validation_errors,
     )
+
+
+def citation_aliases_for_context(
+    selected_context: Sequence[ContextChunk],
+) -> dict[str, str]:
+    return {
+        f"C{index}": chunk.chunk_id
+        for index, chunk in enumerate(selected_context, start=1)
+    }

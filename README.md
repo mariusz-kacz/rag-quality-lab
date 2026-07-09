@@ -123,8 +123,8 @@ uv run raglab trace inspect artifacts/traces/<trace_id>.json --json
 Run and compare retrieval evaluations:
 
 ```powershell
-uv run raglab eval run --mode baseline-vector --golden golden/questions.json --artifacts-dir artifacts/eval
-uv run raglab eval run --mode routed-vector --golden golden/questions.json --artifacts-dir artifacts/eval
+uv run raglab eval run --mode baseline-vector --golden golden/questions.json --artifacts-dir artifacts/eval --output-token-limit 800
+uv run raglab eval run --mode routed-vector --golden golden/questions.json --artifacts-dir artifacts/eval --output-token-limit 800
 uv run raglab eval compare artifacts/eval/<baseline_run>.json artifacts/eval/<routed_run>.json --markdown artifacts/eval/comparison.md
 ```
 
@@ -230,7 +230,7 @@ The MVP runtime supports exactly two retrieval modes:
 
 Routing is deterministic and non-LLM. The router embeds the question, compares it with the five category description embeddings using cosine similarity, records all category scores, and selects the top category only when its confidence is at or above the configured threshold. The default threshold is `0.18` from `RuntimeConfig`. If confidence is below the threshold, `fallback_all_categories` is recorded as `true`, `selected_category` is empty, and `routed-vector` searches all categories instead of applying a weak filter. When confidence is high enough, the retriever includes the selected category plus any category within `RAGLAB_ROUTER_CATEGORY_MARGIN` of the selected category score; the default margin is `0.15`.
 
-Context budgeting is also deterministic. Retrieved chunks are sorted by retrieval rank and considered in order. A chunk is included only if its estimated token count fits within `max_context_tokens`; otherwise it is recorded under `excluded_chunks` with reason `budget_exceeded`. The trace records `final_estimated_context_tokens`, `max_context_tokens`, `output_token_limit`, included chunks, and excluded chunks. The CLI defaults are `--top-k 6`, `--max-context-tokens 2500`, and `--output-token-limit 500`, and each value can be overridden per command.
+Context budgeting is also deterministic. Retrieved chunks are sorted by retrieval rank and considered in order. A chunk is included only if its estimated token count fits within `max_context_tokens`; otherwise it is recorded under `excluded_chunks` with reason `budget_exceeded`. The trace records `final_estimated_context_tokens`, `max_context_tokens`, `output_token_limit`, included chunks, and excluded chunks. The CLI defaults are `--top-k 6`, `--max-context-tokens 2500`, and `--output-token-limit 500` for ad hoc queries. Evaluation runs default to `--output-token-limit 800` to reduce max-output truncation during golden-set reporting. Each value can be overridden per command.
 
 Each `raglab query` run writes a trace under `artifacts/traces/` by default. A trace contains:
 
@@ -263,7 +263,7 @@ For comparison reports, higher is better for quality metrics except `fallback_ra
 
 This is a portfolio-quality lab, not a production RAG platform. The MVP is intentionally narrow so the retrieval, routing, context, citation, trace, and evaluation behavior stays inspectable.
 
-Citation validation is a context-membership check. It proves that every cited chunk ID in the answer was present in the selected context and records missing, malformed, or out-of-context citations as validation failures. It does not prove claim-level factual correctness, judge whether the cited passage fully supports a claim, detect paraphrase errors, or verify facts against sources outside the selected context.
+Citation validation is a context-membership check. Generation prompts expose short citation labels such as `[C1]` instead of long chunk IDs; validation resolves those labels back to full chunk IDs in `answer_result.citations` and `citation_validation.cited_chunk_ids`. It proves that every cited label or chunk ID in the answer maps to selected context and records missing, malformed, or out-of-context citations as validation failures. It does not prove claim-level factual correctness, judge whether the cited passage fully supports a claim, detect paraphrase errors, or verify facts against sources outside the selected context.
 
 No-answer behavior is evidence-gated. If no chunks fit the selected context, the system returns `There is not enough evidence in the selected context to answer.` without calling the chat model. If chunks are present, the prompt instructs the LangChain chat model to answer only from selected context and to return the same no-answer statement when evidence is insufficient. No-answer traces still preserve the route decision, retrieved evidence, context budget, and validation status so reviewers can inspect why the answer was withheld.
 

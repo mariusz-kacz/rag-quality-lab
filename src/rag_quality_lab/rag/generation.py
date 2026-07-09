@@ -7,7 +7,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 
 from rag_quality_lab.providers import ProviderError
-from rag_quality_lab.rag.citations import validate_citations
+from rag_quality_lab.rag.citations import citation_aliases_for_context, validate_citations
 from rag_quality_lab.schemas import (
     AnswerResult,
     ContextChunk,
@@ -25,8 +25,10 @@ ANSWER_PROMPT = ChatPromptTemplate.from_messages(
         (
             "system",
             "Answer using only the selected context. Cite every factual claim with "
-            "the exact chunk ids in square brackets, for example [chunk-id]. Do not "
-            "shorten chunk ids. If the selected context is insufficient, say exactly: "
+            "the citation labels shown in square brackets, for example [C1]. Do not "
+            "cite source names or chunk ids. Keep the answer concise: use at most "
+            "five bullets or three short paragraphs, and prefer one or two citations "
+            "per sentence. If the selected context is insufficient, say exactly: "
             f"{NO_ANSWER_TEXT}",
         ),
         (
@@ -63,6 +65,7 @@ def generate_answer(
             model_usage=None,
         )
 
+    citation_aliases = citation_aliases_for_context(selected_context.included_chunks)
     messages = ANSWER_PROMPT.format_messages(
         question=question.text,
         selected_context=_format_selected_context(selected_context.included_chunks),
@@ -79,7 +82,9 @@ def generate_answer(
         answer = _no_answer_result(answer_text.strip())
     else:
         citation_validation = validate_citations(
-            answer_text, selected_context.included_chunks
+            answer_text,
+            selected_context.included_chunks,
+            citation_aliases=citation_aliases,
         )
         answer = AnswerResult(
             answer_text=answer_text.strip(),
@@ -97,10 +102,10 @@ def generate_answer(
 
 def _format_selected_context(chunks: Sequence[ContextChunk]) -> str:
     blocks = []
-    for chunk in chunks:
+    for index, chunk in enumerate(chunks, start=1):
         section = " > ".join(chunk.section_path)
         blocks.append(
-            f"[{chunk.chunk_id}]\n"
+            f"[C{index}]\n"
             f"Source: {chunk.source_slug}\n"
             f"Category: {chunk.category}\n"
             f"Section: {section}\n"
