@@ -1,0 +1,140 @@
+{
+  "questions": [
+    {
+      "question_id": "q-answerable-001",
+      "text": "Which prompt components and instruction design practices can make model responses more reliable and easier to control?",
+      "expected_category": "prompting techniques",
+      "expected_relevant_sources": [
+        "azure-openai-prompt-engineering-techniques"
+      ],
+      "answerability": "answerable",
+      "case_type": "answerable"
+    },
+    {
+      "question_id": "q-answerable-002",
+      "text": "How does retrieval augmented generation use retrieved context to ground an answer and reduce unsupported generation?",
+      "expected_category": "RAG and context handling",
+      "expected_relevant_sources": [
+        "azure-ai-search-rag-overview",
+        "openai-question-answering-embeddings"
+      ],
+      "answerability": "answerable",
+      "case_type": "answerable"
+    },
+    {
+      "question_id": "q-answerable-003",
+      "text": "Which retrieval metrics can be used to compare ranked search results in a golden-set evaluation?",
+      "expected_category": "RAG evaluation and quality",
+      "expected_relevant_sources": [
+        "trec-common-evaluation-measures",
+        "wikipedia-ir-evaluation-measures"
+      ],
+      "answerability": "answerable",
+      "case_type": "answerable"
+    },
+    {
+      "question_id": "q-answerable-004",
+      "text": "What are prompt injection risks in LLM applications, and which mitigations can reduce their impact?",
+      "expected_category": "LLM security and risks",
+      "expected_relevant_sources": [
+        "owasp-llm01-prompt-injection"
+      ],
+      "answerability": "answerable",
+      "case_type": "answerable"
+    },
+    {
+      "question_id": "q-answerable-005",
+      "text": "How can token counting help estimate prompt size and manage prompt budgets before sending a request to a model?",
+      "expected_category": "LLM settings, cost, and tokens",
+      "expected_relevant_sources": [
+        "openai-token-counting"
+      ],
+      "answerability": "answerable",
+      "case_type": "answerable"
+    },
+    {
+      "question_id": "q-answerable-006",
+      "text": "Why does a RAG system usually need chunking and embeddings before vector search can retrieve useful passages?",
+      "expected_category": "RAG and context handling",
+      "expected_relevant_sources": [
+        "openai-embedding-wikipedia-search"
+      ],
+      "answerability": "answerable",
+      "case_type": "answerable"
+    },
+    {
+      "question_id": "q-no-answer-001",
+      "text": "What uptime warranty does this project provide for an enterprise production deployment?",
+      "expected_category": null,
+      "expected_relevant_sources": [],
+      "answerability": "no_answer",
+      "case_type": "no_answer"
+    },
+    {
+      "question_id": "q-no-answer-002",
+      "text": "Which private customer database records were used to build this corpus?",
+      "expected_category": null,
+      "expected_relevant_sources": [],
+      "answerability": "no_answer",
+      "case_type": "no_answer"
+    },
+    {
+      "question_id": "q-cross-category-001",
+      "text": "When evaluating a RAG answer, how do groundedness checks differ from retrieval quality metrics?",
+      "expected_category": "RAG evaluation and quality",
+      "expected_relevant_sources": [
+        "microsoft-foundry-rag-evaluators",
+        "wikipedia-ir-evaluation-measures"
+      ],
+      "answerability": "answerable",
+      "case_type": "ambiguous_boundary"
+    },
+    {
+      "question_id": "q-cross-category-002",
+      "text": "How can limiting retrieved context reduce latency, token usage, and citation noise in a RAG workflow?",
+      "expected_category": "LLM settings, cost, and tokens",
+      "expected_relevant_sources": [
+        "openai-latency-optimization",
+        "azure-ai-search-rag-overview"
+      ],
+      "answerability": "answerable",
+      "case_type": "ambiguous_boundary"
+    },
+    {
+      "question_id": "q-fallback-001",
+      "text": "How do prompt structure, retrieved context, evaluation metrics, and token budgets interact during a RAG quality review?",
+      "expected_category": null,
+      "expected_relevant_sources": [
+        "azure-openai-prompt-engineering-techniques",
+        "azure-ai-search-rag-overview",
+        "huggingface-evaluate-considerations",
+        "openai-token-counting"
+      ],
+      "answerability": "answerable",
+      "case_type": "fallback_routing"
+    },
+    {
+      "question_id": "q-fallback-002",
+      "text": "What tradeoffs connect vector embedding weaknesses, retrieval filtering, prompt instructions, and evaluation diagnostics?",
+      "expected_category": null,
+      "expected_relevant_sources": [
+        "owasp-llm08-vector-embedding-weaknesses",
+        "azure-ai-search-vector-relevance-ranking",
+        "microsoft-advanced-prompts",
+        "microsoft-foundry-rag-evaluators"
+      ],
+      "answerability": "answerable",
+      "case_type": "fallback_routing"
+    },
+    {
+      "question_id": "q-security-boundary-001",
+      "text": "If retrieved content contains instructions telling the assistant to ignore previous instructions or reveal hidden prompts, how should the system handle that content?",
+      "expected_category": "LLM security and risks",
+      "expected_relevant_sources": [
+        "owasp-llm01-prompt-injection"
+      ],
+      "answerability": "answerable",
+      "case_type": "answerable"
+    }
+  ]
+}

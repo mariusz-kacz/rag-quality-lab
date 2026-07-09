@@ -1,0 +1,663 @@
+"""Evaluation run orchestration and report helpers."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any, Protocol, TypedDict
+
+from rag_quality_lab.eval.golden import load_golden_set
+from rag_quality_lab.eval.metrics import calculate_evaluation_metrics
+from rag_quality_lab.retrieval.modes import validate_retrieval_mode
+from rag_quality_lab.schemas.eval import MetricName, REQUIRED_EVALUATION_METRICS
+from rag_quality_lab.schemas import (
+    EvaluationArtifactPaths,
+    EvaluationQuestionResult,
+    EvaluationRun,
+    QueryTrace,
+    Question,
+    RetrievalMode,
+    read_json_artifact,
+    write_json_artifact,
+)
+
+
+class EvaluationRunError(Exception):
+    """Raised when an evaluation run cannot execute or assemble trace results."""
+
+
+class EvaluationQueryResult(TypedDict):
+    trace: QueryTrace
+    trace_path: Path
+
+
+class EvaluationQueryRunner(Protocol):
+    def __call__(
+        self,
+        question: Question | str,
+        *,
+        mode: RetrievalMode,
+        top_k: int,
+        max_context_tokens: int,
+        output_token_limit: int,
+        trace_dir: Path | None = None,
+        **kwargs: Any,
+    ) -> Mapping[str, object]: ...
+
+
+QUALITY_METRICS: tuple[MetricName, ...] = (
+    "routing_accuracy",
+    "fallback_rate",
+    "recall_at_k",
+    "mrr",
+    "citation_source_match",
+    "no_answer_accuracy",
+)
+TOKEN_BUDGET_METRICS: tuple[MetricName, ...] = (
+    "average_context_tokens",
+    "average_included_chunks",
+)
+LOWER_IS_BETTER_METRICS: frozenset[MetricName] = frozenset(
+    ("fallback_rate", "average_context_tokens", "average_included_chunks")
+)
+
+
+def run_evaluation(
+    *,
+    mode: str,
+    golden_path: str | Path,
+    artifacts_dir: str | Path,
+    top_k: int,
+    max_context_tokens: int,
+    output_token_limit: int,
+    query_runner: EvaluationQueryRunner | None = None,
+    trace_dir: str | Path | None = None,
+) -> EvaluationRun:
+    """Run one retrieval mode over the golden set and return an evaluation model."""
+
+    retrieval_mode = validate_retrieval_mode(mode)
+    golden_file = Path(golden_path)
+    artifact_directory = Path(artifacts_dir)
+    trace_directory = (
+        Path(trace_dir)
+        if trace_dir is not None
+        else artifact_directory / "traces" / retrieval_mode
+    )
+    golden_set = load_golden_set(golden_file)
+    runner = query_runner or _run_query_for_evaluation
+
+    traces: list[QueryTrace] = []
+    trace_paths: list[Path] = []
+    question_results: list[EvaluationQuestionResult] = []
+
+    for ordinal, question in enumerate(golden_set.questions, start=1):
+        result = _execute_golden_question(
+            runner,
+            question,
+            mode=retrieval_mode,
+            top_k=top_k,
+            max_context_tokens=max_context_tokens,
+            output_token_limit=output_token_limit,
+            trace_dir=trace_directory,
+        )
+        trace = result["trace"]
+        trace_path = result["trace_path"]
+        traces.append(trace)
+        trace_paths.append(trace_path)
+        question_results.append(
+            _question_result(
+                question,
+                trace,
+                trace_path=trace_path,
+                ordinal=ordinal,
+            )
+        )
+
+    run = EvaluationRun(
+        run_id=f"eval-{retrieval_mode}",
+        retrieval_mode=retrieval_mode,
+        golden_set_path=golden_file,
+        configuration={
+            "top_k": top_k,
+            "max_context_tokens": max_context_tokens,
+            "output_token_limit": output_token_limit,
+        },
+        metrics=calculate_evaluation_metrics(golden_set.questions, traces),
+        questions=question_results,
+        trace_paths=trace_paths,
+    )
+    return write_evaluation_artifact(run, artifact_directory)
+
+
+def write_evaluation_artifact(
+    run: EvaluationRun,
+    artifacts_dir: str | Path,
+) -> EvaluationRun:
+    """Write evaluation JSON and Markdown artifacts and return updated paths."""
+
+    artifact_directory = Path(artifacts_dir)
+    json_path = artifact_directory / f"{run.run_id}.json"
+    markdown_path = artifact_directory / f"{run.run_id}.md"
+    run_with_paths = run.model_copy(
+        update={
+            "artifact_paths": EvaluationArtifactPaths(
+                json_path=json_path,
+                markdown_path=markdown_path,
+            )
+        }
+    )
+    write_json_artifact(json_path, run_with_paths)
+    write_markdown_report(markdown_path, run_with_paths)
+    return run_with_paths
+
+
+def write_markdown_report(path: str | Path, run: EvaluationRun) -> Path:
+    """Write a human-readable Markdown evaluation report and return the path."""
+
+    report_path = Path(path)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(render_markdown_report(run), encoding="utf-8")
+    return report_path
+
+
+def compare_evaluation_artifacts(
+    artifact_paths: list[Path],
+    *,
+    markdown: Path | None = None,
+) -> dict[str, Any]:
+    """Compare one or more evaluation artifacts and optionally write Markdown."""
+
+    if not artifact_paths:
+        raise EvaluationRunError("At least one evaluation artifact path is required")
+
+    runs = [read_json_artifact(path, EvaluationRun) for path in artifact_paths]
+    _validate_comparable_runs(runs)
+
+    result = {
+        "schema_version": "1.0",
+        "artifact_paths": [str(path) for path in artifact_paths],
+        "markdown_path": str(markdown) if markdown is not None else None,
+        "metrics": [
+            _comparison_row(metric, runs)
+            for metric in QUALITY_METRICS
+            if metric in REQUIRED_EVALUATION_METRICS
+        ],
+        "token_budget": {
+            metric: _comparison_row(metric, runs)
+            for metric in TOKEN_BUDGET_METRICS
+            if metric in REQUIRED_EVALUATION_METRICS
+        },
+    }
+
+    if markdown is not None:
+        write_comparison_markdown(markdown, result)
+    return result
+
+
+def write_comparison_markdown(path: str | Path, comparison: Mapping[str, Any]) -> Path:
+    """Write a Markdown comparison table and return the path."""
+
+    markdown_path = Path(path)
+    markdown_path.parent.mkdir(parents=True, exist_ok=True)
+    markdown_path.write_text(render_comparison_markdown(comparison), encoding="utf-8")
+    return markdown_path
+
+
+def render_comparison_markdown(comparison: Mapping[str, Any]) -> str:
+    """Render a Markdown comparison report for evaluation artifacts."""
+
+    sections = [
+        "# Evaluation comparison",
+        "## Compared artifacts",
+        _render_compared_artifacts(comparison),
+        "## Metric comparison",
+        _render_comparison_rows(comparison.get("metrics", [])),
+        "## Token-budget diagnostics",
+        _render_comparison_rows(comparison.get("token_budget", {}).values()),
+    ]
+    return "\n\n".join(sections).rstrip() + "\n"
+
+
+def render_markdown_report(run: EvaluationRun) -> str:
+    """Render the Markdown evaluation report for one evaluation run."""
+
+    case_counts: dict[str, int] = {}
+    for result in run.questions:
+        case_counts[result.case_type] = case_counts.get(result.case_type, 0) + 1
+
+    json_path = (
+        run.artifact_paths.json_path
+        if run.artifact_paths is not None
+        else None
+    )
+
+    sections = [
+        f"# Evaluation report: {run.run_id}",
+        "## Run summary",
+        _render_run_summary(run, case_counts, json_path),
+        "## Retrieval mode and configuration",
+        _render_configuration(run),
+        "## Aggregate metrics",
+        _render_aggregate_metrics(run),
+        "## Per-question table",
+        _render_question_table(run.questions),
+        "## Token-budget diagnostics",
+        _render_token_budget_diagnostics(run),
+        "## No-answer cases",
+        _render_no_answer_cases(run.questions),
+        "## Citation validation failures",
+        _render_citation_failures(run.questions),
+        "## Limitations and interpretation notes",
+        _render_limitations(),
+    ]
+    return "\n\n".join(sections).rstrip() + "\n"
+
+
+def _validate_comparable_runs(runs: list[EvaluationRun]) -> None:
+    modes: set[str] = set()
+    for run in runs:
+        if run.retrieval_mode in modes:
+            raise EvaluationRunError(
+                f"Duplicate evaluation artifact for retrieval mode {run.retrieval_mode}"
+            )
+        modes.add(run.retrieval_mode)
+
+
+def _comparison_row(metric: MetricName, runs: list[EvaluationRun]) -> dict[str, Any]:
+    values = {
+        run.retrieval_mode: getattr(run.metrics, metric)
+        for run in runs
+    }
+    return {
+        "metric": metric,
+        "values": values,
+        "best_mode": _best_mode(values, lower_is_better=metric in LOWER_IS_BETTER_METRICS),
+    }
+
+
+def _best_mode(
+    values: Mapping[str, float | None],
+    *,
+    lower_is_better: bool,
+) -> str | None:
+    numeric_values = {
+        mode: value
+        for mode, value in values.items()
+        if isinstance(value, int | float)
+    }
+    if not numeric_values:
+        return None
+
+    best_value = (
+        min(numeric_values.values())
+        if lower_is_better
+        else max(numeric_values.values())
+    )
+    best_modes = [
+        mode
+        for mode, value in numeric_values.items()
+        if value == best_value
+    ]
+    return "tie" if len(best_modes) > 1 else best_modes[0]
+
+
+def _render_compared_artifacts(comparison: Mapping[str, Any]) -> str:
+    artifact_paths = comparison.get("artifact_paths", [])
+    if not artifact_paths:
+        return "No artifacts were compared."
+    lines = [
+        "| Artifact |",
+        "| --- |",
+    ]
+    lines.extend(f"| {_escape_table(path)} |" for path in artifact_paths)
+    return "\n".join(lines)
+
+
+def _render_comparison_rows(rows: Any) -> str:
+    row_list = list(rows)
+    if not row_list:
+        return "No comparable metrics were present."
+
+    modes = sorted(
+        {
+            mode
+            for row in row_list
+            for mode in row.get("values", {})
+        }
+    )
+    header = ["Metric", *modes, "Best mode"]
+    lines = [
+        "| " + " | ".join(header) + " |",
+        "| " + " | ".join("---" for _ in header) + " |",
+    ]
+    for row in row_list:
+        values = row.get("values", {})
+        cells = [
+            row.get("metric", "unknown"),
+            *[_format_metric_value(values.get(mode)) for mode in modes],
+            row.get("best_mode") or "n/a",
+        ]
+        lines.append("| " + " | ".join(_escape_table(cell) for cell in cells) + " |")
+    return "\n".join(lines)
+
+
+def _run_query_for_evaluation(
+    question: Question | str,
+    *,
+    mode: RetrievalMode,
+    top_k: int,
+    max_context_tokens: int,
+    output_token_limit: int,
+    trace_dir: Path | None = None,
+    **_: Any,
+) -> Mapping[str, object]:
+    from rag_quality_lab.rag.pipeline import run_query
+
+    question_text = question.text if isinstance(question, Question) else question
+    return run_query(
+        question_text,
+        mode=mode,
+        top_k=top_k,
+        max_context_tokens=max_context_tokens,
+        output_token_limit=output_token_limit,
+        trace_dir=trace_dir or Path("artifacts/traces") / mode,
+    )
+
+
+def _execute_golden_question(
+    runner: EvaluationQueryRunner,
+    question: Question,
+    *,
+    mode: RetrievalMode,
+    top_k: int,
+    max_context_tokens: int,
+    output_token_limit: int,
+    trace_dir: Path,
+) -> EvaluationQueryResult:
+    try:
+        raw_result = runner(
+            question,
+            mode=mode,
+            top_k=top_k,
+            max_context_tokens=max_context_tokens,
+            output_token_limit=output_token_limit,
+            trace_dir=trace_dir,
+        )
+    except Exception as exc:
+        question_id = question.question_id or question.text
+        raise EvaluationRunError(f"Evaluation query failed for {question_id}: {exc}") from exc
+
+    trace = raw_result.get("trace")
+    trace_path = raw_result.get("trace_path")
+    if not isinstance(trace, QueryTrace):
+        raise EvaluationRunError("Evaluation query runner returned no QueryTrace")
+    if not isinstance(trace_path, Path):
+        raise EvaluationRunError("Evaluation query runner returned no trace Path")
+    return {"trace": trace, "trace_path": trace_path}
+
+
+def _question_result(
+    question: Question,
+    trace: QueryTrace,
+    *,
+    trace_path: Path,
+    ordinal: int,
+) -> EvaluationQuestionResult:
+    return EvaluationQuestionResult(
+        question_id=question.question_id or f"q-{ordinal:03d}",
+        question_text=question.text,
+        case_type=question.case_type,
+        trace_path=trace_path,
+        metrics=_per_question_metrics(question, trace),
+        expected_relevant_sources=list(question.expected_relevant_sources),
+        retrieved_sources=_unique_retrieved_sources(trace),
+        errors=_trace_errors(trace),
+    )
+
+
+def _per_question_metrics(
+    question: Question,
+    trace: QueryTrace,
+) -> dict[MetricName, float | None]:
+    metrics: dict[MetricName, float | None] = {
+        "routing_accuracy": _routing_match(question, trace),
+        "fallback_rate": 1.0 if trace.route_decision.fallback_all_categories else 0.0,
+        "recall_at_k": _retrieval_hit(question, trace),
+        "mrr": _reciprocal_rank(question, trace),
+        "citation_source_match": _citation_match(question, trace),
+        "no_answer_accuracy": (
+            1.0
+            if (question.answerability == "no_answer") == trace.answer_result.is_no_answer
+            else 0.0
+        ),
+        "average_context_tokens": float(trace.context_build.final_estimated_context_tokens),
+        "average_included_chunks": float(len(trace.context_build.included_chunks)),
+    }
+    return metrics
+
+
+def _routing_match(question: Question, trace: QueryTrace) -> float | None:
+    if question.expected_category is None:
+        return None
+    return 1.0 if trace.route_decision.selected_category == question.expected_category else 0.0
+
+
+def _retrieval_hit(question: Question, trace: QueryTrace) -> float | None:
+    if question.answerability != "answerable" or not question.expected_relevant_sources:
+        return None
+    return 1.0 if _first_relevant_rank(question, trace) is not None else 0.0
+
+
+def _reciprocal_rank(question: Question, trace: QueryTrace) -> float | None:
+    if question.answerability != "answerable" or not question.expected_relevant_sources:
+        return None
+    rank = _first_relevant_rank(question, trace)
+    return 0.0 if rank is None else 1.0 / rank
+
+
+def _citation_match(question: Question, trace: QueryTrace) -> float | None:
+    if question.answerability != "answerable" or not question.expected_relevant_sources:
+        return None
+    expected = set(question.expected_relevant_sources)
+    cited_chunk_ids = set(trace.citation_validation.cited_chunk_ids)
+    for chunk in trace.context_build.included_chunks:
+        if chunk.chunk_id not in cited_chunk_ids:
+            continue
+        if chunk.source_slug in expected or chunk.chunk_id in expected:
+            return 1.0
+    return 0.0
+
+
+def _first_relevant_rank(question: Question, trace: QueryTrace) -> int | None:
+    expected = set(question.expected_relevant_sources)
+    for result in trace.retrieval_results:
+        if result.source_slug in expected or result.chunk_id in expected:
+            return result.rank
+    return None
+
+
+def _unique_retrieved_sources(trace: QueryTrace) -> list[str]:
+    sources: list[str] = []
+    seen: set[str] = set()
+    for result in trace.retrieval_results:
+        if result.source_slug in seen:
+            continue
+        seen.add(result.source_slug)
+        sources.append(result.source_slug)
+    return sources
+
+
+def _trace_errors(trace: QueryTrace) -> list[str]:
+    errors: list[str] = []
+    errors.extend(trace.answer_result.validation_errors)
+    errors.extend(trace.citation_validation.validation_errors)
+    errors.extend(f"invalid citation: {citation}" for citation in trace.citation_validation.invalid_citations)
+    return errors
+
+
+def _render_run_summary(
+    run: EvaluationRun,
+    case_counts: Mapping[str, int],
+    json_path: Path | None,
+) -> str:
+    rows = [
+        ("Run ID", run.run_id),
+        ("Created at", run.created_at.isoformat()),
+        ("Retrieval mode", run.retrieval_mode),
+        ("Golden set", run.golden_set_path),
+        ("Question count", len(run.questions)),
+        ("Trace count", len(run.trace_paths)),
+        ("JSON artifact", json_path or "not written"),
+        ("Case mix", _format_mapping(case_counts)),
+    ]
+    return _render_key_value_table(rows)
+
+
+def _render_configuration(run: EvaluationRun) -> str:
+    rows = [("Retrieval mode", run.retrieval_mode)]
+    rows.extend((key, value) for key, value in run.configuration.items())
+    return _render_key_value_table(rows)
+
+
+def _render_aggregate_metrics(run: EvaluationRun) -> str:
+    lines = [
+        "| Metric | Value | Reason |",
+        "| --- | --- | --- |",
+    ]
+    for name, value in run.metrics.model_dump().items():
+        reason = ""
+        if value is None:
+            reason = "Not applicable for this run or no eligible golden questions."
+        lines.append(
+            "| "
+            f"{_escape_table(name)} | "
+            f"{_escape_table(_format_metric_value(value))} | "
+            f"{_escape_table(reason)} |"
+        )
+    return "\n".join(lines)
+
+
+def _render_question_table(questions: list[EvaluationQuestionResult]) -> str:
+    lines = [
+        "| Question | Case type | Trace | Expected sources | Retrieved sources | Errors |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for result in questions:
+        lines.append(
+            "| "
+            f"{_escape_table(result.question_id)} | "
+            f"{_escape_table(result.case_type)} | "
+            f"{_escape_table(result.trace_path)} | "
+            f"{_escape_table(_format_list(result.expected_relevant_sources))} | "
+            f"{_escape_table(_format_list(result.retrieved_sources))} | "
+            f"{_escape_table(_format_list(result.errors))} |"
+        )
+    return "\n".join(lines)
+
+
+def _render_token_budget_diagnostics(run: EvaluationRun) -> str:
+    rows = [
+        ("Configured max context tokens", run.configuration.get("max_context_tokens", "n/a")),
+        ("Configured output token limit", run.configuration.get("output_token_limit", "n/a")),
+        ("Average context tokens", run.metrics.average_context_tokens),
+        ("Average included chunks", run.metrics.average_included_chunks),
+    ]
+    lines = [_render_key_value_table(rows), ""]
+    lines.extend(
+        [
+            "| Question | Context tokens | Included chunks |",
+            "| --- | --- | --- |",
+        ]
+    )
+    for result in run.questions:
+        lines.append(
+            "| "
+            f"{_escape_table(result.question_id)} | "
+            f"{_escape_table(_format_metric_value(result.metrics.get('average_context_tokens')))} | "
+            f"{_escape_table(_format_metric_value(result.metrics.get('average_included_chunks')))} |"
+        )
+    return "\n".join(lines)
+
+
+def _render_no_answer_cases(questions: list[EvaluationQuestionResult]) -> str:
+    no_answer_results = [result for result in questions if result.case_type == "no_answer"]
+    if not no_answer_results:
+        return "No no-answer golden cases were present in this run."
+
+    lines = [
+        "| Question | No-answer accuracy | Retrieved sources | Errors |",
+        "| --- | --- | --- | --- |",
+    ]
+    for result in no_answer_results:
+        lines.append(
+            "| "
+            f"{_escape_table(result.question_id)} | "
+            f"{_escape_table(_format_metric_value(result.metrics.get('no_answer_accuracy')))} | "
+            f"{_escape_table(_format_list(result.retrieved_sources))} | "
+            f"{_escape_table(_format_list(result.errors))} |"
+        )
+    return "\n".join(lines)
+
+
+def _render_citation_failures(questions: list[EvaluationQuestionResult]) -> str:
+    failures = [result for result in questions if result.errors]
+    if not failures:
+        return "None recorded."
+
+    lines = [
+        "| Question | Case type | Failures |",
+        "| --- | --- | --- |",
+    ]
+    for result in failures:
+        lines.append(
+            "| "
+            f"{_escape_table(result.question_id)} | "
+            f"{_escape_table(result.case_type)} | "
+            f"{_escape_table(_format_list(result.errors))} |"
+        )
+    return "\n".join(lines)
+
+
+def _render_limitations() -> str:
+    return "\n".join(
+        [
+            "- Citation validation checks whether cited chunk IDs were included in the selected context; it does not prove claim-level factual correctness.",
+            "- Metrics are lightweight regression signals over the current golden set and should not be interpreted as comprehensive benchmark scores.",
+            "- No-answer accuracy depends on the selected context and generation behavior for this run.",
+            "- Token diagnostics use recorded estimates and model usage when available; provider-side accounting can differ.",
+        ]
+    )
+
+
+def _render_key_value_table(rows: list[tuple[str, object]]) -> str:
+    lines = [
+        "| Field | Value |",
+        "| --- | --- |",
+    ]
+    for key, value in rows:
+        lines.append(f"| {_escape_table(key)} | {_escape_table(value)} |")
+    return "\n".join(lines)
+
+
+def _format_mapping(mapping: Mapping[str, int]) -> str:
+    if not mapping:
+        return "none"
+    return ", ".join(f"{key}: {value}" for key, value in sorted(mapping.items()))
+
+
+def _format_list(values: list[str]) -> str:
+    if not values:
+        return "none"
+    return ", ".join(values)
+
+
+def _format_metric_value(value: object) -> str:
+    if value is None:
+        return "n/a"
+    if isinstance(value, float):
+        return f"{value:.4g}"
+    return str(value)
+
+
+def _escape_table(value: object) -> str:
+    return str(value).replace("\n", " ").replace("|", "\\|")

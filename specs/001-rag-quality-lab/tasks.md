@@ -152,14 +152,14 @@
 
 ### Implementation for User Story 3
 
-- [ ] T050 [US3] Create 12-15 golden questions covering answerable, no-answer, ambiguous boundary, and fallback-routing cases in golden/questions.json
-- [ ] T051 [US3] Implement golden question loading and validation in src/rag_quality_lab/eval/golden.py
-- [ ] T052 [US3] Implement metric calculations for all required evaluation metrics in src/rag_quality_lab/eval/metrics.py
-- [ ] T053 [US3] Implement evaluation run orchestration that executes query traces per golden case and mode in src/rag_quality_lab/eval/reports.py
-- [ ] T054 [US3] Implement machine-readable evaluation artifact writing with required schema fields in src/rag_quality_lab/eval/reports.py
-- [ ] T055 [US3] Implement Markdown evaluation report sections for summary, metrics, per-question diagnostics, token budgets, no-answer cases, failures, and limitations in src/rag_quality_lab/eval/reports.py
-- [ ] T056 [US3] Implement evaluation comparison table generation for one or more artifact paths in src/rag_quality_lab/eval/reports.py
-- [ ] T057 [US3] Wire `raglab eval run` and `raglab eval compare` commands with human and JSON output in src/rag_quality_lab/cli.py
+- [X] T050 [US3] Create 12-15 golden questions covering answerable, no-answer, ambiguous boundary, and fallback-routing cases in golden/questions.json
+- [X] T051 [US3] Implement golden question loading and validation in src/rag_quality_lab/eval/golden.py
+- [X] T052 [US3] Implement metric calculations for all required evaluation metrics in src/rag_quality_lab/eval/metrics.py
+- [X] T053 [US3] Implement evaluation run orchestration that executes query traces per golden case and mode in src/rag_quality_lab/eval/reports.py
+- [X] T054 [US3] Implement machine-readable evaluation artifact writing with required schema fields in src/rag_quality_lab/eval/reports.py
+- [X] T055 [US3] Implement Markdown evaluation report sections for summary, metrics, per-question diagnostics, token budgets, no-answer cases, failures, and limitations in src/rag_quality_lab/eval/reports.py
+- [X] T056 [US3] Implement evaluation comparison table generation for one or more artifact paths in src/rag_quality_lab/eval/reports.py
+- [X] T057 [US3] Wire `raglab eval run` and `raglab eval compare` commands with human and JSON output in src/rag_quality_lab/cli.py
 
 **Checkpoint**: Retrieval strategy evaluation is runnable and produces comparable artifacts.
 
@@ -171,17 +171,14 @@
 
 **Independent Test**: Read the README and confirm it positions the project as a CLI-first RAG quality lab, documents citation validation limits, and keeps MVP exclusions clearly out of scope.
 
-### Tests for User Story 4
-
-- [ ] T058 [P] [US4] Add documentation contract test that checks README coverage for purpose, scope, corpus, categories, workflow, metrics, limitations, and exclusions in tests/contract/test_readme_contract.py
 
 ### Implementation for User Story 4
 
-- [ ] T059 [US4] Write README project overview, architecture, and CLI-first workflow in README.md
-- [ ] T060 [US4] Document corpus source, license rationale, pinned provenance, and five-category design in README.md
-- [ ] T061 [US4] Document retrieval modes, routing fallback behavior, context budgeting, trace contents, and evaluation metrics in README.md
-- [ ] T062 [US4] Document citation validation limitations, no-answer behavior, MVP exclusions, and future extensions in README.md
-- [ ] T063 [US4] Add sample command outputs and sample artifact paths from quickstart validation in README.md
+- [X] T059 [US4] Write README project overview, architecture, and CLI-first workflow in README.md
+- [X] T060 [US4] Document corpus source, license rationale, pinned provenance, and five-category design in README.md
+- [X] T061 [US4] Document retrieval modes, routing fallback behavior, context budgeting, trace contents, and evaluation metrics in README.md
+- [X] T062 [US4] Document citation validation limitations, no-answer behavior, MVP exclusions, and future extensions in README.md
+- [X] T063 [US4] Add sample command outputs and sample artifact paths from quickstart validation in README.md
 
 **Checkpoint**: Documentation frames the project accurately as a focused portfolio artifact.
 

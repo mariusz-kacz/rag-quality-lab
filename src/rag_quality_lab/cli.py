@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
-from typing import Annotated, TypeVar
+from typing import Annotated, Any, TypeVar
 
 import typer
 
@@ -21,6 +21,7 @@ from rag_quality_lab.config import (
 )
 from rag_quality_lab.corpus.ingest import IngestionError, ingest_corpus
 from rag_quality_lab.corpus.inspect import CorpusInspectionError, inspect_corpus
+from rag_quality_lab.eval.reports import EvaluationRunError
 from rag_quality_lab.providers import ProviderError
 from rag_quality_lab.rag.traces import load_trace
 from rag_quality_lab.retrieval.modes import RetrievalModeError, validate_retrieval_mode
@@ -28,6 +29,7 @@ from rag_quality_lab.schemas import (
     ArtifactIOError,
     ArtifactSchemaVersionError,
     CorpusSummaryArtifact,
+    EvaluationRun,
     IngestionSummaryArtifact,
     QueryTrace,
 )
@@ -215,6 +217,68 @@ def trace_inspect(
     _echo_trace_summary(trace)
 
 
+@eval_app.command("run")
+def eval_run(
+    mode: Annotated[
+        str,
+        typer.Option("--mode", help="Retrieval mode to evaluate."),
+    ] = "baseline-vector",
+    golden: Annotated[
+        Path,
+        typer.Option("--golden", help="Path to the golden question set."),
+    ] = Path("golden/questions.json"),
+    artifacts_dir: Annotated[
+        Path,
+        typer.Option("--artifacts-dir", help="Directory for evaluation artifacts."),
+    ] = RuntimeConfig().eval_artifacts_dir,
+    top_k: TopKOption = RuntimeConfig().top_k,
+    max_context_tokens: MaxContextTokensOption = RuntimeConfig().max_context_tokens,
+    output_token_limit: OutputTokenLimitOption = RuntimeConfig().output_token_limit,
+    json_output: JsonOutputOption = False,
+) -> None:
+    """Run the golden question set for one retrieval mode."""
+
+    evaluation = run_cli_command(
+        lambda: run_eval(
+            mode=validate_retrieval_mode(mode),
+            golden=golden,
+            artifacts_dir=artifacts_dir,
+            top_k=top_k,
+            max_context_tokens=max_context_tokens,
+            output_token_limit=output_token_limit,
+        ),
+        json_output=json_output,
+    )
+    if json_output:
+        _echo_eval_run_json(evaluation)
+        return
+    _echo_eval_run(evaluation)
+
+
+@eval_app.command("compare")
+def eval_compare(
+    artifact_paths: Annotated[
+        list[Path],
+        typer.Argument(help="Evaluation JSON artifact path(s) to compare."),
+    ],
+    markdown: Annotated[
+        Path | None,
+        typer.Option("--markdown", help="Write a Markdown comparison report."),
+    ] = None,
+    json_output: JsonOutputOption = False,
+) -> None:
+    """Compare previously written evaluation artifacts."""
+
+    comparison = run_cli_command(
+        lambda: compare_eval(artifact_paths=artifact_paths, markdown=markdown),
+        json_output=json_output,
+    )
+    if json_output:
+        typer.echo(json.dumps(comparison, indent=2))
+        return
+    _echo_eval_comparison(comparison)
+
+
 def build_shared_options(json_output: bool = False) -> SharedOptions:
     """Create shared command options from Typer parameters."""
 
@@ -334,7 +398,7 @@ def exit_code_for_error(error: Exception) -> ExitCode:
         return ExitCode.CONFIGURATION
     if isinstance(error, (ArtifactSchemaVersionError, ArtifactIOError)):
         return ExitCode.ARTIFACT
-    if isinstance(error, RetrievalModeError):
+    if isinstance(error, (RetrievalModeError, EvaluationRunError)):
         return ExitCode.ERROR
     if isinstance(error, ProviderError):
         return ExitCode.PROVIDER
@@ -354,6 +418,8 @@ def stage_for_error(error: Exception) -> str:
         return "configuration"
     if isinstance(error, ArtifactIOError):
         return "artifact"
+    if isinstance(error, EvaluationRunError):
+        return "evaluation"
     if isinstance(error, RetrievalModeError):
         return "retrieval mode"
     if isinstance(error, ProviderError):
@@ -382,6 +448,41 @@ def run_query(
         output_token_limit=output_token_limit,
         trace_dir=trace_dir,
     )
+
+
+def run_eval(
+    *,
+    mode: str,
+    golden: Path,
+    artifacts_dir: Path,
+    top_k: int,
+    max_context_tokens: int,
+    output_token_limit: int,
+) -> EvaluationRun:
+    """Lazy wrapper for evaluation runs, kept patchable in CLI tests."""
+
+    from rag_quality_lab.eval.reports import run_evaluation
+
+    return run_evaluation(
+        mode=mode,
+        golden_path=golden,
+        artifacts_dir=artifacts_dir,
+        top_k=top_k,
+        max_context_tokens=max_context_tokens,
+        output_token_limit=output_token_limit,
+    )
+
+
+def compare_eval(
+    *,
+    artifact_paths: list[Path],
+    markdown: Path | None,
+) -> dict[str, Any]:
+    """Lazy wrapper for evaluation comparison, kept patchable in CLI tests."""
+
+    from rag_quality_lab.eval.reports import compare_evaluation_artifacts
+
+    return compare_evaluation_artifacts(artifact_paths, markdown=markdown)
 
 
 def _echo_json_artifact(
@@ -443,6 +544,66 @@ def _echo_trace_summary(trace: QueryTrace) -> None:
     typer.echo(f"Model usage: {total_tokens} tokens")
 
 
+def _echo_eval_run_json(run: EvaluationRun) -> None:
+    paths = run.artifact_paths
+    payload = {
+        "schema_version": run.schema_version,
+        "run_id": run.run_id,
+        "retrieval_mode": run.retrieval_mode,
+        "golden_set_path": str(run.golden_set_path),
+        "question_count": len(run.questions),
+        "metrics": run.metrics.model_dump(mode="json"),
+        "json_path": str(paths.json_path) if paths is not None and paths.json_path else None,
+        "markdown_path": (
+            str(paths.markdown_path)
+            if paths is not None and paths.markdown_path
+            else None
+        ),
+        "trace_paths": [str(path) for path in run.trace_paths],
+    }
+    typer.echo(json.dumps(payload, indent=2))
+
+
+def _echo_eval_run(run: EvaluationRun) -> None:
+    typer.echo(f"Evaluation: {run.run_id}")
+    typer.echo(f"Mode: {run.retrieval_mode}")
+    typer.echo(f"Questions: {len(run.questions)}")
+    for metric, value in run.metrics.model_dump().items():
+        typer.echo(f"{metric}: {_format_metric_value(value)}")
+
+    paths = run.artifact_paths
+    if paths is not None and paths.json_path is not None:
+        typer.echo(f"JSON: {paths.json_path}")
+    if paths is not None and paths.markdown_path is not None:
+        typer.echo(f"Markdown: {paths.markdown_path}")
+
+
+def _echo_eval_comparison(comparison: dict[str, Any]) -> None:
+    typer.echo("Evaluation comparison")
+    artifact_paths = comparison.get("artifact_paths", [])
+    typer.echo(f"Artifacts: {len(artifact_paths)}")
+
+    for row in comparison.get("metrics", []):
+        typer.echo(_format_comparison_row(row))
+    for metric, row in comparison.get("token_budget", {}).items():
+        if "metric" not in row:
+            row = {"metric": metric, **row}
+        typer.echo(_format_comparison_row(row))
+
+    markdown_path = comparison.get("markdown_path")
+    if markdown_path is not None:
+        typer.echo(f"Markdown: {markdown_path}")
+
+
+def _format_comparison_row(row: dict[str, Any]) -> str:
+    values = row.get("values", {})
+    formatted_values = ", ".join(
+        f"{mode}={_format_metric_value(value)}"
+        for mode, value in values.items()
+    )
+    return f"{row.get('metric')}: {formatted_values}, best={row.get('best_mode')}"
+
+
 def _route_label(trace: QueryTrace) -> str:
     if trace.route_decision.fallback_all_categories:
         return "all categories"
@@ -482,6 +643,12 @@ def _echo_ingestion_summary(summary: IngestionSummaryArtifact) -> None:
             typer.echo(f"  - {error}")
     else:
         typer.echo("Validation errors: none")
+
+
+def _format_metric_value(value: object) -> str:
+    if value is None:
+        return "n/a"
+    return str(value)
 
 
 if __name__ == "__main__":
