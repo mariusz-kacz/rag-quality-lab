@@ -140,10 +140,12 @@ class QdrantQueryRetriever:
         collection: str,
         embedding_provider: QueryEmbeddingProvider,
         store: QdrantStore,
+        category_score_margin: float = 0.0,
     ) -> None:
         self.collection = collection
         self.embedding_provider = embedding_provider
         self.store = store
+        self.category_score_margin = category_score_margin
 
     def retrieve(
         self,
@@ -159,6 +161,10 @@ class QdrantQueryRetriever:
             mode=mode,
             top_k=top_k,
             selected_category=route_decision.selected_category,
+            selected_categories=_selected_routed_categories(
+                route_decision,
+                margin=self.category_score_margin,
+            ),
             fallback_all_categories=route_decision.fallback_all_categories,
         )
 
@@ -191,9 +197,29 @@ def _resolve_components(
             collection=config.qdrant.collection,
             embedding_provider=embedding_provider,
             store=QdrantStore(config.qdrant),
+            category_score_margin=config.runtime.router_category_margin,
         ),
         chat_model=chat_model,
     )
+
+
+def _selected_routed_categories(
+    route_decision: RouteDecision,
+    *,
+    margin: float,
+) -> list[str] | None:
+    if route_decision.fallback_all_categories or route_decision.selected_category is None:
+        return None
+    cutoff = max(0.0, route_decision.confidence - margin)
+    categories = [
+        category
+        for category, score in route_decision.category_scores.items()
+        if score >= cutoff
+    ]
+    return [
+        route_decision.selected_category,
+        *(category for category in categories if category != route_decision.selected_category),
+    ]
 
 
 def _context_chunks_from_results(

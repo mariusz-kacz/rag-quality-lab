@@ -137,6 +137,7 @@ class RuntimeConfig(BaseModel):
     max_context_tokens: int = Field(default=2500, ge=1)
     output_token_limit: int = Field(default=500, ge=1)
     router_confidence_threshold: float = Field(default=0.18, ge=0.0, le=1.0)
+    router_category_margin: float = Field(default=0.15, ge=0.0, le=1.0)
     trace_dir: Path = Path("artifacts/traces")
     eval_artifacts_dir: Path = Path("artifacts/eval")
     schema_version: str = Field(default="1.0", min_length=1)
@@ -229,6 +230,7 @@ def load_runtime_config(
         "max_context_tokens": _read(env, "RAGLAB_MAX_CONTEXT_TOKENS"),
         "output_token_limit": _read(env, "RAGLAB_OUTPUT_TOKEN_LIMIT"),
         "router_confidence_threshold": _read(env, "RAGLAB_ROUTER_CONFIDENCE_THRESHOLD"),
+        "router_category_margin": _read(env, "RAGLAB_ROUTER_CATEGORY_MARGIN"),
         "trace_dir": _read(env, "RAGLAB_TRACE_DIR"),
         "eval_artifacts_dir": _read(env, "RAGLAB_EVAL_ARTIFACTS_DIR"),
         "schema_version": _read(env, "RAGLAB_SCHEMA_VERSION"),

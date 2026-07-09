@@ -92,6 +92,7 @@ def test_runtime_config_uses_environment_and_explicit_overrides() -> None:
             "RAGLAB_MAX_CONTEXT_TOKENS": "3000",
             "RAGLAB_OUTPUT_TOKEN_LIMIT": "700",
             "RAGLAB_ROUTER_CONFIDENCE_THRESHOLD": "0.42",
+            "RAGLAB_ROUTER_CATEGORY_MARGIN": "0.12",
             "RAGLAB_TRACE_DIR": "custom/traces",
             "RAGLAB_EVAL_ARTIFACTS_DIR": "custom/eval",
             "RAGLAB_SCHEMA_VERSION": "1.1",
@@ -103,6 +104,7 @@ def test_runtime_config_uses_environment_and_explicit_overrides() -> None:
     assert runtime.max_context_tokens == 3000
     assert runtime.output_token_limit == 700
     assert runtime.router_confidence_threshold == 0.42
+    assert runtime.router_category_margin == 0.12
     assert runtime.trace_dir == Path("custom/traces")
     assert runtime.eval_artifacts_dir == Path("custom/eval")
     assert runtime.schema_version == "1.1"

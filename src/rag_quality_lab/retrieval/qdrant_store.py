@@ -126,6 +126,7 @@ class QdrantStore:
         mode: str,
         top_k: int,
         selected_category: str | None = None,
+        selected_categories: Sequence[str] | None = None,
         fallback_all_categories: bool = False,
     ) -> list[RetrievalResult]:
         result: list[RetrievalResult] = []
@@ -138,7 +139,11 @@ class QdrantStore:
         query_filter = None
         if validated_mode == "routed-vector":
             if not fallback_all_categories:
-                if selected_category is None:
+                categories = _selected_categories(
+                    selected_category=selected_category,
+                    selected_categories=selected_categories,
+                )
+                if not categories:
                     raise ValueError(
                         "selected_category is required for routed-vector when fallback_all_categories is false"
                     )
@@ -147,7 +152,7 @@ class QdrantStore:
                     must=[
                         models.FieldCondition(
                             key="category",
-                            match=models.MatchValue(value=selected_category),
+                            match=_category_match(categories),
                         )
                     ]
                 )
@@ -187,6 +192,30 @@ def _clean_collection(collection: str) -> str:
     if not clean:
         raise QdrantStoreError("collection must be non-empty")
     return clean
+
+
+def _selected_categories(
+    *,
+    selected_category: str | None,
+    selected_categories: Sequence[str] | None,
+) -> list[str]:
+    raw_categories = (
+        list(selected_categories)
+        if selected_categories is not None
+        else ([selected_category] if selected_category is not None else [])
+    )
+    categories: list[str] = []
+    for category in raw_categories:
+        clean = category.strip()
+        if clean and clean not in categories:
+            categories.append(clean)
+    return categories
+
+
+def _category_match(categories: Sequence[str]) -> Any:
+    if len(categories) == 1:
+        return models.MatchValue(value=categories[0])
+    return models.MatchAny(any=list(categories))
 
 
 def _retrieval_result_from_point(

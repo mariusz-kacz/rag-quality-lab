@@ -4,7 +4,9 @@ from typing import Any
 
 import pytest
 
+from rag_quality_lab.rag.pipeline import QdrantQueryRetriever
 from rag_quality_lab.retrieval.qdrant_store import QdrantStore, QdrantStoreError
+from rag_quality_lab.schemas import RouteDecision
 
 
 pytestmark = pytest.mark.unit
@@ -135,6 +137,78 @@ def test_routed_vector_search_applies_selected_category_filter() -> None:
     assert query_filter.must[0].match.value == "RAG and context handling"
 
 
+def test_routed_vector_search_applies_multi_category_filter() -> None:
+    client = FakeSearchClient(points=[])
+    store = QdrantStore(client=client)
+
+    store.search_chunks(
+        collection="rag_quality_lab",
+        query_vector=[0.1, 0.2, 0.3],
+        mode="routed-vector",
+        top_k=3,
+        selected_categories=[
+            "RAG evaluation and quality",
+            "RAG and context handling",
+            "LLM settings, cost, and tokens",
+        ],
+    )
+
+    query_filter = client.search_calls[0]["query_filter"]
+    assert query_filter is not None
+    assert query_filter.must[0].key == "category"
+    assert query_filter.must[0].match.any == [
+        "RAG evaluation and quality",
+        "RAG and context handling",
+        "LLM settings, cost, and tokens",
+    ]
+
+
+def test_qdrant_query_retriever_passes_categories_within_margin() -> None:
+    store = RecordingStore()
+    retriever = QdrantQueryRetriever(
+        collection="rag_quality_lab",
+        embedding_provider=FakeEmbeddingProvider(),
+        store=store,
+        category_score_margin=0.08,
+    )
+    route_decision = RouteDecision(
+        selected_category="RAG evaluation and quality",
+        fallback_all_categories=False,
+        confidence=0.46,
+        threshold=0.18,
+        category_scores={
+            "prompting techniques": 0.27,
+            "RAG and context handling": 0.40,
+            "RAG evaluation and quality": 0.46,
+            "LLM security and risks": 0.26,
+            "LLM settings, cost, and tokens": 0.39,
+        },
+    )
+
+    retriever.retrieve(
+        question="How can limiting retrieved context reduce latency?",
+        mode="routed-vector",
+        top_k=6,
+        route_decision=route_decision,
+    )
+
+    assert store.calls == [
+        {
+            "collection": "rag_quality_lab",
+            "query_vector": [0.1, 0.2, 0.3],
+            "mode": "routed-vector",
+            "top_k": 6,
+            "selected_category": "RAG evaluation and quality",
+            "selected_categories": [
+                "RAG evaluation and quality",
+                "RAG and context handling",
+                "LLM settings, cost, and tokens",
+            ],
+            "fallback_all_categories": False,
+        }
+    ]
+
+
 def test_routed_vector_search_requires_selected_category_without_fallback() -> None:
     store = QdrantStore(client=FakeSearchClient(points=[]))
 
@@ -226,6 +300,40 @@ class FakeSearchClient:
             }
         )
         return type("FakeQueryResponse", (), {"points": self.points[:limit]})()
+
+
+class FakeEmbeddingProvider:
+    def embed_text(self, text: str) -> list[float]:
+        return [0.1, 0.2, 0.3]
+
+
+class RecordingStore:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def search_chunks(
+        self,
+        *,
+        collection: str,
+        query_vector: list[float],
+        mode: str,
+        top_k: int,
+        selected_category: str | None = None,
+        selected_categories: list[str] | None = None,
+        fallback_all_categories: bool = False,
+    ) -> list[Any]:
+        self.calls.append(
+            {
+                "collection": collection,
+                "query_vector": query_vector,
+                "mode": mode,
+                "top_k": top_k,
+                "selected_category": selected_category,
+                "selected_categories": selected_categories,
+                "fallback_all_categories": fallback_all_categories,
+            }
+        )
+        return []
 
 
 def fake_point(*, score: float, payload: dict[str, Any]) -> Any:
