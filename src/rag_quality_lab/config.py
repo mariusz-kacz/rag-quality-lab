@@ -135,7 +135,7 @@ class RuntimeConfig(BaseModel):
 
     top_k: int = Field(default=6, ge=1)
     max_context_tokens: int = Field(default=2500, ge=1)
-    output_token_limit: int = Field(default=2500, ge=1)
+    output_token_limit: int = Field(default=500, ge=1)
     router_confidence_threshold: float = Field(default=0.18, ge=0.0, le=1.0)
     trace_dir: Path = Path("artifacts/traces")
     eval_artifacts_dir: Path = Path("artifacts/eval")
