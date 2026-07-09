@@ -144,11 +144,11 @@
 
 ### Tests for User Story 3
 
-- [ ] T045 [P] [US3] Add contract tests for `raglab eval run` JSON output, metric names, artifact paths, and unsupported optional modes in tests/contract/test_cli_eval_run.py
-- [ ] T046 [P] [US3] Add contract tests for `raglab eval compare` JSON and Markdown output in tests/contract/test_cli_eval_compare.py
-- [ ] T047 [P] [US3] Add unit tests for golden question validation, required case types, answerability labels, and expected relevant sources in tests/unit/test_golden.py
-- [ ] T048 [P] [US3] Add unit tests for routing accuracy, fallback rate, recall@k, MRR, citation source match, no-answer accuracy, and token averages in tests/unit/test_metrics.py
-- [ ] T049 [P] [US3] Add integration tests for baseline-vector and routed-vector evaluation artifact generation in tests/integration/test_eval_workflow.py
+- [X] T045 [P] [US3] Add contract tests for `raglab eval run` JSON output, metric names, artifact paths, and unsupported optional modes in tests/contract/test_cli_eval_run.py
+- [X] T046 [P] [US3] Add contract tests for `raglab eval compare` JSON and Markdown output in tests/contract/test_cli_eval_compare.py
+- [X] T047 [P] [US3] Add unit tests for golden question validation, required case types, answerability labels, and expected relevant sources in tests/unit/test_golden.py
+- [X] T048 [P] [US3] Add unit tests for routing accuracy, fallback rate, recall@k, MRR, citation source match, no-answer accuracy, and token averages in tests/unit/test_metrics.py
+- [X] T049 [P] [US3] Add integration tests for baseline-vector and routed-vector evaluation artifact generation in tests/integration/test_eval_workflow.py
 
 ### Implementation for User Story 3
 
