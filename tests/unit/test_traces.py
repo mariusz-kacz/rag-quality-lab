@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from rag_quality_lab.rag.traces import load_trace, new_trace_id, save_trace, trace_path_for
+from rag_quality_lab.rag.traces import (
+    load_trace,
+    new_trace_id,
+    save_trace,
+    trace_path_for,
+)
 from rag_quality_lab.schemas import ArtifactIOError, QueryTrace
 
 

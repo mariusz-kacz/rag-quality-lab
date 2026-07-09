@@ -2,24 +2,26 @@ from types import SimpleNamespace
 
 import pytest
 
-from rag_quality_lab.config import AzureOpenAIConfig, MissingSettingError
+from rag_quality_lab.config import (
+    FoundryOpenAIConfig,
+    MissingSettingError,
+)
 from rag_quality_lab.providers import (
-    AzureOpenAIEmbeddingProvider,
+    FoundryOpenAIEmbeddingProvider,
     ProviderError,
 )
 
 
-def azure_config(
+def foundry_config(
     *,
-    embedding_deployment: str | None = "text-embedding-3-small",
-    chat_deployment: str | None = "gpt-4o-mini",
-) -> AzureOpenAIConfig:
-    return AzureOpenAIConfig(
-        endpoint="https://example.openai.azure.com",
+    embedding_model: str | None = "text-embedding-3-small",
+    chat_model: str | None = "gpt-4o-mini",
+) -> FoundryOpenAIConfig:
+    return FoundryOpenAIConfig(
+        base_url="https://example.services.ai.azure.com/api/projects/proj/openai/v1",
         api_key="test-key",
-        api_version="2024-02-15-preview",
-        embedding_deployment=embedding_deployment,
-        chat_deployment=chat_deployment,
+        embedding_model=embedding_model,
+        chat_model=chat_model,
     )
 
 
@@ -44,9 +46,19 @@ class FakeClient:
         self.embeddings = FakeEmbeddingsResource()
 
 
-def test_embedding_provider_uses_configured_deployment_and_returns_vectors() -> None:
+class FailingEmbeddingsResource:
+    def create(self, *, model: str, input: list[str]) -> SimpleNamespace:
+        raise RuntimeError("not found")
+
+
+class FailingClient:
+    def __init__(self) -> None:
+        self.embeddings = FailingEmbeddingsResource()
+
+
+def test_foundry_embedding_provider_uses_configured_model() -> None:
     client = FakeClient()
-    provider = AzureOpenAIEmbeddingProvider(azure_config(), client=client)
+    provider = FoundryOpenAIEmbeddingProvider(foundry_config(), client=client)
 
     result = provider.embed_texts([" first ", "second"])
 
@@ -61,16 +73,25 @@ def test_embedding_provider_uses_configured_deployment_and_returns_vectors() -> 
 
 
 def test_embedding_provider_rejects_empty_text() -> None:
-    provider = AzureOpenAIEmbeddingProvider(azure_config(), client=FakeClient())
+    provider = FoundryOpenAIEmbeddingProvider(foundry_config(), client=FakeClient())
 
     with pytest.raises(ProviderError, match="cannot be empty"):
         provider.embed_text(" ")
 
 
-def test_embedding_provider_requires_embedding_deployment() -> None:
-    with pytest.raises(MissingSettingError, match="embeddings"):
-        AzureOpenAIEmbeddingProvider(
-            azure_config(embedding_deployment=None),
+def test_foundry_embedding_provider_wraps_sdk_errors() -> None:
+    provider = FoundryOpenAIEmbeddingProvider(
+        foundry_config(),
+        client=FailingClient(),
+    )
+
+    with pytest.raises(ProviderError, match="Foundry model"):
+        provider.embed_text("hello")
+
+
+def test_foundry_embedding_provider_requires_embedding_model() -> None:
+    with pytest.raises(MissingSettingError, match="Foundry embeddings"):
+        FoundryOpenAIEmbeddingProvider(
+            foundry_config(embedding_model=None),
             client=FakeClient(),
         )
-

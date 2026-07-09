@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from rag_quality_lab.config import AzureOpenAIConfig
-from rag_quality_lab.providers import AzureOpenAIEmbeddingProvider
+from rag_quality_lab.config import FoundryOpenAIConfig
+from rag_quality_lab.providers import FoundryOpenAIEmbeddingProvider
 from rag_quality_lab.routing.categories import REQUIRED_CATEGORIES
 from rag_quality_lab.schemas import (
     REQUIRED_KNOWLEDGE_CATEGORIES,
@@ -260,13 +260,12 @@ def temporary_trace_file(tmp_path: Path, sample_query_trace: QueryTrace) -> Path
 
 
 @pytest.fixture
-def azure_test_config() -> AzureOpenAIConfig:
-    return AzureOpenAIConfig(
-        endpoint="https://example.openai.azure.com",
+def foundry_test_config() -> FoundryOpenAIConfig:
+    return FoundryOpenAIConfig(
+        base_url="https://example.services.ai.azure.com/api/projects/proj/openai/v1",
         api_key="test-key",
-        api_version="2024-02-15-preview",
-        embedding_deployment="embedding-test",
-        chat_deployment="chat-test",
+        embedding_model="embedding-test",
+        chat_model="chat-test",
     )
 
 
@@ -286,22 +285,25 @@ class FakeEmbeddingsResource:
         )
 
 
-class FakeAzureOpenAIClient:
+class FakeFoundryOpenAIClient:
     def __init__(self) -> None:
         self.embeddings = FakeEmbeddingsResource()
 
 
 @pytest.fixture
-def fake_azure_client() -> FakeAzureOpenAIClient:
-    return FakeAzureOpenAIClient()
+def fake_foundry_client() -> FakeFoundryOpenAIClient:
+    return FakeFoundryOpenAIClient()
 
 
 @pytest.fixture
 def fake_embedding_provider(
-    azure_test_config: AzureOpenAIConfig,
-    fake_azure_client: FakeAzureOpenAIClient,
-) -> AzureOpenAIEmbeddingProvider:
-    return AzureOpenAIEmbeddingProvider(azure_test_config, client=fake_azure_client)
+    foundry_test_config: FoundryOpenAIConfig,
+    fake_foundry_client: FakeFoundryOpenAIClient,
+) -> FoundryOpenAIEmbeddingProvider:
+    return FoundryOpenAIEmbeddingProvider(
+        foundry_test_config,
+        client=fake_foundry_client,
+    )
 
 
 def _fake_embedding(text: str, index: int) -> list[float]:

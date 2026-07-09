@@ -17,13 +17,10 @@ from pydantic import (
 )
 
 
-BASE_AZURE_ENV_VARS = (
-    "AZURE_OPENAI_ENDPOINT",
-    "AZURE_OPENAI_API_KEY",
-    "AZURE_OPENAI_API_VERSION",
-)
-EMBEDDING_ENV_VAR = "AZURE_OPENAI_EMBEDDING_DEPLOYMENT"
-CHAT_ENV_VAR = "AZURE_OPENAI_CHAT_DEPLOYMENT"
+FOUNDRY_BASE_URL_ENV_VAR = "FOUNDRY_OPENAI_BASE_URL"
+FOUNDRY_API_KEY_ENV_VAR = "FOUNDRY_API_KEY"
+FOUNDRY_EMBEDDING_MODEL_ENV_VAR = "FOUNDRY_EMBEDDING_MODEL"
+FOUNDRY_CHAT_MODEL_ENV_VAR = "FOUNDRY_CHAT_MODEL"
 QDRANT_REQUIRED_ENV_VARS = (
     "QDRANT_URL",
     "RAGLAB_QDRANT_COLLECTION",
@@ -53,28 +50,30 @@ class InvalidConfigurationError(ConfigurationError):
     """Raised when configuration values are present but fail validation."""
 
 
-class AzureOpenAIConfig(BaseModel):
-    """Azure OpenAI settings shared by embedding and chat providers."""
+class FoundryOpenAIConfig(BaseModel):
+    """OpenAI-compatible Azure AI Foundry project endpoint settings."""
 
     model_config = ConfigDict(frozen=True)
 
-    endpoint: str = Field(min_length=1)
-    api_key: SecretStr
-    api_version: str = Field(min_length=1)
-    embedding_deployment: str | None = None
-    chat_deployment: str | None = None
+    base_url: str = Field(min_length=1)
+    api_key: SecretStr | None = None
+    embedding_model: str | None = None
+    chat_model: str | None = None
 
-    @field_validator("endpoint")
+    @field_validator("base_url")
     @classmethod
-    def validate_endpoint(cls, value: str) -> str:
-        stripped = value.strip().rstrip("/")
-        if not stripped.startswith(("https://", "http://")):
+    def normalize_base_url(cls, value: str) -> str:
+        clean = value.strip().rstrip("/")
+        if not clean.startswith(("https://", "http://")):
             raise ValueError(
-                "AZURE_OPENAI_ENDPOINT must start with http:// or https://"
+                "FOUNDRY_OPENAI_BASE_URL must start with http:// or https://"
             )
-        return stripped
+        for suffix in ("/responses", "/chat/completions", "/embeddings"):
+            if clean.endswith(suffix):
+                clean = clean[: -len(suffix)]
+        return clean
 
-    @field_validator("api_version", "embedding_deployment", "chat_deployment")
+    @field_validator("embedding_model", "chat_model")
     @classmethod
     def strip_optional_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -83,18 +82,20 @@ class AzureOpenAIConfig(BaseModel):
         return stripped or None
 
     def require_embedding(self) -> None:
-        """Validate that embedding configuration is available for ingestion/routing."""
+        """Validate that embedding configuration is available."""
 
-        if not self.embedding_deployment:
+        if not self.embedding_model:
             raise MissingSettingError(
-                [EMBEDDING_ENV_VAR], stage="Azure OpenAI embeddings"
+                [FOUNDRY_EMBEDDING_MODEL_ENV_VAR], stage="Foundry embeddings"
             )
 
     def require_chat(self) -> None:
-        """Validate that chat configuration is available for answer generation."""
+        """Validate that chat configuration is available."""
 
-        if not self.chat_deployment:
-            raise MissingSettingError([CHAT_ENV_VAR], stage="Azure OpenAI chat")
+        if not self.chat_model:
+            raise MissingSettingError(
+                [FOUNDRY_CHAT_MODEL_ENV_VAR], stage="Foundry chat"
+            )
 
 
 class QdrantConfig(BaseModel):
@@ -139,7 +140,7 @@ class AppConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    azure_openai: AzureOpenAIConfig
+    foundry_openai: FoundryOpenAIConfig
     qdrant: QdrantConfig
     runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
 
@@ -147,38 +148,42 @@ class AppConfig(BaseModel):
 def load_app_config(environ: Mapping[str, str] | None = None) -> AppConfig:
     """Load complete application configuration from environment variables."""
 
-    azure_openai = load_azure_openai_config(environ)
+    foundry_openai = load_foundry_openai_config(environ)
     qdrant = load_qdrant_config(environ)
     runtime = load_runtime_config(environ)
-    return AppConfig(azure_openai=azure_openai, qdrant=qdrant, runtime=runtime)
+    return AppConfig(
+        foundry_openai=foundry_openai,
+        qdrant=qdrant,
+        runtime=runtime,
+    )
 
 
-def load_azure_openai_config(
+def load_foundry_openai_config(
     environ: Mapping[str, str] | None = None,
     *,
     require_embedding: bool = True,
     require_chat: bool = True,
-) -> AzureOpenAIConfig:
-    """Load Azure OpenAI configuration, optionally requiring only one deployment type."""
+) -> FoundryOpenAIConfig:
+    """Load Foundry project OpenAI-compatible endpoint configuration."""
 
     env = _environment(environ)
-    required = list(BASE_AZURE_ENV_VARS)
+    required = [FOUNDRY_BASE_URL_ENV_VAR]
     if require_embedding:
-        required.append(EMBEDDING_ENV_VAR)
+        required.append(FOUNDRY_EMBEDDING_MODEL_ENV_VAR)
     if require_chat:
-        required.append(CHAT_ENV_VAR)
-    _raise_for_missing(env, required, stage="Azure OpenAI")
+        required.append(FOUNDRY_CHAT_MODEL_ENV_VAR)
+    _raise_for_missing(env, required, stage="Foundry")
 
+    api_key = _read(env, FOUNDRY_API_KEY_ENV_VAR)
     config = _build_model(
-        AzureOpenAIConfig,
+        FoundryOpenAIConfig,
         {
-            "endpoint": _read(env, "AZURE_OPENAI_ENDPOINT"),
-            "api_key": _read(env, "AZURE_OPENAI_API_KEY"),
-            "api_version": _read(env, "AZURE_OPENAI_API_VERSION"),
-            "embedding_deployment": _read(env, EMBEDDING_ENV_VAR),
-            "chat_deployment": _read(env, CHAT_ENV_VAR),
+            "base_url": _read(env, FOUNDRY_BASE_URL_ENV_VAR),
+            "api_key": SecretStr(api_key) if api_key else None,
+            "embedding_model": _read(env, FOUNDRY_EMBEDDING_MODEL_ENV_VAR),
+            "chat_model": _read(env, FOUNDRY_CHAT_MODEL_ENV_VAR),
         },
-        stage="Azure OpenAI",
+        stage="Foundry",
     )
     if require_embedding:
         config.require_embedding()

@@ -1,4 +1,4 @@
-"""Azure OpenAI provider boundary for embeddings."""
+"""Foundry OpenAI-compatible provider boundary for embeddings."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from rag_quality_lab.config import AzureOpenAIConfig
+from rag_quality_lab.config import FoundryOpenAIConfig
 
 
 class ProviderError(Exception):
@@ -37,40 +37,37 @@ class EmbeddingsResource(Protocol):
     def create(self, *, model: str, input: list[str]) -> Any: ...
 
 
-class AzureOpenAIClient(Protocol):
+class OpenAICompatibleClient(Protocol):
     embeddings: EmbeddingsResource
 
 
-def create_azure_openai_client(config: AzureOpenAIConfig) -> AzureOpenAIClient:
-    """Create the Azure OpenAI SDK client from validated configuration."""
+def create_foundry_openai_client(config: FoundryOpenAIConfig) -> OpenAICompatibleClient:
+    """Create an OpenAI-compatible client for a Foundry project endpoint."""
 
-    from openai import AzureOpenAI
+    from openai import OpenAI
 
-    return AzureOpenAI(
-        azure_endpoint=config.endpoint,
-        api_key=config.api_key.get_secret_value(),
-        api_version=config.api_version,
+    return OpenAI(
+        base_url=config.base_url,
+        api_key=_foundry_api_key(config),
     )
 
 
-class AzureOpenAIEmbeddingProvider:
-    """Embedding provider wrapper backed by an Azure OpenAI deployment."""
+class FoundryOpenAIEmbeddingProvider:
+    """Embedding provider backed by a Foundry project OpenAI v1 endpoint."""
 
     def __init__(
         self,
-        config: AzureOpenAIConfig,
+        config: FoundryOpenAIConfig,
         *,
-        client: AzureOpenAIClient | None = None,
+        client: OpenAICompatibleClient | None = None,
     ) -> None:
         config.require_embedding()
-        self._deployment = _required(
-            config.embedding_deployment, "embedding deployment"
-        )
-        self._client = client or create_azure_openai_client(config)
+        self._model = _required(config.embedding_model, "embedding model")
+        self._client = client or create_foundry_openai_client(config)
 
     @property
     def deployment(self) -> str:
-        return self._deployment
+        return self._model
 
     def embed_text(self, text: str) -> list[float]:
         """Embed one text and return the vector."""
@@ -78,15 +75,20 @@ class AzureOpenAIEmbeddingProvider:
         return self.embed_texts([text]).vectors[0]
 
     def embed_texts(self, texts: Sequence[str]) -> EmbeddingResponse:
-        """Embed one or more texts with the configured Azure OpenAI deployment."""
+        """Embed one or more texts with the configured Foundry model."""
 
         clean_texts = [_clean_text(text) for text in texts]
         if not clean_texts:
             raise ProviderError("Embedding input must include at least one text")
 
-        response = self._client.embeddings.create(
-            model=self._deployment, input=clean_texts
-        )
+        try:
+            response = self._client.embeddings.create(
+                model=self._model, input=clean_texts
+            )
+        except Exception as exc:
+            raise ProviderError(
+                f"Embedding request failed for Foundry model {self._model!r}: {exc}"
+            ) from exc
         vectors = [
             _coerce_embedding_vector(item) for item in _get(response, "data", [])
         ]
@@ -96,15 +98,30 @@ class AzureOpenAIEmbeddingProvider:
             )
         return EmbeddingResponse(
             vectors=vectors,
-            model=_get(response, "model"),
+            model=_get(response, "model") or self._model,
             usage=_extract_usage(_get(response, "usage")),
         )
 
 
 def _required(value: str | None, label: str) -> str:
     if not value:
-        raise ProviderError(f"Azure OpenAI {label} is required")
+        raise ProviderError(f"Model provider {label} is required")
     return value
+
+
+def _foundry_api_key(config: FoundryOpenAIConfig) -> str:
+    if config.api_key is not None:
+        return config.api_key.get_secret_value()
+    try:
+        from azure.identity import DefaultAzureCredential
+    except ImportError as exc:
+        raise ProviderError(
+            "Foundry Entra ID authentication requires azure-identity. "
+            "Install dependencies with `uv sync`."
+        ) from exc
+
+    credential = DefaultAzureCredential()
+    return credential.get_token("https://cognitiveservices.azure.com/.default").token
 
 
 def _clean_text(text: str) -> str:

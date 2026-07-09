@@ -116,8 +116,8 @@ def test_corpus_ingest_failure_reports_missing_embedding_configuration(
         *, collection: str, recreate: bool
     ) -> IngestionSummaryArtifact:
         raise MissingSettingError(
-            ["AZURE_OPENAI_EMBEDDING_DEPLOYMENT"],
-            stage="Azure OpenAI embeddings",
+            ["FOUNDRY_EMBEDDING_MODEL"],
+            stage="Foundry embeddings",
         )
 
     monkeypatch.setattr(cli, "ingest_corpus", fake_ingest_corpus, raising=False)
@@ -125,5 +125,5 @@ def test_corpus_ingest_failure_reports_missing_embedding_configuration(
     result = runner.invoke(app, ["corpus", "ingest", "--collection", "rag_quality_lab"])
 
     assert result.exit_code != 0
-    assert "Error [Azure OpenAI embeddings]" in result.stderr
-    assert "AZURE_OPENAI_EMBEDDING_DEPLOYMENT" in result.stderr
+    assert "Error [Foundry embeddings]" in result.stderr
+    assert "FOUNDRY_EMBEDDING_MODEL" in result.stderr

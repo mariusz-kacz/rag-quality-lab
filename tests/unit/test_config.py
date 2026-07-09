@@ -5,18 +5,19 @@ import pytest
 from rag_quality_lab.config import (
     MissingSettingError,
     load_app_config,
-    load_azure_openai_config,
+    load_foundry_openai_config,
     load_runtime_config,
 )
 
 
 def valid_environment() -> dict[str, str]:
     return {
-        "AZURE_OPENAI_ENDPOINT": "https://example.openai.azure.com/",
-        "AZURE_OPENAI_API_KEY": "test-key",
-        "AZURE_OPENAI_API_VERSION": "2024-02-15-preview",
-        "AZURE_OPENAI_EMBEDDING_DEPLOYMENT": "text-embedding-3-small",
-        "AZURE_OPENAI_CHAT_DEPLOYMENT": "gpt-4o-mini",
+        "FOUNDRY_OPENAI_BASE_URL": (
+            "https://example.services.ai.azure.com/api/projects/proj/openai/v1"
+        ),
+        "FOUNDRY_API_KEY": "test-key",
+        "FOUNDRY_EMBEDDING_MODEL": "text-embedding-3-small",
+        "FOUNDRY_CHAT_MODEL": "gpt-4o-mini",
         "QDRANT_URL": "http://localhost:6333",
         "QDRANT_API_KEY": "",
         "RAGLAB_QDRANT_COLLECTION": "rag_quality_lab",
@@ -26,39 +27,60 @@ def valid_environment() -> dict[str, str]:
 def test_load_app_config_reads_required_environment() -> None:
     config = load_app_config(valid_environment())
 
-    assert config.azure_openai.endpoint == "https://example.openai.azure.com"
-    assert config.azure_openai.api_key.get_secret_value() == "test-key"
-    assert config.azure_openai.embedding_deployment == "text-embedding-3-small"
-    assert config.azure_openai.chat_deployment == "gpt-4o-mini"
+    assert config.foundry_openai.base_url == (
+        "https://example.services.ai.azure.com/api/projects/proj/openai/v1"
+    )
+    assert config.foundry_openai.api_key is not None
+    assert config.foundry_openai.api_key.get_secret_value() == "test-key"
+    assert config.foundry_openai.embedding_model == "text-embedding-3-small"
+    assert config.foundry_openai.chat_model == "gpt-4o-mini"
     assert config.qdrant.url == "http://localhost:6333"
     assert config.qdrant.api_key is None
     assert config.qdrant.collection == "rag_quality_lab"
     assert config.runtime.top_k == 6
 
 
+def test_load_app_config_normalizes_foundry_responses_url() -> None:
+    env = valid_environment()
+    env["FOUNDRY_OPENAI_BASE_URL"] = (
+        "https://example.services.ai.azure.com/api/projects/proj/openai/v1/responses"
+    )
+
+    config = load_app_config(env)
+
+    assert config.foundry_openai.base_url == (
+        "https://example.services.ai.azure.com/api/projects/proj/openai/v1"
+    )
+
+
 def test_missing_required_settings_names_all_missing_values() -> None:
     env = valid_environment()
-    env["AZURE_OPENAI_API_KEY"] = " "
-    del env["AZURE_OPENAI_CHAT_DEPLOYMENT"]
+    env["FOUNDRY_OPENAI_BASE_URL"] = " "
+    del env["FOUNDRY_CHAT_MODEL"]
 
     with pytest.raises(MissingSettingError) as exc_info:
         load_app_config(env)
 
     assert exc_info.value.missing_settings == (
-        "AZURE_OPENAI_API_KEY",
-        "AZURE_OPENAI_CHAT_DEPLOYMENT",
+        "FOUNDRY_OPENAI_BASE_URL",
+        "FOUNDRY_CHAT_MODEL",
     )
-    assert "Azure OpenAI" in str(exc_info.value)
+    assert "Foundry" in str(exc_info.value)
 
 
-def test_embedding_only_config_does_not_require_chat_deployment() -> None:
-    env = valid_environment()
-    del env["AZURE_OPENAI_CHAT_DEPLOYMENT"]
+def test_foundry_embedding_only_config_does_not_require_chat_model() -> None:
+    config = load_foundry_openai_config(
+        {
+            "FOUNDRY_OPENAI_BASE_URL": (
+                "https://example.services.ai.azure.com/api/projects/proj/openai/v1"
+            ),
+            "FOUNDRY_EMBEDDING_MODEL": "text-embedding-3-small",
+        },
+        require_chat=False,
+    )
 
-    config = load_azure_openai_config(env, require_chat=False)
-
-    assert config.embedding_deployment == "text-embedding-3-small"
-    assert config.chat_deployment is None
+    assert config.embedding_model == "text-embedding-3-small"
+    assert config.chat_model is None
 
 
 def test_runtime_config_uses_environment_and_explicit_overrides() -> None:

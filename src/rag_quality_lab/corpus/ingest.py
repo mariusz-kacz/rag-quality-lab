@@ -12,7 +12,7 @@ from pydantic import SecretStr
 from rag_quality_lab.config import (
     MissingSettingError,
     QdrantConfig,
-    load_azure_openai_config,
+    load_foundry_openai_config,
     load_qdrant_config,
 )
 from rag_quality_lab.corpus.chunking import DEFAULT_MAX_CHUNK_TOKENS, chunk_source_page
@@ -23,7 +23,10 @@ from rag_quality_lab.corpus.manifest import (
     load_categories,
     load_manifest,
 )
-from rag_quality_lab.providers import AzureOpenAIEmbeddingProvider, EmbeddingResponse
+from rag_quality_lab.providers import (
+    EmbeddingResponse,
+    FoundryOpenAIEmbeddingProvider,
+)
 from rag_quality_lab.retrieval.qdrant_store import QdrantStore
 from rag_quality_lab.schemas import Chunk, IngestionSummaryArtifact
 
@@ -189,9 +192,9 @@ def _validate_vectors(
     return normalized_vectors
 
 
-def _create_embedding_provider() -> AzureOpenAIEmbeddingProvider:
-    config = load_azure_openai_config(require_embedding=True, require_chat=False)
-    return AzureOpenAIEmbeddingProvider(config)
+def _create_embedding_provider() -> EmbeddingProvider:
+    config = load_foundry_openai_config(require_embedding=True, require_chat=False)
+    return FoundryOpenAIEmbeddingProvider(config)
 
 
 def _create_qdrant_store(*, collection: str) -> QdrantStore:

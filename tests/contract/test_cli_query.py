@@ -145,6 +145,11 @@ def test_query_human_output_reports_trace_path(
     assert result.exit_code == 0, result.stderr
     assert "RAG grounds answers in selected context." in result.stdout
     assert "Citations: source-02:overview:0001" in result.stdout
+    assert "Mode: routed-vector" in result.stdout
+    assert "Route: RAG and context handling" in result.stdout
+    assert "Retrieved chunks: 1" in result.stdout
+    assert "Included chunks: 1" in result.stdout
+    assert "Excluded chunks: 0" in result.stdout
     assert f"Trace: {trace_path}" in result.stdout
 
 

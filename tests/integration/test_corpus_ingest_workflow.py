@@ -15,7 +15,7 @@ pytestmark = pytest.mark.integration
 def test_clean_corpus_inspection_and_fake_qdrant_ingestion_workflow(
     temporary_corpus: dict[str, Path],
     fake_embedding_provider: Any,
-    fake_azure_client: Any,
+    fake_foundry_client: Any,
 ) -> None:
     inspect_corpus, ingest_corpus = _corpus_workflow_api()
     project_root = temporary_corpus["root"].parent
@@ -64,8 +64,8 @@ def test_clean_corpus_inspection_and_fake_qdrant_ingestion_workflow(
     assert first_chunk.provenance.pinned_version == "dair-ai-prompt-guide@abc123"
     assert first_chunk.provenance.local_ref == "corpus/sources/source-01.md"
 
-    assert fake_azure_client.embeddings.calls
-    embedded_texts = fake_azure_client.embeddings.calls[0]["input"]
+    assert fake_foundry_client.embeddings.calls
+    embedded_texts = fake_foundry_client.embeddings.calls[0]["input"]
     assert embedded_texts == [chunk.content for chunk in ingestion.ingested_chunks]
 
     assert qdrant_store.operations == ["ensure_collection", "upsert_chunks"]

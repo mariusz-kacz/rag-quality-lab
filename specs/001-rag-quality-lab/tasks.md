@@ -121,16 +121,16 @@
 
 ### Implementation for User Story 2
 
-- [ ] T035 [US2] Implement deterministic category embedding router with threshold fallback in src/rag_quality_lab/routing/embedding_router.py
-- [ ] T036 [US2] Implement retrieval mode interface and supported mode validation in src/rag_quality_lab/retrieval/modes.py
-- [ ] T037 [US2] Implement baseline-vector and routed-vector search over Qdrant with route-aware filters in src/rag_quality_lab/retrieval/qdrant_store.py
+- [X] T035 [US2] Implement deterministic category embedding router with threshold fallback in src/rag_quality_lab/routing/embedding_router.py
+- [X] T036 [US2] Implement retrieval mode interface and supported mode validation in src/rag_quality_lab/retrieval/modes.py
+- [X] T037 [US2] Implement baseline-vector and routed-vector search over Qdrant with route-aware filters in src/rag_quality_lab/retrieval/qdrant_store.py
 - [X] T038 [US2] Keep hybrid lexical/vector retrieval out of the MVP runtime contract and document it only as a future extension
-- [ ] T039 [US2] Implement bounded context builder with included chunks, excluded chunks, estimated token totals, and output token limits in src/rag_quality_lab/rag/context.py
-- [ ] T040 [US2] Implement context-constrained LangChain answer generation and explicit no-answer prompt handling in src/rag_quality_lab/rag/generation.py
-- [ ] T041 [US2] Implement citation extraction and validation against selected context chunks in src/rag_quality_lab/rag/citations.py
-- [ ] T042 [US2] Implement query trace creation, schema validation, persistence, and trace loading in src/rag_quality_lab/rag/traces.py
-- [ ] T043 [US2] Implement end-to-end query pipeline sequence question -> route -> retrieve -> context -> generate/no-answer -> validate -> trace in src/rag_quality_lab/rag/pipeline.py
-- [ ] T044 [US2] Wire `raglab query` and `raglab trace inspect` commands with human and JSON output in src/rag_quality_lab/cli.py
+- [X] T039 [US2] Implement bounded context builder with included chunks, excluded chunks, estimated token totals, and output token limits in src/rag_quality_lab/rag/context.py
+- [X] T040 [US2] Implement context-constrained LangChain answer generation and explicit no-answer prompt handling in src/rag_quality_lab/rag/generation.py
+- [X] T041 [US2] Implement citation extraction and validation against selected context chunks in src/rag_quality_lab/rag/citations.py
+- [X] T042 [US2] Implement query trace creation, schema validation, persistence, and trace loading in src/rag_quality_lab/rag/traces.py
+- [X] T043 [US2] Implement end-to-end query pipeline sequence question -> route -> retrieve -> context -> generate/no-answer -> validate -> trace in src/rag_quality_lab/rag/pipeline.py
+- [X] T044 [US2] Wire `raglab query` and `raglab trace inspect` commands with human and JSON output in src/rag_quality_lab/cli.py
 
 **Checkpoint**: User Stories 1 and 2 both work, with a traceable single-query RAG workflow.
 

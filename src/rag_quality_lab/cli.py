@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum
@@ -93,6 +94,25 @@ eval_app = typer.Typer(
 app.add_typer(corpus_app, name="corpus")
 app.add_typer(trace_app, name="trace")
 app.add_typer(eval_app, name="eval")
+
+
+@app.callback()
+def main(
+    env_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--env-file",
+            help=(
+                "Load local environment variables from a dotenv-style file. "
+                "Existing process environment variables take precedence."
+            ),
+        ),
+    ] = None,
+) -> None:
+    """Apply global CLI options before running a command."""
+
+    if env_file is not None:
+        load_env_file(env_file)
 
 
 @app.command()
@@ -199,6 +219,64 @@ def build_shared_options(json_output: bool = False) -> SharedOptions:
     """Create shared command options from Typer parameters."""
 
     return SharedOptions(json_output=json_output)
+
+
+def load_env_file(path: str | Path) -> dict[str, str]:
+    """Load missing process environment variables from a dotenv-style file."""
+
+    env_path = Path(path)
+    if not env_path.exists():
+        raise typer.BadParameter(f"env file not found: {env_path}")
+    if not env_path.is_file():
+        raise typer.BadParameter(f"env file is not a file: {env_path}")
+
+    loaded: dict[str, str] = {}
+    try:
+        lines = env_path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise typer.BadParameter(f"env file could not be read: {env_path}") from exc
+
+    for line_number, raw_line in enumerate(lines, start=1):
+        parsed = _parse_env_line(raw_line, line_number=line_number, path=env_path)
+        if parsed is None:
+            continue
+        name, value = parsed
+        if os.environ.get(name) is None:
+            os.environ[name] = value
+            loaded[name] = value
+    return loaded
+
+
+def _parse_env_line(
+    raw_line: str,
+    *,
+    line_number: int,
+    path: Path,
+) -> tuple[str, str] | None:
+    line = raw_line.strip()
+    if not line or line.startswith("#"):
+        return None
+    if line.startswith("export "):
+        line = line.removeprefix("export ").strip()
+    if "=" not in line:
+        raise typer.BadParameter(
+            f"invalid env file line {line_number} in {path}: expected NAME=VALUE"
+        )
+
+    name, value = line.split("=", 1)
+    clean_name = name.strip()
+    if not clean_name:
+        raise typer.BadParameter(
+            f"invalid env file line {line_number} in {path}: variable name is empty"
+        )
+    return clean_name, _clean_env_value(value)
+
+
+def _clean_env_value(value: str) -> str:
+    clean = value.strip()
+    if len(clean) >= 2 and clean[0] == clean[-1] and clean[0] in {'"', "'"}:
+        return clean[1:-1]
+    return clean
 
 
 def run_cli_command(
@@ -340,15 +418,15 @@ def _echo_query_result(trace: QueryTrace, trace_path: Path) -> None:
     citations = ", ".join(trace.answer_result.citations) or "none"
     typer.echo(f"Citations: {citations}")
     typer.echo(f"Validation: {trace.answer_result.validation_status}")
+    typer.echo(f"Mode: {trace.retrieval_mode}")
+    typer.echo(f"Route: {_route_label(trace)}")
+    typer.echo(f"Retrieved chunks: {len(trace.retrieval_results)}")
+    typer.echo(f"Included chunks: {len(trace.context_build.included_chunks)}")
+    typer.echo(f"Excluded chunks: {len(trace.context_build.excluded_chunks)}")
     typer.echo(f"Trace: {trace_path}")
 
 
 def _echo_trace_summary(trace: QueryTrace) -> None:
-    route = (
-        "all categories"
-        if trace.route_decision.fallback_all_categories
-        else trace.route_decision.selected_category
-    )
     total_tokens = (
         trace.model_usage.total_tokens
         if trace.model_usage is not None and trace.model_usage.total_tokens is not None
@@ -357,12 +435,18 @@ def _echo_trace_summary(trace: QueryTrace) -> None:
     typer.echo(f"Trace: {trace.trace_id}")
     typer.echo(f"Question: {trace.question.text}")
     typer.echo(f"Mode: {trace.retrieval_mode}")
-    typer.echo(f"Route: {route}")
+    typer.echo(f"Route: {_route_label(trace)}")
     typer.echo(f"Retrieved chunks: {len(trace.retrieval_results)}")
     typer.echo(f"Included chunks: {len(trace.context_build.included_chunks)}")
     typer.echo(f"Excluded chunks: {len(trace.context_build.excluded_chunks)}")
     typer.echo(f"Citation validation: {trace.citation_validation.status}")
     typer.echo(f"Model usage: {total_tokens} tokens")
+
+
+def _route_label(trace: QueryTrace) -> str:
+    if trace.route_decision.fallback_all_categories:
+        return "all categories"
+    return str(trace.route_decision.selected_category)
 
 
 def _echo_corpus_summary(summary: CorpusSummaryArtifact) -> None:
