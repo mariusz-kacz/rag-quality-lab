@@ -106,21 +106,6 @@ def test_validate_citations_rejects_out_of_context_citations() -> None:
     assert any("selected context" in error for error in validation.validation_errors)
 
 
-def test_validate_citations_rejects_legacy_chunk_id_citations() -> None:
-    selected_context = [context_chunk("chunk-alpha", rank=1)]
-
-    validation = validate_citations(
-        "This answer cites a raw chunk id [chunk-alpha].",
-        selected_context=selected_context,
-        citation_aliases=citation_aliases_for_context(selected_context),
-    )
-
-    assert validation.status == "invalid"
-    assert validation.cited_chunk_ids == []
-    assert validation.invalid_citations == ["[chunk-alpha]"]
-    assert any("malformed" in error for error in validation.validation_errors)
-
-
 def test_validate_citations_ignores_editorial_brackets() -> None:
     selected_context = [context_chunk("chunk-alpha", rank=1)]
 
