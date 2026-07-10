@@ -133,7 +133,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - **Retrieval Result**: A ranked set of candidate chunks returned by a retrieval mode. Key attributes include retrieval mode, rank, score, chunk ID, source slug, and category.
 - **Context Build**: The bounded context selected for answer generation. Key attributes include included chunks, excluded chunks, exclusion reasons, estimated chunk tokens, final estimated context size, and output-token limit.
 - **Answer Result**: The generated cited answer or explicit no-answer result. Key attributes include answer text, citation list, no-answer flag, and validation status.
-- **Query Trace**: The persisted record of a full query run. Key attributes include question, route decision, retrieval results, context build, answer result, citation validation outcome, token-budget diagnostics, and model usage when available.
+- **Query Trace**: The persisted record of a full query run. Key attributes include question, an optional routed-mode route decision, retrieval results, context build, answer result, citation validation outcome, token-budget diagnostics, and model usage when available. Baseline traces record routing as not applicable.
 - **Evaluation Run**: A comparison run for a retrieval mode over the golden set. Key attributes include retrieval mode, per-question outcomes, aggregate metrics, token diagnostics, artifact paths, and run timestamp.
 
 ## Success Criteria *(mandatory)*
@@ -143,7 +143,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - **SC-001**: A reviewer can complete a clean corpus inspection and ingestion walkthrough in 10 minutes or less using documented CLI commands.
 - **SC-002**: The curated MVP corpus stays within the documented 15-30 selected-source-page target, and 100% of selected source pages have complete provenance, license, category, URL, pinned version or commit, and local reference metadata.
 - **SC-003**: 100% of ingested chunks include stable chunk ID, source slug, category, section metadata, content hash, estimated token count, and source provenance.
-- **SC-004**: For every single-query run, the persisted trace records route decision, retrieval results, context inclusion and exclusion decisions, citation validation outcome, and token-budget diagnostics.
+- **SC-004**: For every single-query run, the persisted trace records a routed-mode route decision or an explicit not-applicable value for baseline mode, plus retrieval results, context inclusion and exclusion decisions, citation validation outcome, and token-budget diagnostics.
 - **SC-005**: On the golden question set, evaluation artifacts report all required metrics for each implemented retrieval mode with no manual post-processing.
 - **SC-006**: Between 12 and 20 golden-set cases are included, covering answerable, no-answer, ambiguous category-boundary, multi-category-routing, and genuine fallback-routing scenarios.
 - **SC-007**: 100% of answer outputs are either cited answers whose citations validate against selected context or explicit no-answer responses.

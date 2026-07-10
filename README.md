@@ -198,8 +198,8 @@ local corpus snapshots
   -> Qdrant cosine-vector collection
 
 question
-  -> deterministic embedding-based category routing
-  -> baseline or category-filtered Qdrant retrieval
+  -> baseline: global Qdrant retrieval (no category routing)
+  -> routed: embedding-based category routing -> category-filtered Qdrant retrieval
   -> bounded context assembly
   -> Foundry Responses API answer generation
   -> citation validation and persisted trace
@@ -212,9 +212,9 @@ golden questions
 
 Provider integration is project-owned. The OpenAI SDK handles Foundry embeddings and Responses calls; `langchain-core` supplies prompt and message types used by generation. The project does not use the older Azure-specific environment variables or a `langchain-openai` Azure chat-model client.
 
-Broad questions may search several categories through category-margin routing. Global fallback is reserved for cases where no category reaches the minimum similarity threshold. Concretely, a top score below the confidence threshold removes category filtering and searches the full collection; otherwise, retrieval searches the winning category and every category within the configured margin. Context assembly admits retrieved chunks in rank order while they fit the token budget. Generation must cite selected chunks, and citation validation checks that every returned citation maps to included context. This is a context-membership check, not a claim-level factuality judge.
+Baseline retrieval bypasses the category router and performs one global vector search, so its trace records `route_decision: null`. Routed retrieval computes category scores; broad questions may search several categories through category-margin routing, while a top score below the confidence threshold removes category filtering and searches the full collection. Context assembly admits retrieved chunks in rank order while they fit the token budget. Generation must cite selected chunks, and citation validation checks that every returned citation maps to included context. This is a context-membership check, not a claim-level factuality judge.
 
-Evaluation reports identify the top category, all searched categories, and whether global fallback occurred for every question. Aggregate metrics include routing accuracy, fallback count and rate, average searched categories, hit rate at k (`hit_rate_at_k`), MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A question counts as a hit when at least one expected source or expected chunk appears in the top-k retrieved results. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
+For routed runs, evaluation reports identify the top category, all searched categories, and whether global fallback occurred. Baseline reports mark routing as not applicable while retaining the five-category global retrieval scope for comparison. Aggregate metrics include routing accuracy, fallback count and rate, average searched categories, hit rate at k (`hit_rate_at_k`), MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A question counts as a hit when at least one expected source or expected chunk appears in the top-k retrieved results. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
 
 The router uses heuristic embedding-similarity thresholds. Similarity scores are not calibrated probabilities, and the configured threshold and category margin are specific to the current embedding model, category descriptions, and benchmark.
 

@@ -185,7 +185,7 @@ class QueryTrace(SchemaModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     question: Question
     retrieval_mode: RetrievalMode
-    route_decision: RouteDecision
+    route_decision: RouteDecision | None = None
     retrieval_results: list[RetrievalResult] = Field(default_factory=list)
     context_build: SelectedContext
     answer_result: AnswerResult

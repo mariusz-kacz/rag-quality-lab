@@ -77,7 +77,7 @@ Run one question through the deterministic RAG workflow.
 
 - answer or no-answer result
 - citations
-- route decision
+- route decision for routed mode or an explicit not-applicable value for baseline mode
 - included and excluded chunk counts
 - trace path
 

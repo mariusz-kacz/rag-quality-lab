@@ -157,7 +157,10 @@ def _assert_evaluation_artifacts(
         for question in payload["questions"]
         if question["case_type"] == "fallback_routing"
     ]
-    assert all(question["global_fallback_occurred"] for question in fallback_results)
+    assert all(
+        question["global_fallback_occurred"] is (mode == "routed-vector")
+        for question in fallback_results
+    )
     assert all(
         set(question["searched_categories"]) == set(REQUIRED_KNOWLEDGE_CATEGORIES)
         for question in fallback_results
@@ -165,6 +168,13 @@ def _assert_evaluation_artifacts(
 
     trace_paths = [Path(path) for path in payload["trace_paths"]]
     assert all(path.exists() for path in trace_paths)
+    serialized_traces = [
+        json.loads(path.read_text(encoding="utf-8")) for path in trace_paths
+    ]
+    if mode == "baseline-vector":
+        assert all(trace["route_decision"] is None for trace in serialized_traces)
+    else:
+        assert all(trace["route_decision"] is not None for trace in serialized_traces)
     assert {
         Path(question["trace_path"]) for question in payload["questions"]
     } == set(trace_paths)
@@ -239,7 +249,7 @@ def _trace_for_question(
     chunk_id = f"{source_slug}:overview:0001"
     category = question.expected_category or "RAG and context handling"
     is_no_answer = question.answerability == "no_answer"
-    route_decision = _route_decision(question)
+    route_decision = None if mode == "baseline-vector" else _route_decision(question)
     retrieval_results = [
         RetrievalResult(
             mode=mode,

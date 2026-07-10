@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from rag_quality_lab.schemas import EvaluationMetrics, QueryTrace, Question, RetrievalMode
+from rag_quality_lab.schemas.categories import REQUIRED_KNOWLEDGE_CATEGORIES
 
 
 def calculate_evaluation_metrics(
@@ -44,7 +45,7 @@ def calculate_routing_accuracy(
     scored_pairs = [
         (question, trace)
         for question, trace in _paired_questions_and_traces(questions, traces)
-        if question.expected_category is not None
+        if question.expected_category is not None and trace.route_decision is not None
     ]
     if not scored_pairs:
         return None
@@ -72,7 +73,12 @@ def calculate_fallback_count(traces: Sequence[QueryTrace]) -> int | None:
 
     if not traces:
         return None
-    return sum(1 for trace in traces if trace.route_decision.fallback_all_categories)
+    return sum(
+        1
+        for trace in traces
+        if trace.route_decision is not None
+        and trace.route_decision.fallback_all_categories
+    )
 
 
 def calculate_average_searched_categories(
@@ -106,8 +112,12 @@ def searched_categories(
 ) -> list[str]:
     """Return the effective category scope used for retrieval."""
 
+    if retrieval_mode == "baseline-vector":
+        return list(REQUIRED_KNOWLEDGE_CATEGORIES)
     route = trace.route_decision
-    if retrieval_mode == "baseline-vector" or route.fallback_all_categories:
+    if route is None:
+        return []
+    if route.fallback_all_categories:
         return list(route.category_scores)
     if route.selected_category is None:
         return []

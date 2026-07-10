@@ -49,7 +49,7 @@ class QueryRetriever(Protocol):
         question: str,
         mode: str,
         top_k: int,
-        route_decision: RouteDecision,
+        route_decision: RouteDecision | None,
     ) -> list[RetrievalResult]: ...
 
 
@@ -81,12 +81,17 @@ def run_query(
         raise ValueError("top_k must be >= 1")
 
     components = _resolve_components(
+        retrieval_mode=retrieval_mode,
         router=router,
         retriever=retriever,
         chat_model=chat_model,
     )
     question_record = Question(text=clean_question)
-    route_decision = components.router.route(clean_question)
+    route_decision = (
+        components.router.route(clean_question)
+        if retrieval_mode == "routed-vector" and components.router is not None
+        else None
+    )
     retrieval_results = components.retriever.retrieve(
         question=clean_question,
         mode=retrieval_mode,
@@ -126,7 +131,7 @@ def run_query(
 
 @dataclass(frozen=True)
 class _PipelineComponents:
-    router: QueryRouter
+    router: QueryRouter | None
     retriever: QueryRetriever
     chat_model: ChatModel
 
@@ -153,29 +158,43 @@ class QdrantQueryRetriever:
         question: str,
         mode: str,
         top_k: int,
-        route_decision: RouteDecision,
+        route_decision: RouteDecision | None,
     ) -> list[RetrievalResult]:
+        selected_category = None
+        selected_categories = None
+        fallback_all_categories = False
+        if mode == "routed-vector":
+            if route_decision is None:
+                raise ValueError("route_decision is required for routed-vector retrieval")
+            selected_category = route_decision.selected_category
+            selected_categories = _selected_routed_categories(
+                route_decision,
+                margin=self.category_score_margin,
+            )
+            fallback_all_categories = route_decision.fallback_all_categories
         return self.store.search_chunks(
             collection=self.collection,
             query_vector=self.embedding_provider.embed_text(question),
             mode=mode,
             top_k=top_k,
-            selected_category=route_decision.selected_category,
-            selected_categories=_selected_routed_categories(
-                route_decision,
-                margin=self.category_score_margin,
-            ),
-            fallback_all_categories=route_decision.fallback_all_categories,
+            selected_category=selected_category,
+            selected_categories=selected_categories,
+            fallback_all_categories=fallback_all_categories,
         )
 
 
 def _resolve_components(
     *,
+    retrieval_mode: str,
     router: QueryRouter | None,
     retriever: QueryRetriever | None,
     chat_model: ChatModel | None,
 ) -> _PipelineComponents:
-    if router is not None and retriever is not None and chat_model is not None:
+    if (
+        retriever is not None
+        and chat_model is not None
+        and (retrieval_mode == "baseline-vector" or router is not None)
+    ):
         return _PipelineComponents(
             router=router,
             retriever=retriever,
@@ -187,10 +206,14 @@ def _resolve_components(
     chat_model = chat_model or create_foundry_chat_model(config.foundry_openai)
 
     return _PipelineComponents(
-        router=router
-        or EmbeddingCategoryRouter(
-            embedding_provider,
-            threshold=config.runtime.router_confidence_threshold,
+        router=(
+            router
+            or EmbeddingCategoryRouter(
+                embedding_provider,
+                threshold=config.runtime.router_confidence_threshold,
+            )
+            if retrieval_mode == "routed-vector"
+            else None
         ),
         retriever=retriever
         or QdrantQueryRetriever(

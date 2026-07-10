@@ -498,13 +498,21 @@ def _question_result(
             retrieval_mode=retrieval_mode,
         ),
         expected_category=question.expected_category,
-        selected_category=trace.route_decision.selected_category,
+        selected_category=(
+            trace.route_decision.selected_category
+            if trace.route_decision is not None
+            else None
+        ),
         searched_categories=searched_categories(
             trace,
             retrieval_mode=retrieval_mode,
             category_margin=router_category_margin,
         ),
-        global_fallback_occurred=trace.route_decision.fallback_all_categories,
+        global_fallback_occurred=(
+            trace.route_decision.fallback_all_categories
+            if trace.route_decision is not None
+            else False
+        ),
         answer_text=trace.answer_result.answer_text,
         is_no_answer=trace.answer_result.is_no_answer,
         expected_relevant_sources=list(question.expected_relevant_sources),
@@ -525,7 +533,12 @@ def _per_question_metrics(
             if retrieval_mode == "baseline-vector"
             else _routing_match(question, trace)
         ),
-        "fallback_rate": 1.0 if trace.route_decision.fallback_all_categories else 0.0,
+        "fallback_rate": (
+            1.0
+            if trace.route_decision is not None
+            and trace.route_decision.fallback_all_categories
+            else 0.0
+        ),
         "hit_rate_at_k": _retrieval_hit(question, trace),
         "mrr": _reciprocal_rank(question, trace),
         "citation_source_match": _citation_match(question, trace),
@@ -541,7 +554,7 @@ def _per_question_metrics(
 
 
 def _routing_match(question: Question, trace: QueryTrace) -> float | None:
-    if question.expected_category is None:
+    if question.expected_category is None or trace.route_decision is None:
         return None
     return 1.0 if trace.route_decision.selected_category == question.expected_category else 0.0
 

@@ -11,7 +11,6 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 **Required Top-Level Fields**
 
 - `schema_version`
-- `benchmark_scope`
 - `trace_id`
 - `created_at`
 - `question`
@@ -25,8 +24,8 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 
 **Required Diagnostics**
 
-- category scores for all five categories
-- router threshold and fallback flag
+- `route_decision` is `null` for baseline retrieval, which bypasses the router
+- routed traces include category scores for all five categories, the router threshold, and the fallback flag
 - ranked retrieved chunks
 - estimated tokens per retrieved chunk
 - included chunks
@@ -44,6 +43,7 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 **Required Top-Level Fields**
 
 - `schema_version`
+- `benchmark_scope`
 - `run_id`
 - `created_at`
 - `retrieval_mode`

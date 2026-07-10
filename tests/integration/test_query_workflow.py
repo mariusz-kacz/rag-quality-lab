@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,55 @@ from rag_quality_lab.schemas import RetrievalResult, RouteDecision
 
 
 pytestmark = pytest.mark.integration
+
+
+def test_baseline_query_bypasses_router_and_serializes_routing_as_not_applicable(
+    tmp_path: Path,
+) -> None:
+    run_query, load_trace = _query_workflow_api()
+    router = FakeRouter(high_confidence_route())
+    retriever = FakeRetriever(
+        [
+            retrieval_result(
+                "chunk-global-1",
+                rank=1,
+                estimated_tokens=20,
+                content="Global retrieval returns this context.",
+                mode="baseline-vector",
+            )
+        ]
+    )
+
+    result = run_query(
+        "Which context is found globally?",
+        mode="baseline-vector",
+        top_k=1,
+        max_context_tokens=80,
+        output_token_limit=100,
+        trace_dir=tmp_path / "traces",
+        router=router,
+        retriever=retriever,
+        chat_model=FakeChatModel("Global retrieval found the context. [C1]"),
+    )
+
+    trace = result["trace"]
+    trace_path = Path(result["trace_path"])
+    loaded_trace = load_trace(trace_path)
+    serialized_trace = json.loads(trace_path.read_text(encoding="utf-8"))
+
+    assert router.questions == []
+    assert trace.route_decision is None
+    assert loaded_trace.route_decision is None
+    assert serialized_trace["route_decision"] is None
+    assert retriever.calls == [
+        {
+            "question": "Which context is found globally?",
+            "mode": "baseline-vector",
+            "top_k": 1,
+            "route_decision": None,
+        }
+    ]
+    assert trace.retrieval_results[0].mode == "baseline-vector"
 
 
 def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
@@ -174,7 +224,7 @@ class FakeRetriever:
         question: str,
         mode: str,
         top_k: int,
-        route_decision: RouteDecision,
+        route_decision: RouteDecision | None,
     ) -> list[RetrievalResult]:
         self.calls.append(
             {
@@ -249,9 +299,10 @@ def retrieval_result(
     rank: int,
     estimated_tokens: int,
     content: str,
+    mode: str = "routed-vector",
 ) -> RetrievalResult:
     return RetrievalResult(
-        mode="routed-vector",
+        mode=mode,
         rank=rank,
         chunk_id=chunk_id,
         source_slug=f"source-{rank}",

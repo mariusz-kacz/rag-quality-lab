@@ -224,6 +224,37 @@ def test_qdrant_query_retriever_passes_categories_within_margin() -> None:
     ]
 
 
+def test_qdrant_query_retriever_baseline_searches_globally_without_route() -> None:
+    store = RecordingStore()
+    embedding_provider = FakeEmbeddingProvider()
+    retriever = QdrantQueryRetriever(
+        collection="rag_quality_lab",
+        embedding_provider=embedding_provider,
+        store=store,
+        category_score_margin=0.08,
+    )
+
+    retriever.retrieve(
+        question="How does global retrieval work?",
+        mode="baseline-vector",
+        top_k=3,
+        route_decision=None,
+    )
+
+    assert embedding_provider.texts == ["How does global retrieval work?"]
+    assert store.calls == [
+        {
+            "collection": "rag_quality_lab",
+            "query_vector": [0.1, 0.2, 0.3],
+            "mode": "baseline-vector",
+            "top_k": 3,
+            "selected_category": None,
+            "selected_categories": None,
+            "fallback_all_categories": False,
+        }
+    ]
+
+
 def test_routed_vector_search_requires_selected_category_without_fallback() -> None:
     store = QdrantStore(client=FakeSearchClient(points=[]))
 
@@ -318,7 +349,11 @@ class FakeSearchClient:
 
 
 class FakeEmbeddingProvider:
+    def __init__(self) -> None:
+        self.texts: list[str] = []
+
     def embed_text(self, text: str) -> list[float]:
+        self.texts.append(text)
         return [0.1, 0.2, 0.3]
 
 

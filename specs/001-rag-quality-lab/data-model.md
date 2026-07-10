@@ -85,6 +85,8 @@ Represents a user query or golden-set case.
 
 Represents deterministic routing output.
 
+This record is present only for `routed-vector`. Baseline traces use `null` because global retrieval bypasses category routing.
+
 **Fields**
 
 - `selected_category`: category selected for routed retrieval, if any.
@@ -163,7 +165,7 @@ Represents the persisted record of one full query workflow.
 
 - `trace_id`: stable or timestamped trace identifier.
 - `question`: question text and optional question ID.
-- `route_decision`: `RouteDecision`.
+- `route_decision`: `RouteDecision` for routed retrieval; `null` for baseline retrieval.
 - `retrieval_results`: ranked `RetrievalResult` records.
 - `context_build`: `SelectedContext`.
 - `answer_result`: `AnswerResult`.
@@ -172,7 +174,7 @@ Represents the persisted record of one full query workflow.
 
 **Validation Rules**
 
-- Query traces must include every deterministic pipeline stage.
+- Query traces must include every applicable deterministic pipeline stage and explicitly serialize non-applicable routing as `null`.
 - Model usage may be absent only when the LangChain chat model does not return usage metadata.
 - Trace files must be machine-readable.
 

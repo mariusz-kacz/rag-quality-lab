@@ -505,7 +505,11 @@ def _echo_query_result_json(trace: QueryTrace, trace_path: Path) -> None:
         "is_no_answer": trace.answer_result.is_no_answer,
         "citations": trace.answer_result.citations,
         "validation_status": trace.answer_result.validation_status,
-        "route_decision": trace.route_decision.model_dump(mode="json"),
+        "route_decision": (
+            trace.route_decision.model_dump(mode="json")
+            if trace.route_decision is not None
+            else None
+        ),
         "retrieval_result_count": len(trace.retrieval_results),
         "included_chunk_count": len(trace.context_build.included_chunks),
         "excluded_chunk_count": len(trace.context_build.excluded_chunks),
@@ -640,6 +644,8 @@ def _format_eval_metric(metric: object, value: object, count: object = None) -> 
 
 
 def _route_label(trace: QueryTrace) -> str:
+    if trace.route_decision is None:
+        return "not applicable"
     if trace.route_decision.fallback_all_categories:
         return "all categories"
     return str(trace.route_decision.selected_category)

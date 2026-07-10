@@ -88,7 +88,7 @@ raglab trace inspect artifacts/traces/<trace_id>.json
 
 Expected outcome:
 
-- Route decision, retrieval results, context budget, citations, validation result, and model usage when available are visible.
+- Routed queries show the route decision; baseline queries show routing as not applicable. Retrieval results, context budget, citations, validation result, and model usage when available are visible in both modes.
 
 ## 6. Run Evaluation for Baseline Vector Retrieval
 
