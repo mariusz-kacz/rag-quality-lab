@@ -215,6 +215,100 @@ def test_calculate_token_averages_reports_context_and_included_chunk_means() -> 
     assert averages.average_included_chunks == pytest.approx(3.0)
 
 
+def test_evaluation_metrics_are_identical_when_traces_are_reordered() -> None:
+    from rag_quality_lab.eval.metrics import calculate_evaluation_metrics
+
+    questions = [
+        question("q-1", expected_relevant_sources=["source-a"]),
+        question("q-2", expected_relevant_sources=["source-b"]),
+    ]
+    traces = [
+        trace("q-1", retrievals=[retrieval("chunk-a", "source-a", rank=1)]),
+        trace("q-2", retrievals=[retrieval("chunk-x", "source-x", rank=1)]),
+    ]
+
+    ordered = calculate_evaluation_metrics(questions, traces)
+    reordered = calculate_evaluation_metrics(questions, list(reversed(traces)))
+
+    assert reordered == ordered
+
+
+def test_evaluation_result_matching_preserves_golden_order_for_complete_run() -> None:
+    from rag_quality_lab.eval.metrics import match_questions_to_traces
+
+    questions = [question("q-1"), question("q-2")]
+    traces = [trace("q-2"), trace("q-1")]
+
+    pairs = match_questions_to_traces(questions, traces)
+
+    assert [trace.question.question_id for _, trace in pairs] == ["q-1", "q-2"]
+
+
+def test_evaluation_result_matching_rejects_missing_result() -> None:
+    from rag_quality_lab.eval.metrics import (
+        EvaluationResultSetError,
+        match_questions_to_traces,
+    )
+
+    with pytest.raises(
+        EvaluationResultSetError,
+        match="missing question results: q-2",
+    ):
+        match_questions_to_traces(
+            [question("q-1"), question("q-2")],
+            [trace("q-1")],
+        )
+
+
+def test_evaluation_result_matching_rejects_duplicate_result() -> None:
+    from rag_quality_lab.eval.metrics import (
+        EvaluationResultSetError,
+        match_questions_to_traces,
+    )
+
+    with pytest.raises(
+        EvaluationResultSetError,
+        match="duplicate results for question IDs: q-1",
+    ):
+        match_questions_to_traces(
+            [question("q-1"), question("q-2")],
+            [trace("q-1"), trace("q-1")],
+        )
+
+
+def test_evaluation_result_matching_rejects_unknown_question_id() -> None:
+    from rag_quality_lab.eval.metrics import (
+        EvaluationResultSetError,
+        match_questions_to_traces,
+    )
+
+    with pytest.raises(
+        EvaluationResultSetError,
+        match="unexpected question IDs: q-unknown",
+    ):
+        match_questions_to_traces(
+            [question("q-1"), question("q-2")],
+            [trace("q-1"), trace("q-unknown")],
+        )
+
+
+def test_evaluation_result_matching_rejects_trace_without_question_id() -> None:
+    from rag_quality_lab.eval.metrics import (
+        EvaluationResultSetError,
+        match_questions_to_traces,
+    )
+
+    unidentified_trace = trace("q-1").model_copy(
+        update={"question": Question(text="Question without an ID?")}
+    )
+
+    with pytest.raises(
+        EvaluationResultSetError,
+        match="traces without question_id: trace-q-1",
+    ):
+        match_questions_to_traces([question("q-1")], [unidentified_trace])
+
+
 def question(
     question_id: str,
     *,
@@ -258,7 +352,7 @@ def trace(
     citations = [] if is_no_answer else (cited_chunk_ids or [chunks[0].chunk_id])
     return QueryTrace(
         trace_id=f"trace-{trace_id}",
-        question=Question(text=f"Question {trace_id}?"),
+        question=Question(question_id=trace_id, text=f"Question {trace_id}?"),
         retrieval_mode="routed-vector",
         route_decision=RouteDecision(
             selected_category=None if fallback_all_categories else selected_category,

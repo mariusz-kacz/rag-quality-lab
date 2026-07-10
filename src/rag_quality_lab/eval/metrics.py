@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Sequence
 
 from rag_quality_lab.schemas import EvaluationMetrics, QueryTrace, Question, RetrievalMode
 from rag_quality_lab.schemas.categories import REQUIRED_KNOWLEDGE_CATEGORIES
+
+
+class EvaluationResultSetError(ValueError):
+    """Raised when traces cannot be matched one-to-one with golden questions."""
 
 
 def calculate_evaluation_metrics(
@@ -17,13 +22,15 @@ def calculate_evaluation_metrics(
 ) -> EvaluationMetrics:
     """Calculate every aggregate metric required for an evaluation artifact."""
 
-    token_averages = calculate_token_averages(traces)
+    matched_pairs = match_questions_to_traces(questions, traces)
+    matched_traces = [trace for _, trace in matched_pairs]
+    token_averages = calculate_token_averages(matched_traces)
     return EvaluationMetrics(
         routing_accuracy=calculate_routing_accuracy(questions, traces),
-        fallback_count=calculate_fallback_count(traces),
-        fallback_rate=calculate_fallback_rate(traces),
+        fallback_count=calculate_fallback_count(matched_traces),
+        fallback_rate=calculate_fallback_rate(matched_traces),
         average_searched_categories=calculate_average_searched_categories(
-            traces,
+            matched_traces,
             retrieval_mode=retrieval_mode,
             category_margin=category_margin,
         ),
@@ -44,7 +51,7 @@ def calculate_routing_accuracy(
 
     scored_pairs = [
         (question, trace)
-        for question, trace in _paired_questions_and_traces(questions, traces)
+        for question, trace in _matched_questions_and_traces(questions, traces)
         if question.expected_category is not None and trace.route_decision is not None
     ]
     if not scored_pairs:
@@ -196,7 +203,7 @@ def calculate_no_answer_accuracy(
 ) -> float | None:
     """Score whether answer/no-answer behavior matches the golden label."""
 
-    scored_pairs = _paired_questions_and_traces(questions, traces)
+    scored_pairs = _matched_questions_and_traces(questions, traces)
     if not scored_pairs:
         return None
 
@@ -229,11 +236,79 @@ def calculate_token_averages(traces: Sequence[QueryTrace]) -> EvaluationMetrics:
     )
 
 
-def _paired_questions_and_traces(
+def _matched_questions_and_traces(
     questions: Sequence[Question],
     traces: Sequence[QueryTrace],
 ) -> list[tuple[Question, QueryTrace]]:
-    return list(zip(questions, traces, strict=False))
+    return match_questions_to_traces(questions, traces)
+
+
+def match_questions_to_traces(
+    questions: Sequence[Question],
+    traces: Sequence[QueryTrace],
+) -> list[tuple[Question, QueryTrace]]:
+    """Validate and match traces by question ID in golden-question order."""
+
+    golden_ids = [question.question_id for question in questions]
+    missing_golden_positions = [
+        str(index)
+        for index, question_id in enumerate(golden_ids, start=1)
+        if question_id is None
+    ]
+    golden_id_counts = Counter(
+        question_id for question_id in golden_ids if question_id is not None
+    )
+    duplicate_golden_ids = sorted(
+        question_id for question_id, count in golden_id_counts.items() if count > 1
+    )
+
+    trace_ids = [trace.question.question_id for trace in traces]
+    traces_without_ids = [
+        trace.trace_id for trace in traces if trace.question.question_id is None
+    ]
+    result_id_counts = Counter(
+        question_id for question_id in trace_ids if question_id is not None
+    )
+    duplicate_result_ids = sorted(
+        question_id for question_id, count in result_id_counts.items() if count > 1
+    )
+
+    expected_ids = set(golden_id_counts)
+    actual_ids = set(result_id_counts)
+    missing_result_ids = sorted(expected_ids - actual_ids)
+    unexpected_result_ids = sorted(actual_ids - expected_ids)
+
+    issues: list[str] = []
+    if missing_golden_positions:
+        issues.append(
+            "golden questions without question_id at positions: "
+            + ", ".join(missing_golden_positions)
+        )
+    if duplicate_golden_ids:
+        issues.append("duplicate golden question IDs: " + ", ".join(duplicate_golden_ids))
+    if traces_without_ids:
+        issues.append("traces without question_id: " + ", ".join(traces_without_ids))
+    if duplicate_result_ids:
+        issues.append(
+            "duplicate results for question IDs: " + ", ".join(duplicate_result_ids)
+        )
+    if unexpected_result_ids:
+        issues.append("unexpected question IDs: " + ", ".join(unexpected_result_ids))
+    if missing_result_ids:
+        issues.append("missing question results: " + ", ".join(missing_result_ids))
+    if issues:
+        raise EvaluationResultSetError("Invalid evaluation result set: " + "; ".join(issues))
+
+    trace_by_question_id = {
+        trace.question.question_id: trace
+        for trace in traces
+        if trace.question.question_id is not None
+    }
+    return [
+        (question, trace_by_question_id[question.question_id])
+        for question in questions
+        if question.question_id is not None
+    ]
 
 
 def _retrieval_scored_pairs(
@@ -242,7 +317,7 @@ def _retrieval_scored_pairs(
 ) -> list[tuple[Question, QueryTrace]]:
     return [
         (question, trace)
-        for question, trace in _paired_questions_and_traces(questions, traces)
+        for question, trace in _matched_questions_and_traces(questions, traces)
         if question.answerability == "answerable" and question.expected_relevant_sources
     ]
 

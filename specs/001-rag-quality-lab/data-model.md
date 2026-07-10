@@ -67,7 +67,7 @@ Represents a user query or golden-set case.
 
 **Fields**
 
-- `question_id`: stable identifier for golden-set cases; generated for ad hoc queries.
+- `question_id`: stable, required identifier for golden-set cases; optional for ad hoc queries.
 - `text`: question text.
 - `expected_category`: expected category for routing accuracy when applicable.
 - `expected_relevant_sources`: source slugs or chunk IDs expected for retrieval metrics.
@@ -76,7 +76,7 @@ Represents a user query or golden-set case.
 
 **Validation Rules**
 
-- Golden set must contain 12-15 questions.
+- Golden set must contain 12-20 questions with unique, non-empty `question_id` values.
 - Golden set must include all required case types.
 - Answerable cases must include at least one expected relevant source or chunk.
 - No-answer cases must define `answerability` as `no_answer`.
@@ -175,6 +175,7 @@ Represents the persisted record of one full query workflow.
 **Validation Rules**
 
 - Query traces must include every applicable deterministic pipeline stage and explicitly serialize non-applicable routing as `null`.
+- Evaluation traces must retain the originating golden `question_id`; result sets are matched and validated by ID before metrics are calculated.
 - Model usage may be absent only when the LangChain chat model does not return usage metadata.
 - Trace files must be machine-readable.
 

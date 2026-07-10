@@ -8,7 +8,12 @@ from typing import Any, Protocol, TypedDict
 
 from rag_quality_lab.config import RuntimeConfig
 from rag_quality_lab.eval.golden import load_golden_set
-from rag_quality_lab.eval.metrics import calculate_evaluation_metrics, searched_categories
+from rag_quality_lab.eval.metrics import (
+    EvaluationResultSetError,
+    calculate_evaluation_metrics,
+    match_questions_to_traces,
+    searched_categories,
+)
 from rag_quality_lab.retrieval.modes import validate_retrieval_mode
 from rag_quality_lab.schemas.eval import MetricName, REQUIRED_EVALUATION_METRICS
 from rag_quality_lab.schemas import (
@@ -110,11 +115,9 @@ def run_evaluation(
     golden_set = load_golden_set(golden_file)
     runner = query_runner or _run_query_for_evaluation
 
-    traces: list[QueryTrace] = []
-    trace_paths: list[Path] = []
-    question_results: list[EvaluationQuestionResult] = []
+    execution_results: list[EvaluationQueryResult] = []
 
-    for ordinal, question in enumerate(golden_set.questions, start=1):
+    for question in golden_set.questions:
         result = _execute_golden_question(
             runner,
             question,
@@ -126,18 +129,32 @@ def run_evaluation(
         )
         trace = result["trace"]
         trace_path = result["trace_path"]
-        traces.append(trace)
-        trace_paths.append(trace_path)
-        question_results.append(
-            _question_result(
-                question,
-                trace,
-                trace_path=trace_path,
-                ordinal=ordinal,
-                retrieval_mode=retrieval_mode,
-                router_category_margin=effective_router_category_margin,
-            )
+        execution_results.append({"trace": trace, "trace_path": trace_path})
+
+    traces = [result["trace"] for result in execution_results]
+    try:
+        matched_pairs = match_questions_to_traces(golden_set.questions, traces)
+    except EvaluationResultSetError as exc:
+        raise EvaluationRunError(str(exc)) from exc
+    trace_path_by_question_id = {
+        result["trace"].question.question_id: result["trace_path"]
+        for result in execution_results
+        if result["trace"].question.question_id is not None
+    }
+    trace_paths = [
+        trace_path_by_question_id[question.question_id]
+        for question, _ in matched_pairs
+    ]
+    question_results = [
+        _question_result(
+            question,
+            trace,
+            trace_path=trace_path_by_question_id[question.question_id],
+            retrieval_mode=retrieval_mode,
+            router_category_margin=effective_router_category_margin,
         )
+        for question, trace in matched_pairs
+    ]
 
     metrics = calculate_evaluation_metrics(
         golden_set.questions,
@@ -435,9 +452,8 @@ def _run_query_for_evaluation(
 ) -> Mapping[str, object]:
     from rag_quality_lab.rag.pipeline import run_query
 
-    question_text = question.text if isinstance(question, Question) else question
     return run_query(
-        question_text,
+        question,
         mode=mode,
         top_k=top_k,
         max_context_tokens=max_context_tokens,
@@ -483,12 +499,13 @@ def _question_result(
     trace: QueryTrace,
     *,
     trace_path: Path,
-    ordinal: int,
     retrieval_mode: RetrievalMode,
     router_category_margin: float,
 ) -> EvaluationQuestionResult:
+    if question.question_id is None:
+        raise EvaluationRunError("Cannot build evaluation result without question_id")
     return EvaluationQuestionResult(
-        question_id=question.question_id or f"q-{ordinal:03d}",
+        question_id=question.question_id,
         question_text=question.text,
         case_type=question.case_type,
         trace_path=trace_path,

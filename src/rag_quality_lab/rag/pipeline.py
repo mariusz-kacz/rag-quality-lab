@@ -58,7 +58,7 @@ class QueryEmbeddingProvider(Protocol):
 
 
 def run_query(
-    question: str,
+    question: Question | str,
     *,
     mode: str,
     top_k: int,
@@ -72,7 +72,9 @@ def run_query(
 ) -> QueryPipelineResult:
     """Run one query through route, retrieve, context, generation, and tracing."""
 
-    clean_question = question.strip()
+    clean_question = (
+        question.text.strip() if isinstance(question, Question) else question.strip()
+    )
     if not clean_question:
         raise ValueError("question cannot be empty")
 
@@ -86,7 +88,11 @@ def run_query(
         retriever=retriever,
         chat_model=chat_model,
     )
-    question_record = Question(text=clean_question)
+    question_record = (
+        question.model_copy(update={"text": clean_question})
+        if isinstance(question, Question)
+        else Question(text=clean_question)
+    )
     route_decision = (
         components.router.route(clean_question)
         if retrieval_mode == "routed-vector" and components.router is not None

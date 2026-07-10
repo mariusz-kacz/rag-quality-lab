@@ -188,6 +188,63 @@ def _assert_evaluation_artifacts(
     assert "The selected context supports the answer." in markdown
 
 
+def test_reordered_results_are_reported_in_golden_question_order(
+    tmp_path: Path,
+    temporary_golden_file: Path,
+    golden_questions: Any,
+) -> None:
+    from rag_quality_lab.eval.reports import run_evaluation
+
+    runner = ReorderedEvaluationQueryRunner(
+        tmp_path / "artifacts" / "traces",
+        list(reversed(golden_questions.questions)),
+    )
+    run = run_evaluation(
+        mode="routed-vector",
+        golden_path=temporary_golden_file,
+        artifacts_dir=tmp_path / "artifacts" / "eval",
+        top_k=3,
+        max_context_tokens=500,
+        output_token_limit=120,
+        query_runner=runner,
+    )
+
+    golden_ids = [question.question_id for question in golden_questions.questions]
+    assert [result.question_id for result in run.questions] == golden_ids
+    assert run.artifact_paths is not None
+    markdown = Path(run.artifact_paths.markdown_path).read_text(encoding="utf-8")
+    heading_positions = [markdown.index(f"### {question_id}") for question_id in golden_ids]
+    assert heading_positions == sorted(heading_positions)
+
+
+def test_incomplete_evaluation_run_reports_missing_question_ids(
+    tmp_path: Path,
+    temporary_golden_file: Path,
+    golden_questions: Any,
+) -> None:
+    from rag_quality_lab.eval.reports import EvaluationRunError, run_evaluation
+
+    repeated_question = golden_questions.questions[0]
+    runner = ReorderedEvaluationQueryRunner(
+        tmp_path / "artifacts" / "traces",
+        [repeated_question] * len(golden_questions.questions),
+    )
+
+    with pytest.raises(
+        EvaluationRunError,
+        match="missing question results:",
+    ):
+        run_evaluation(
+            mode="routed-vector",
+            golden_path=temporary_golden_file,
+            artifacts_dir=tmp_path / "artifacts" / "eval",
+            top_k=3,
+            max_context_tokens=500,
+            output_token_limit=120,
+            query_runner=runner,
+        )
+
+
 class FakeEvaluationQueryRunner:
     def __init__(self, trace_dir: Path) -> None:
         self.trace_dir = trace_dir
@@ -230,6 +287,22 @@ class FakeEvaluationQueryRunner:
         trace_path.write_text(trace.model_dump_json(indent=2) + "\n", encoding="utf-8")
 
         return {"trace": trace, "trace_path": trace_path}
+
+
+class ReorderedEvaluationQueryRunner(FakeEvaluationQueryRunner):
+    def __init__(self, trace_dir: Path, questions: list[Question]) -> None:
+        super().__init__(trace_dir)
+        self.questions = questions
+
+    def __call__(
+        self,
+        question: Question | str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        del question
+        next_question = self.questions[len(self.calls)]
+        return super().__call__(next_question, *args, **kwargs)
 
 
 def _trace_for_question(

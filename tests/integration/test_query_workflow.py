@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage, BaseMessage
 import pytest
 
 from rag_quality_lab.routing.categories import REQUIRED_CATEGORIES
-from rag_quality_lab.schemas import RetrievalResult, RouteDecision
+from rag_quality_lab.schemas import Question, RetrievalResult, RouteDecision
 
 
 pytestmark = pytest.mark.integration
@@ -88,7 +88,10 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
     )
 
     result = run_query(
-        "How does RAG ground answers in context?",
+        Question(
+            question_id="q-rag-grounding",
+            text="How does RAG ground answers in context?",
+        ),
         mode="routed-vector",
         top_k=2,
         max_context_tokens=80,
@@ -110,6 +113,7 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
     assert loaded_trace.citation_validation == trace.citation_validation
 
     assert trace.question.text == "How does RAG ground answers in context?"
+    assert trace.question.question_id == "q-rag-grounding"
     assert trace.retrieval_mode == "routed-vector"
     assert trace.route_decision.selected_category == "RAG and context handling"
     assert trace.route_decision.fallback_all_categories is False

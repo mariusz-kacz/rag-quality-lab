@@ -24,6 +24,7 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 
 **Required Diagnostics**
 
+- evaluation traces retain `question.question_id`; ad hoc traces may use `null`
 - `route_decision` is `null` for baseline retrieval, which bypasses the router
 - routed traces include category scores for all five categories, the router threshold, and the fallback flag
 - ranked retrieved chunks

@@ -30,7 +30,7 @@ class Question(SchemaModel):
     """An ad hoc query or a golden-set case."""
 
     text: str = Field(min_length=1)
-    question_id: str | None = None
+    question_id: str | None = Field(default=None, min_length=1)
     expected_category: KnowledgeCategoryName | None = None
     expected_relevant_sources: list[str] = Field(default_factory=list)
     answerability: Answerability = "answerable"

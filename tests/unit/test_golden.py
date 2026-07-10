@@ -82,6 +82,22 @@ def test_golden_set_accepts_no_answer_without_expected_sources() -> None:
     assert no_answer_question.expected_relevant_sources == []
 
 
+def test_golden_set_requires_question_id() -> None:
+    payloads = valid_question_payloads()
+    payloads[0].pop("question_id")
+
+    with pytest.raises(ValidationError, match="golden questions require question_id"):
+        GoldenSet.model_validate({"questions": payloads})
+
+
+def test_golden_set_rejects_duplicate_question_id() -> None:
+    payloads = valid_question_payloads()
+    payloads[1]["question_id"] = payloads[0]["question_id"]
+
+    with pytest.raises(ValidationError, match="question_id values must be unique"):
+        GoldenSet.model_validate({"questions": payloads})
+
+
 def test_checked_in_routing_cases_distinguish_multi_category_and_fallback() -> None:
     from rag_quality_lab.eval.golden import load_golden_set
 

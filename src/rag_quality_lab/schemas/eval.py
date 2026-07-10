@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, TypeAlias
@@ -61,6 +62,30 @@ class GoldenSet(SchemaModel):
 
     @model_validator(mode="after")
     def validate_required_cases(self) -> "GoldenSet":
+        missing_id_positions = [
+            str(index)
+            for index, question in enumerate(self.questions, start=1)
+            if question.question_id is None
+        ]
+        if missing_id_positions:
+            raise ValueError(
+                "golden questions require question_id; missing at positions: "
+                + ", ".join(missing_id_positions)
+            )
+        question_id_counts = Counter(
+            question.question_id for question in self.questions
+        )
+        duplicate_ids = sorted(
+            question_id
+            for question_id, count in question_id_counts.items()
+            if question_id is not None and count > 1
+        )
+        if duplicate_ids:
+            raise ValueError(
+                "golden question_id values must be unique; duplicates: "
+                + ", ".join(duplicate_ids)
+            )
+
         case_types = {question.case_type for question in self.questions}
         missing = sorted(set(REQUIRED_CASE_TYPES) - case_types)
         if missing:
