@@ -1,312 +1,229 @@
 # RAG Quality Lab
 
-RAG Quality Lab is a CLI-first Python project for making retrieval-augmented generation quality visible, reproducible, and reviewable. It is not a chatbot, agent framework, generic crawler, or production RAG platform. The project is a focused lab that exposes the engineering controls behind a RAG workflow: curated source provenance, deterministic category routing, vector retrieval, bounded context selection, cited answer generation, citation validation, persisted traces, and golden-set evaluation.
+RAG Quality Lab is a CLI-first Python project for inspecting retrieval-augmented generation quality. It keeps the corpus, golden questions, retrieval decisions, context budgets, citations, traces, and evaluation reports reviewable and reproducible.
 
-The repository is designed so a reviewer can inspect both the inputs and the outputs. Corpus snapshots live in the repo, Qdrant stores retrievable chunks at runtime, query traces are written as JSON, and evaluation runs produce comparable JSON and Markdown artifacts.
+The lab uses a curated local corpus, Azure AI Foundry models through an OpenAI-compatible project endpoint, and Qdrant for vector storage. It supports two retrieval modes:
+
+- `baseline-vector`: searches the full collection.
+- `routed-vector`: deterministically routes the question across five knowledge categories, then applies a category filter when routing confidence is high enough.
 
 ## Repository Map
 
-- `src/rag_quality_lab/`: Typer CLI, configuration, provider boundaries, corpus, routing, retrieval, RAG, evaluation, and shared schema modules.
-- `corpus/manifest.json`: curated corpus manifest with source slug, category, URL, license metadata, pinned version, local snapshot path, and section metadata.
-- `corpus/categories.json`: the five knowledge categories used by routing and evaluation.
-- `corpus/sources/`: normalized local Markdown snapshots for the pinned corpus.
-- `golden/questions.json`: golden questions used to compare retrieval strategies.
-- `artifacts/traces/`: default location for persisted query traces.
-- `artifacts/eval/`: default location for evaluation JSON and Markdown reports.
-- `specs/001-rag-quality-lab/`: feature spec, implementation plan, data model, contracts, quickstart, and task plan.
-- `tests/`: unit, contract, and integration tests for the CLI contracts and domain behavior.
+- `src/rag_quality_lab/`: CLI, configuration, providers, retrieval, RAG, and evaluation code.
+- `corpus/manifest.json`: provenance and local snapshot references for the curated corpus.
+- `corpus/sources/`: 26 pinned Markdown source snapshots.
+- `corpus/categories.json`: the five routing categories.
+- `golden/questions.json`: answerable, no-answer, and boundary cases used by evaluation.
+- `artifacts/traces/`: query traces.
+- `artifacts/eval/`: evaluation JSON, Markdown reports, and evaluation traces.
+- `tests/`: unit, contract, and integration tests.
 
-## Architecture
+## Prerequisites
 
-The application keeps orchestration in plain Python and uses external systems only at narrow boundaries:
+- Python 3.12 or newer.
+- [uv](https://docs.astral.sh/uv/).
+- Docker or another way to run Qdrant at an HTTP URL.
+- An Azure AI Foundry project with an OpenAI-compatible project endpoint, an embedding model deployment, and a chat model deployment that supports the Responses API.
+- Either a Foundry API key or credentials available to `DefaultAzureCredential`.
 
-- `rag_quality_lab.cli`: Typer command surface for corpus inspection, ingestion, single-query runs, trace inspection, evaluation runs, and evaluation comparison.
-- `rag_quality_lab.config`: environment-driven runtime configuration for Azure OpenAI, Qdrant, retrieval limits, context budgets, and artifact paths.
-- `rag_quality_lab.providers` and `rag_quality_lab.chat_models`: Azure OpenAI embedding and LangChain Azure chat-model boundaries.
-- `rag_quality_lab.corpus`: manifest validation, corpus inspection, deterministic chunking, and ingestion orchestration.
-- `rag_quality_lab.routing`: deterministic embedding-based category routing with fallback to all categories when confidence is too low.
-- `rag_quality_lab.retrieval`: supported retrieval modes and Qdrant-backed vector search.
-- `rag_quality_lab.rag`: context budgeting, answer generation, citation validation, query pipeline orchestration, and trace persistence.
-- `rag_quality_lab.eval`: golden question validation, metric calculation, evaluation artifacts, Markdown reports, and comparison tables.
-- `rag_quality_lab.schemas`: Pydantic schemas for corpus, retrieval, query traces, evaluations, and machine-readable artifacts.
+## Quickstart
 
-The main runtime path is:
+The following workflow was verified against the current CLI, a local Qdrant container, `text-embedding-3-small`, and a Foundry chat model.
 
-```text
-corpus manifest + local snapshots
-  -> inspect
-  -> chunk
-  -> embed with Azure OpenAI
-  -> write vectors and payloads to Qdrant
+1. Install the locked dependencies:
 
-question
-  -> route across five category descriptions
-  -> retrieve with baseline-vector or routed-vector
-  -> build bounded context
-  -> generate cited answer or explicit no-answer
-  -> validate citations against selected context
-  -> persist trace JSON
-
-golden questions
-  -> run the query pipeline per retrieval mode
-  -> compute routing, retrieval, citation, no-answer, and budget metrics
-  -> write JSON and Markdown evaluation artifacts
-```
-
-## CLI Workflow
-
-Install dependencies:
-
-```powershell
+```console
 uv sync
 ```
 
-Copy the example environment file and fill in Azure OpenAI and Qdrant settings:
+2. Start Qdrant:
 
-```powershell
-Copy-Item .env.example .env
+```console
+docker run --name rag-quality-lab-qdrant --rm -d -p 6333:6333 qdrant/qdrant
 ```
 
-Expected variables:
+If Qdrant is already available at the URL you plan to configure, reuse that instance instead.
 
-```text
-AZURE_OPENAI_ENDPOINT
-AZURE_OPENAI_API_KEY
-AZURE_OPENAI_API_VERSION
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT
-AZURE_OPENAI_CHAT_DEPLOYMENT
-QDRANT_URL
-QDRANT_API_KEY
-RAGLAB_QDRANT_COLLECTION
+3. Create the local environment file.
+
+Bash:
+
+```bash
+cp .env.example .env.local
 ```
 
-Inspect the CLI:
+PowerShell:
 
 ```powershell
+Copy-Item .env.example .env.local
+```
+
+Edit `.env.local` with your Foundry endpoint and model deployment names:
+
+```dotenv
+FOUNDRY_OPENAI_BASE_URL=https://your-project.services.ai.azure.com/api/projects/your-project/openai/v1
+FOUNDRY_API_KEY=
+FOUNDRY_EMBEDDING_MODEL=text-embedding-3-small
+FOUNDRY_CHAT_MODEL=gpt-4o-mini
+FOUNDRY_REASONING_EFFORT=
+
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=
+RAGLAB_QDRANT_COLLECTION=rag_quality_lab
+
+RAGLAB_ROUTER_CATEGORY_MARGIN=0.15
+```
+
+Leave `FOUNDRY_API_KEY` empty to use `DefaultAzureCredential`; otherwise set the project API key. Leave `QDRANT_API_KEY` empty for the local container. Set `FOUNDRY_REASONING_EFFORT` only when the configured chat deployment supports that Responses API option.
+
+4. Inspect and ingest the corpus:
+
+```console
+uv run raglab --env-file .env.local corpus inspect
+uv run raglab --env-file .env.local corpus ingest
+```
+
+Ingestion validates the manifest and snapshots, deterministically creates chunks, embeds them, creates the configured Qdrant collection if needed, and upserts the vectors. Add `--recreate` to replace an existing collection before ingestion.
+
+5. Run a routed query:
+
+```console
+uv run raglab --env-file .env.local query "Why should retrieved context be treated as data rather than instructions?" --mode routed-vector --top-k 3 --max-context-tokens 1000 --output-token-limit 500
+```
+
+The command prints the answer and citations, then writes a trace to `artifacts/traces/trace-<id>.json`.
+
+6. Run the golden-set evaluation:
+
+```console
+uv run raglab --env-file .env.local eval run --mode routed-vector
+```
+
+This evaluates all questions in `golden/questions.json` and writes:
+
+- `artifacts/eval/eval-routed-vector.json`
+- `artifacts/eval/eval-routed-vector.md`
+- per-question traces under `artifacts/eval/traces/routed-vector/`
+
+Stop the quickstart Qdrant container when finished:
+
+```console
+docker stop rag-quality-lab-qdrant
+```
+
+## Configuration
+
+`.env.local` is intentionally ignored by Git and is not loaded automatically. Pass it through the global `--env-file` option before the command name:
+
+```console
+uv run raglab --env-file .env.local <command>
+```
+
+Variables already present in the process environment take precedence over values in the file. The loader accepts blank lines, comments, quoted values, and optional `export` prefixes.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `FOUNDRY_OPENAI_BASE_URL` | Live model commands | Foundry project OpenAI v1 base URL. Endpoint suffixes such as `/responses` are normalized away. |
+| `FOUNDRY_API_KEY` | No | Foundry project key. When empty, the provider obtains an Entra ID token through `DefaultAzureCredential`. |
+| `FOUNDRY_EMBEDDING_MODEL` | Ingest, query, evaluation | Embedding model deployment name passed as the OpenAI `model`. |
+| `FOUNDRY_CHAT_MODEL` | Query, evaluation | Chat model deployment name passed to the OpenAI Responses API. |
+| `FOUNDRY_REASONING_EFFORT` | No | Optional reasoning effort forwarded to the Responses API. |
+| `QDRANT_URL` | Ingest, query, evaluation | Qdrant HTTP URL. |
+| `QDRANT_API_KEY` | No | Qdrant API key for a secured or hosted instance. |
+| `RAGLAB_QDRANT_COLLECTION` | Ingest, query, evaluation | Collection used by the query pipeline and by ingestion unless `--collection` overrides it. |
+| `RAGLAB_ROUTER_CATEGORY_MARGIN` | No | Includes categories whose score is within this margin of the winning route; default `0.15`. |
+
+Model values are deployment identifiers, not separate Azure OpenAI deployment variables. The implementation uses the OpenAI Python SDK against the configured Foundry project base URL for both embeddings and Responses API generation.
+
+## CLI Reference
+
+Inspect the available commands and global options:
+
+```console
 uv run raglab --help
-uv run raglab version
+uv run raglab <command> --help
 ```
 
-Run the local test suite:
+Inspect the local corpus without calling Foundry or Qdrant:
 
-```powershell
-uv run pytest
-```
-
-Inspect the curated corpus before writing anything to Qdrant:
-
-```powershell
+```console
 uv run raglab corpus inspect
 uv run raglab corpus inspect --json
 ```
 
-Ingest validated chunks into Qdrant:
+Ingest into the collection from `.env.local`, override that collection, or rebuild it:
 
-```powershell
-uv run raglab corpus ingest --collection rag_quality_lab --recreate
-uv run raglab corpus ingest --collection rag_quality_lab --recreate --json
+```console
+uv run raglab --env-file .env.local corpus ingest
+uv run raglab --env-file .env.local corpus ingest --collection another_collection
+uv run raglab --env-file .env.local corpus ingest --recreate
 ```
 
-Run one traced query:
+Run a query in either supported retrieval mode:
 
-```powershell
-uv run raglab query "How does retrieval augmented generation help with context grounding?" --mode routed-vector --top-k 3 --max-context-tokens 1000 --output-token-limit 500
+```console
+uv run raglab --env-file .env.local query "How does RAG ground an answer?" --mode baseline-vector
+uv run raglab --env-file .env.local query "How does RAG ground an answer?" --mode routed-vector --json
 ```
 
-Inspect a persisted trace:
+Query defaults are `--top-k 3`, `--max-context-tokens 1000`, `--output-token-limit 500`, and `--trace-dir artifacts/traces`.
 
-```powershell
-uv run raglab trace inspect artifacts/traces/<trace_id>.json
-uv run raglab trace inspect artifacts/traces/<trace_id>.json --json
+Inspect a saved trace:
+
+```console
+uv run raglab trace inspect artifacts/traces/<trace-id>.json
+uv run raglab trace inspect artifacts/traces/<trace-id>.json --json
 ```
 
-Run and compare retrieval evaluations:
+Evaluate one mode, then compare baseline and routed artifacts:
 
-```powershell
-uv run raglab eval run --mode baseline-vector --golden golden/questions.json --artifacts-dir artifacts/eval --output-token-limit 800
-uv run raglab eval run --mode routed-vector --golden golden/questions.json --artifacts-dir artifacts/eval --output-token-limit 800
-uv run raglab eval compare artifacts/eval/<baseline_run>.json artifacts/eval/<routed_run>.json --markdown artifacts/eval/comparison.md
+```console
+uv run raglab --env-file .env.local eval run --mode baseline-vector
+uv run raglab --env-file .env.local eval run --mode routed-vector
+uv run raglab eval compare artifacts/eval/eval-baseline-vector.json artifacts/eval/eval-routed-vector.json --markdown artifacts/eval/comparison.md
 ```
 
-Human-readable output is the default. Commands that support `--json` emit machine-readable output for contract checks, saved samples, and downstream inspection.
+Evaluation defaults are `--golden golden/questions.json`, `--artifacts-dir artifacts/eval`, `--top-k 3`, `--max-context-tokens 1000`, and `--output-token-limit 800`. Commands with `--json` emit machine-readable output; note that ingestion JSON includes every ingested chunk and can be large.
 
-## Sample Outputs And Artifacts
+## Implementation
 
-Representative quickstart validation output is intentionally checked in as plain files under `artifacts/` so the lab can be reviewed without rerunning live model and vector-store calls.
-
-Corpus inspection confirms the curated corpus shape before ingestion:
+The runtime path is deliberately small and inspectable:
 
 ```text
-Corpus inspection
-Sources: 26
-Pinned version: deepeval@main-snapshot-2026-07-10, microsoft-azure-ai-docs@main, microsoft-azure-docs@main, microsoft-azure-docs@main-snapshot-2026-07-10, nist-ai-600-1@2024-07, openai-api-docs@current-snapshot, openai-api-docs@current-snapshot-2026-07-10, openai-cookbook@8730772, openai-cookbook@main-snapshot-2026-07-10, owasp-llm-top-10@0205957, qdrant-landing-page@master-snapshot-2026-07-10, ragas@main-snapshot-2026-07-10, trec-common-evaluation-measures-2006
-Categories:
-  - prompting techniques: 5
-  - RAG and context handling: 5
-  - RAG evaluation and quality: 5
-  - LLM security and risks: 6
-  - LLM settings, cost, and tokens: 5
-Validation errors: none
+local corpus snapshots
+  -> validate and chunk
+  -> Foundry OpenAI-compatible embeddings
+  -> Qdrant cosine-vector collection
+
+question
+  -> deterministic embedding-based category routing
+  -> baseline or category-filtered Qdrant retrieval
+  -> bounded context assembly
+  -> Foundry Responses API answer generation
+  -> citation validation and persisted trace
+
+golden questions
+  -> traced query pipeline per retrieval mode
+  -> retrieval, routing, citation, no-answer, and budget metrics
+  -> JSON and Markdown reports
 ```
 
-A trace inspection shows the route, context budget, citation status, and model token accounting for a single query:
+Provider integration is project-owned. The OpenAI SDK handles Foundry embeddings and Responses calls; `langchain-core` supplies prompt and message types used by generation. The project does not use the older Azure-specific environment variables or a `langchain-openai` Azure chat-model client.
 
-```text
-Trace: trace-1ec3130e708a4660a32bf9a80d8f9622
-Question: Which prompt components and instruction design practices can make model responses more reliable and easier to control?
-Mode: routed-vector
-Route: prompting techniques
-Retrieved chunks: 3
-Included chunks: 3
-Excluded chunks: 0
-Citation validation: valid
-Model usage: 868 tokens
+Routed retrieval falls back to all categories when its top category score is below the configured confidence threshold. Context assembly admits retrieved chunks in rank order while they fit the token budget. Generation must cite selected chunks, and citation validation checks that every returned citation maps to included context. This is a context-membership check, not a claim-level factuality judge.
+
+Evaluation reports include routing accuracy, fallback rate, recall at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
+
+## Development
+
+Run the full test suite:
+
+```console
+uv run pytest
 ```
 
-Evaluation comparison output highlights the intended mode-level tradeoff under the current pressure settings (`top_k=3`, `max_context_tokens=1000`, `output_token_limit=800`): routed retrieval improves recall, MRR, citation source match, and context efficiency. Baseline routing accuracy is `n/a` because baseline retrieval does not use route filtering.
+The unit and integration tests use local fakes at external-service boundaries, so the test suite does not require live Foundry credentials or Qdrant.
 
-```text
-Evaluation comparison
-Artifacts: 2
-routing_accuracy: baseline-vector=n/a, routed-vector=0.5833, best=n/a
-fallback_rate: baseline-vector=0, routed-vector=0, best=tie
-recall_at_k: baseline-vector=0.8571, routed-vector=0.9286, best=routed-vector
-mrr: baseline-vector=0.6071, routed-vector=0.6786, best=routed-vector
-citation_source_match: baseline-vector=0.8571, routed-vector=0.9286, best=routed-vector
-no_answer_accuracy: baseline-vector=1, routed-vector=1, best=tie
-average_context_tokens: baseline-vector=609.7, routed-vector=597.8, best=routed-vector
-average_included_chunks: baseline-vector=2.938, routed-vector=2.812, best=routed-vector
-```
+## Scope
 
-Sample artifacts produced by the quickstart flow:
-
-- `artifacts/eval/eval-baseline-vector.json`
-- `artifacts/eval/eval-baseline-vector.md`
-- `artifacts/eval/eval-routed-vector.json`
-- `artifacts/eval/eval-routed-vector.md`
-- `artifacts/eval/comparison.md`
-- `artifacts/eval/traces/routed-vector/trace-1ec3130e708a4660a32bf9a80d8f9622.json`
-
-The evaluation Markdown reports also include request-response pairs so reviewers can inspect generated answers without opening trace JSON files:
-
-- `artifacts/eval/eval-baseline-vector.md`
-- `artifacts/eval/eval-routed-vector.md`
-
-## Corpus At A Glance
-
-The corpus is intentionally small and pinned so reviewers can inspect exactly what the system is allowed to know. The current manifest contains 26 local Markdown snapshots from Microsoft Learn, OpenAI Cookbook, OpenAI API docs, Qdrant documentation, Ragas, DeepEval, OWASP Top 10 for LLM Applications, NIST, and TREC.
-
-The final human review index is [specs/001-rag-quality-lab/corpus-final-review.md](specs/001-rag-quality-lab/corpus-final-review.md). It lists the current corpus files, upstream reference pages, pinned versions, licenses, and review sections in one place.
-
-The corpus started from a single-source idea, but the five-category taxonomy needed broader coverage than one prompt-engineering source could provide. The final curation uses a small multi-source set so each category has enough substance for routing, retrieval, no-answer checks, and golden-set evaluation while staying manually reviewable.
-
-Every source record in `corpus/manifest.json` includes:
-
-- `source_slug`: stable ID used in chunks, traces, and evaluation expectations.
-- `category`: one of the five allowed knowledge categories.
-- `url`: canonical upstream location for audit.
-- `license`: license or reuse note copied into corpus inspection output.
-- `pinned_version`: commit, publication identifier, or snapshot label.
-- `local_ref`: repository-relative path under `corpus/sources/`.
-- `sections`: expected section headings used by deterministic chunking.
-
-License rationale:
-
-- Prefer sources with explicit permissive or documentation-friendly terms: MIT, Apache-2.0, CC BY 4.0, and CC BY-SA 4.0.
-- Include public/government materials from NIST and TREC when they materially improve evaluation and risk coverage.
-- Keep license and reuse uncertainty visible instead of hiding it. OpenAI API docs and some public/government sources are marked with `reuse metadata pending snapshot verification` where the local snapshot still needs final reuse review.
-- Store normalized local snapshots rather than scraping live pages during ingestion, so reviewers can inspect the exact text being embedded.
-
-Pinned provenance is part of the runtime contract. GitHub-backed sources use commit, short commit, or snapshot references such as `openai-cookbook@8730772`, `openai-cookbook@main-snapshot-2026-07-10`, `qdrant-landing-page@master-snapshot-2026-07-10`, `ragas@main-snapshot-2026-07-10`, `deepeval@main-snapshot-2026-07-10`, and `owasp-llm-top-10@0205957`. Documentation sources without a repo commit use explicit snapshot labels such as `microsoft-azure-docs@main-snapshot-2026-07-10`, `nist-ai-600-1@2024-07`, `trec-common-evaluation-measures-2006`, or provider documentation snapshot labels. Ingestion validates local references before writing vectors, and chunk provenance carries the source URL, license, pinned version, and local file path forward into Qdrant payloads and traces.
-
-The five categories are deliberately coarse enough for deterministic embedding routing but specific enough for evaluation:
-
-- `prompting techniques` (5 sources): current prompt engineering guidance, GPT-5/GPT-4.1/o-series model-specific prompting, structured outputs, instruction design, and examples.
-- `RAG and context handling` (5 sources): RAG architecture, chunking, vector relevance, Search-Ask context assembly, grounding, Qdrant hybrid retrieval, and multistage retrieval patterns.
-- `RAG evaluation and quality` (5 sources): RAG evaluator taxonomy, evaluation flywheels, retrieval metrics, faithfulness, context precision/recall, response relevancy, thresholds, and diagnostic reporting.
-- `LLM security and risks` (6 sources): prompt injection, sensitive information disclosure, data/model poisoning, excessive agency, vector/embedding weaknesses, and generative AI risk management.
-- `LLM settings, cost, and tokens` (5 sources): token counting, cost optimization, latency, rate-limit dimensions, prompt caching, cache breakpoints, and operational budget tradeoffs.
-
-## Retrieval, Tracing, And Evaluation
-
-The MVP runtime supports exactly two retrieval modes:
-
-- `baseline-vector`: embeds the question and searches the full Qdrant collection without a category filter. This is the control mode for comparison.
-- `routed-vector`: embeds the question, routes it against the five category description embeddings, and searches Qdrant with a `category` payload filter when routing confidence is high enough. The filter is soft: it includes the winning category plus categories whose route score is close to the winner.
-
-Routing is deterministic and non-LLM. The router embeds the question, compares it with the five category description embeddings using cosine similarity, records all category scores, and selects the top category only when its confidence is at or above the configured threshold. The default threshold is `0.18` from `RuntimeConfig`. If confidence is below the threshold, `fallback_all_categories` is recorded as `true`, `selected_category` is empty, and `routed-vector` searches all categories instead of applying a weak filter. When confidence is high enough, the retriever includes the selected category plus any category within `RAGLAB_ROUTER_CATEGORY_MARGIN` of the selected category score; the default margin is `0.15`.
-
-Context budgeting is also deterministic. Retrieved chunks are sorted by retrieval rank and considered in order. A chunk is included only if its estimated token count fits within `max_context_tokens`; otherwise it is recorded under `excluded_chunks` with reason `budget_exceeded`. The trace records `final_estimated_context_tokens`, `max_context_tokens`, `output_token_limit`, included chunks, and excluded chunks. The CLI defaults are `--top-k 3`, `--max-context-tokens 1000`, and `--output-token-limit 500` for ad hoc queries. Evaluation runs default to `--output-token-limit 800` to reduce max-output truncation during golden-set reporting. Each value can be overridden per command.
-
-Each `raglab query` run writes a trace under `artifacts/traces/` by default. A trace contains:
-
-- `schema_version`, `trace_id`, and `created_at`.
-- `question` with the original query text.
-- `retrieval_mode`.
-- `route_decision` with selected category, fallback flag, confidence, threshold, and all five category scores.
-- `retrieval_results` with rank, chunk ID, source slug, category, section path, score, estimated tokens, and content when returned for context assembly.
-- `context_build` with included chunks, excluded chunks, final estimated context tokens, maximum context tokens, and output token limit.
-- `answer_result` with answer text, no-answer flag, citations, validation status, and validation errors.
-- `citation_validation` with cited chunk IDs, invalid citations, and validation errors.
-- `model_usage` when the chat model returns token accounting.
-
-Evaluation runs execute the same traced query pipeline over `golden/questions.json` for one retrieval mode at a time. `raglab eval run` writes a machine-readable JSON artifact and a Markdown report; `raglab eval compare` reads one or more evaluation artifacts and writes a mode-by-mode comparison table.
-
-The required evaluation metrics are:
-
-- `routing_accuracy`: share of routed-vector golden questions with an expected category where the selected category matches. This is `n/a` for `baseline-vector` because baseline retrieval searches globally and does not use route filtering.
-- `fallback_rate`: share of traces that fell back to all-category retrieval.
-- `recall_at_k`: share of answerable golden questions where any expected source slug or chunk ID appears in retrieved results.
-- `mrr`: mean reciprocal rank of the first expected source or chunk in retrieved results.
-- `citation_source_match`: share of answerable golden questions where a cited included chunk matches an expected source slug or chunk ID.
-- `no_answer_accuracy`: share of golden questions where answer/no-answer behavior matches the golden label.
-- `average_context_tokens`: average `final_estimated_context_tokens` across traces.
-- `average_included_chunks`: average number of included context chunks across traces.
-
-For comparison reports, higher is better for quality metrics except `fallback_rate`; lower is better for token-budget diagnostics and fallback rate. Metrics that are not applicable for a run are kept as `null`/`n/a` rather than removed from artifacts.
-
-## Scope Boundaries
-
-This is a portfolio-quality lab, not a production RAG platform. The MVP is intentionally narrow so the retrieval, routing, context, citation, trace, and evaluation behavior stays inspectable.
-
-Citation validation is a context-membership check. Generation prompts expose short citation labels such as `[C1]` instead of long chunk IDs; validation resolves those labels back to full chunk IDs in `answer_result.citations` and `citation_validation.cited_chunk_ids`. It proves that every cited label or chunk ID in the answer maps to selected context and records missing, malformed, or out-of-context citations as validation failures. It does not prove claim-level factual correctness, judge whether the cited passage fully supports a claim, detect paraphrase errors, or verify facts against sources outside the selected context.
-
-No-answer behavior is evidence-gated. If no chunks fit the selected context, the system returns `There is not enough evidence in the selected context to answer.` without calling the chat model. If chunks are present, the prompt instructs the LangChain chat model to answer only from selected context and to return the same no-answer statement when evidence is insufficient. No-answer traces still preserve the route decision, retrieved evidence, context budget, and validation status so reviewers can inspect why the answer was withheld.
-
-MVP exclusions:
-
-- No web UI, chatbot session state, agent loop, LangGraph workflow, or tool-calling agent.
-- No production deployment, authentication, authorization, multi-tenant storage, monitoring stack, or SLA behavior.
-- No live internet crawling or open-ended ingestion at query time.
-- No multi-corpus management; the lab uses one curated, pinned corpus manifest.
-- No alternate model providers; runtime embeddings and generation use the configured Azure/OpenAI-compatible Foundry boundary.
-- No alternate vector stores; Qdrant is the required runtime vector store.
-- No reranker, query rewriting, answer grading model, or claim-level verifier.
-- No large evaluation framework such as RAGAS; the harness is intentionally lightweight and local.
-- No hybrid lexical/vector retrieval in the MVP runtime contract.
-
-Future extensions that would fit the design:
-
-- Hybrid lexical/vector retrieval with BM25 or rank fusion for exact-term-sensitive questions.
-- Optional reranking after vector retrieval, with trace fields that show rank changes.
-- Claim-level citation support checks or judge-based groundedness evaluation.
-- Additional corpus manifests selected by name while preserving pinned provenance.
-- More retrieval diagnostics, such as per-category recall, score distribution summaries, and chunk-overlap analysis.
-- CI-generated sample artifacts after live Qdrant and model credentials are available.
-
-## Current Status
-
-The core CLI and library implementation for corpus inspection and ingestion, traced single-query execution, trace inspection, evaluation runs, and evaluation comparison is present. Live end-to-end commands require configured Azure OpenAI deployments and a reachable Qdrant instance. Representative sample command outputs and artifact paths are documented above, with final artifact refresh and redaction checks tracked as polish tasks.
-
-Implemented foundations include:
-
-- Python package metadata and the `raglab` console script.
-- Environment/configuration handling.
-- Azure OpenAI embedding provider and LangChain Azure chat-model factory.
-- Pydantic schemas for corpus, trace, evaluation, retrieval, and artifacts.
-- Curated corpus manifest, five categories, local source snapshots, and golden question set.
-- Qdrant-backed ingestion and retrieval boundaries.
-- Deterministic category routing, bounded context selection, generation, citation validation, trace persistence, and evaluation reports.
-- Unit, contract, and integration tests using fakes where external services are not required.
-
-See [tasks.md](specs/001-rag-quality-lab/tasks.md) for the implementation checklist and [quickstart.md](specs/001-rag-quality-lab/quickstart.md) for the end-to-end validation flow.
+This is a portfolio-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate providers, alternate vector stores, reranking, production authentication, and claim-level answer grading. The narrow scope keeps retrieval behavior, evidence selection, token budgets, citations, and evaluation artifacts easy to inspect.
