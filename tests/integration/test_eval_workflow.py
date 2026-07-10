@@ -147,10 +147,21 @@ def _assert_evaluation_artifacts(
         "answerable",
         "no_answer",
         "ambiguous_boundary",
+        "multi_category_routing",
         "fallback_routing",
     }
     assert all("answer_text" in question for question in payload["questions"])
     assert all("is_no_answer" in question for question in payload["questions"])
+    fallback_results = [
+        question
+        for question in payload["questions"]
+        if question["case_type"] == "fallback_routing"
+    ]
+    assert all(question["global_fallback_occurred"] for question in fallback_results)
+    assert all(
+        set(question["searched_categories"]) == set(REQUIRED_KNOWLEDGE_CATEGORIES)
+        for question in fallback_results
+    )
 
     trace_paths = [Path(path) for path in payload["trace_paths"]]
     assert all(path.exists() for path in trace_paths)
@@ -304,6 +315,19 @@ def _route_decision(question: Question) -> RouteDecision:
             confidence=0.24,
             threshold=0.5,
             category_scores={category: 0.24 for category in REQUIRED_KNOWLEDGE_CATEGORIES},
+        )
+
+    if question.case_type == "multi_category_routing":
+        selected_category = question.expected_searched_categories[0]
+        for category in question.expected_searched_categories:
+            scores[category] = 0.75
+        scores[selected_category] = 0.86
+        return RouteDecision(
+            selected_category=selected_category,
+            fallback_all_categories=False,
+            confidence=0.86,
+            threshold=0.5,
+            category_scores=scores,
         )
 
     selected_category = question.expected_category or "RAG and context handling"

@@ -12,7 +12,9 @@
   },
   "metrics": {
     "routing_accuracy": 0.5833333333333334,
+    "fallback_count": 0,
     "fallback_rate": 0.0,
+    "average_searched_categories": 2.3125,
     "hit_rate_at_k": 0.9285714285714286,
     "mrr": 0.6785714285714286,
     "citation_source_match": 0.9285714285714286,
@@ -38,9 +40,10 @@
       },
       "expected_category": "prompting techniques",
       "selected_category": "prompting techniques",
-      "routed_categories": [
+      "searched_categories": [
         "prompting techniques"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Define explicit components in the prompt: role/domain, required outcome, workflow rules, constraints on what not to do, and output format expectations; add examples only when behavior is hard to describe.[C1] Making each rule observable (e.g., “use a citation after every sentence that depends on source evidence; do not use background knowledge”) improves reliability and control compared with vague goals like “be accurate.”[C1]\n\n- Treat prompts as living, testable artifacts: iteratively adjust minimal instructions to fix wrong behaviors, and store production prompts in code with typed arguments, tests, fixtures, and code review so changes are visible and controlled.[C1][C3]\n\n- Version prompts and models together for traceability and stability: pin to specific model snapshots, and log each prompt/model change with retrieval mode, template version, deployment, selected context, token budget, answer text, and evaluation results to separate retrieval issues from prompt or model regressions.[C2][C3]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -69,9 +72,10 @@
       },
       "expected_category": "RAG and context handling",
       "selected_category": "RAG and context handling",
-      "routed_categories": [
+      "searched_categories": [
         "RAG and context handling"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Retrieval-augmented generation first finds and ranks content that is semantically similar to the user’s question, then assembles a bounded context from those top-ranked chunks within a token budget. [C1][C2]  \n- This retrieved content is then passed to the model as grounding data, and the prompt explicitly instructs the model to answer using only that provided evidence, which constrains and reduces unsupported generation. [C1][C2]  \n- Clear boundaries are preserved around each source chunk and explicit “no-answer” behavior is defined for cases where the retrieved context doesn’t contain an answer, further discouraging the model from inventing information. [C1]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -101,9 +105,10 @@
       },
       "expected_category": "RAG evaluation and quality",
       "selected_category": "RAG evaluation and quality",
-      "routed_categories": [
+      "searched_categories": [
         "RAG evaluation and quality"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Common retrieval metrics for golden-set evaluations include recall@k, precision@k, MRR or first relevant rank, average precision (AP), mean average precision (MAP), bpref, and geometric mean average precision (GMAP). [C1]  \n- Additional ranked-search metrics from the document retrieval evaluator include Fidelity, NDCG (and ndcg@k variants), XDCG (and xdcg@k), Max Relevance (e.g., top1_relevance, top3_max_relevance), and Holes / holes_ratio. [C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -133,9 +138,10 @@
       },
       "expected_category": "LLM security and risks",
       "selected_category": "LLM security and risks",
-      "routed_categories": [
+      "searched_categories": [
         "LLM security and risks"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Prompt injection is a vulnerability where user prompts or other model‑parsed inputs alter an LLM’s behavior or output in unintended ways, even if the injected content is not obvious or readable to humans. [C1] Because LLM apps blend system instructions, user input, retrieved content, tool output, and other data into one context, the model may misinterpret untrusted data as instructions. [C1]\n\n- This can lead to guideline violations, harmful content, sensitive data disclosure, unauthorized actions, or manipulated decisions. [C1] Prompt injection is related to but broader than jailbreaking: jailbreaking is a subtype where inputs push the model to broadly ignore safety protocols. [C1]\n\n- RAG and fine‑tuning do not eliminate prompt injection risk: RAG introduces additional untrusted external content into prompts, and fine‑tuning cannot prevent hostile inputs from influencing behavior at inference time. [C1]\n\n- Mitigations include application‑level safeguards that constrain what the LLM can do with untrusted content and reduce the impact of injected instructions, while more durable resistance to jailbreaking and injection also depends on ongoing model training and safety updates. [C1]\n\n- OWASP maps these risks to MITRE ATLAS techniques for direct and indirect prompt injection and jailbreak injection, providing a broader framework and research base for understanding and defending against such attacks. [C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -163,10 +169,11 @@
       },
       "expected_category": "LLM settings, cost, and tokens",
       "selected_category": "LLM settings, cost, and tokens",
-      "routed_categories": [
+      "searched_categories": [
         "LLM settings, cost, and tokens",
         "prompting techniques"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Token counting lets you estimate how many tokens a full prompt will use (instructions, user query, retrieved context, tools, schemas, and answer budget) before you send it, so you can stay within a model’s prompt budget. [C1]  \n- In RAG systems, counting tokens during context assembly helps you admit retrieved chunks only until you approach the budget, instead of using a fixed number of chunks, which makes better use of available space and avoids truncation. [C1]  \n- Using a tokenizer that matches the target generation model and recording prompt token estimates alongside API-reported usage lets you track and refine budgeting over time, and distinguish prompt or retrieval regressions from changes in model-side accounting. [C1]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -195,10 +202,11 @@
       },
       "expected_category": "RAG and context handling",
       "selected_category": "RAG and context handling",
-      "routed_categories": [
+      "searched_categories": [
         "RAG and context handling",
         "RAG evaluation and quality"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- RAG systems usually deal with documents that are too large or too broad to be treated as a single retrievable unit, so they must first be split into smaller chunks that can be individually retrieved and fit within embedding-model and chat-model token limits. [C1][C2]\n\n- Chunking before embedding lets each vector correspond to a narrower, semantically coherent unit, which improves the chance that vector search retrieves a passage that directly matches the user’s question instead of a broad, mixed-topic document. [C1][C2]\n\n- Because embeddings are computed over chunks, not whole documents, retrieval can return multiple focused passages that collectively fit within the answer model’s context budget and provide enough evidence for grounded responses. [C1][C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -227,11 +235,12 @@
       },
       "expected_category": null,
       "selected_category": "LLM settings, cost, and tokens",
-      "routed_categories": [
+      "searched_categories": [
         "LLM settings, cost, and tokens",
         "RAG evaluation and quality",
         "LLM security and risks"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "There is not enough evidence in the selected context to answer.",
       "is_no_answer": true,
       "expected_relevant_sources": [],
@@ -258,13 +267,14 @@
       },
       "expected_category": null,
       "selected_category": "RAG evaluation and quality",
-      "routed_categories": [
+      "searched_categories": [
         "RAG evaluation and quality",
         "prompting techniques",
         "RAG and context handling",
         "LLM security and risks",
         "LLM settings, cost, and tokens"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "There is not enough evidence in the selected context to answer.",
       "is_no_answer": true,
       "expected_relevant_sources": [],
@@ -292,9 +302,10 @@
       },
       "expected_category": "RAG evaluation and quality",
       "selected_category": "RAG evaluation and quality",
-      "routed_categories": [
+      "searched_categories": [
         "RAG evaluation and quality"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Groundedness checks whether the **generated answer** stays within and is supported by the retrieved context, i.e., it measures if the model avoids fabricating content beyond that evidence. [C1][C2]\n\n- Retrieval quality metrics evaluate the **retrieval step**, i.e., how well the system finds and ranks relevant documents or chunks for the query (using measures like recall@k, precision@k, MRR, AP/MAP, etc.). They judge evidence selection, not what the model says with that evidence. [C2][C3]\n\n- A grounded answer can still be poor if retrieval was bad (it is faithfully based on the context, but the context lacked the right evidence), and good retrieval can still lead to an ungrounded answer if the model invents content not supported by the retrieved documents. [C1][C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -324,11 +335,12 @@
       },
       "expected_category": "LLM settings, cost, and tokens",
       "selected_category": "RAG evaluation and quality",
-      "routed_categories": [
+      "searched_categories": [
         "RAG evaluation and quality",
         "RAG and context handling",
         "LLM settings, cost, and tokens"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Retrieved context often dominates input tokens in RAG; pruning low-scoring or off‑topic chunks and removing boilerplate, duplicates, and HTML artifacts directly reduces input-token count, which lowers both latency and cost. [C1][C3]\n\n- Keeping only the most answer‑relevant passages and needed source identifiers leaves more token budget for the answer and citations, improving efficiency while maintaining necessary evidence. [C1]\n\n- Lowering context budgets (for example via smaller `top_k` and trimmed chunks) addresses token-per-minute bottlenecks common in RAG, which reduces end-to-end latency when tokens are the limiting factor. [C3]\n\n- Removing noisy or irrelevant retrieved passages reduces the chance that the model overreacts to misleading context, improving context precision and lowering noise sensitivity, so fewer incorrect claims are driven by spurious citations. [C1][C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -360,10 +372,11 @@
       },
       "expected_category": "LLM settings, cost, and tokens",
       "selected_category": "RAG evaluation and quality",
-      "routed_categories": [
+      "searched_categories": [
         "RAG evaluation and quality",
         "prompting techniques"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Structure the prompt so that stable instructions, schemas, and examples come first, and dynamic user input plus retrieved chunks come later; this layout is more cache-friendly and lets provider-side prompt caching reuse the shared prefix across runs. [C2]\n\n- Keep developer instructions and the prompt prefix as stable as possible across evaluations, and avoid including volatile data like IDs or timestamps near the prefix, so cache hits are more likely and repeated runs become cheaper. [C2]\n\n- Place retrieved RAG chunks after the stable rubric and schemas so only the variable tail changes between test cases, improving cacheability while still letting you trim context when token budgets are tight. [C2]\n\n- Track prompt-token and cached-token usage metrics to see whether your layout is actually benefiting from caching and reducing cost, and adjust the prompt structure accordingly. [C2]\n\n- When you do need to change the prompt, make the smallest edits and re-use the same evaluation setup so you preserve as much of the cached, stable prefix as possible while still iterating on RAG quality. [C1][C3]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -394,11 +407,12 @@
       },
       "expected_category": "LLM security and risks",
       "selected_category": "prompting techniques",
-      "routed_categories": [
+      "searched_categories": [
         "prompting techniques",
         "RAG and context handling",
         "LLM security and risks"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- This is a prompt injection / instruction-hijacking problem in a retrieval-augmented generation (RAG) system, where untrusted retrieved content attempts to override core instructions and expose system prompts or configuration details. [C1][C3]\n\n- It should be mitigated by:\n  - Treating retrieved content strictly as untrusted evidence, not as instructions, and explicitly telling the model to ignore attempts to modify core behavior. [C3]\n  - Using a strong system prompt that enforces context adherence, limits responses to approved tasks, and forbids disclosing system prompts or configuration details. [C1][C3]\n  - Keeping secrets and sensitive configuration out of prompts entirely and instead in secure infrastructure, so that even if injection succeeds, no secrets are exposed. [C1]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -429,10 +443,11 @@
       },
       "expected_category": "RAG evaluation and quality",
       "selected_category": "RAG and context handling",
-      "routed_categories": [
+      "searched_categories": [
         "RAG and context handling",
         "RAG evaluation and quality"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Use a groundedness check to see whether each key claim in the answer is directly supported by specific retrieved snippets; if important answer statements lack clear backing in the context, the chunks do not contain enough relevant evidence. [C2]\n\n- Use a response completeness check (when you have ground truth) to verify that critical expected information from the source material appears in the answer; missing critical facts indicate that the retrieved chunks did not bring the right evidence into context. [C2]\n\n- Separately evaluate retrieval quality itself (e.g., whether the “right” documents or passages were retrieved) so you can distinguish “answering badly from good evidence” from “answering with the wrong or insufficient evidence.” [C1][C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -447,9 +462,9 @@
       "errors": []
     },
     {
-      "question_id": "q-fallback-001",
+      "question_id": "q-multi-category-001",
       "question_text": "How do prompt structure, retrieved context, evaluation metrics, and token budgets interact during a RAG quality review?",
-      "case_type": "fallback_routing",
+      "case_type": "multi_category_routing",
       "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-900b3638e98b4bfe94887d1a11d992c2.json",
       "metrics": {
         "routing_accuracy": null,
@@ -463,10 +478,11 @@
       },
       "expected_category": null,
       "selected_category": "RAG evaluation and quality",
-      "routed_categories": [
+      "searched_categories": [
         "RAG evaluation and quality",
         "LLM settings, cost, and tokens"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Prompt structure defines where stable instructions, schemas, and examples sit relative to the user question and retrieved context, enabling a “shared prefix” that stays constant while only the dynamic context section changes. This makes it easier to trim or swap retrieved chunks without rewriting the whole prompt, and supports cache-friendly, traceable RAG layouts. [C1]\n\n- Retrieved context must be filtered and pruned so that only the most answer-relevant, non-duplicative, and non-boilerplate chunks are included, while preserving source identifiers for citations and leaving enough room for the model’s answer. This trimming directly affects both context precision/recall and the faithfulness of downstream answers. [C1][C2]\n\n- Evaluation metrics like context precision/recall, faithfulness, and response relevancy use the triplet of `user_input`, `retrieved_contexts`, and `response` (plus optional `reference` data) to diagnose whether failures stem from retrieval (bad or missing context), generation (unfaithful use of context), or prompt design (answer not addressing the question). This separation lets you tie observed issues back to specific parts of the prompt and context-building pipeline. [C2]\n\n- Token budgets are enforced in the context assembly path: you must reserve space for instructions, user input, tools/schemas, and an explicit answer budget, then admit retrieved chunks only until the remaining budget is filled. This forces tradeoffs between including more context versus preserving answer-length capacity, and it interacts with trimming strategies and evaluation metrics that reveal when over-trimming harms recall or under-trimming bloats context with noise. [C1][C3]\n\n- For reliable RAG quality review over time, traces should store model names, token counts, and budgeting assumptions so that changes in token accounting can be distinguished from real regressions in retrieval, prompt structure, or answer quality as seen in the metrics. [C3]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -483,9 +499,9 @@
       "errors": []
     },
     {
-      "question_id": "q-fallback-002",
+      "question_id": "q-multi-category-002",
       "question_text": "What tradeoffs connect vector embedding weaknesses, retrieval filtering, prompt instructions, and evaluation diagnostics?",
-      "case_type": "fallback_routing",
+      "case_type": "multi_category_routing",
       "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-8b9aa6468aba4d0385d8f971502580e5.json",
       "metrics": {
         "routing_accuracy": null,
@@ -499,12 +515,13 @@
       },
       "expected_category": null,
       "selected_category": "prompting techniques",
-      "routed_categories": [
+      "searched_categories": [
         "prompting techniques",
         "RAG and context handling",
         "RAG evaluation and quality",
         "LLM settings, cost, and tokens"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Vector embedding weaknesses (e.g., imperfect similarity or recall) require compensating levers like chunk-size tuning, `k` adjustment, and HNSW parameter tuning to balance recall, latency, and resource use, explicitly treating retrieval as an approximate, tunable process rather than assuming embeddings are always accurate.[C3]\n\n- Retrieval filtering—pruning to “high-signal” chunks, trimming boilerplate, and respecting token budgets—mitigates embedding noise and reduces the chance that the model attends to distracting or marginally relevant context, but at the cost of potentially missing useful evidence if filters are too aggressive.[C1][C3]\n\n- Prompt instructions must be designed to work with this filtered context: shorter, stable instructions reduce input length and latency, leave room for evidence, and can be moved to smaller or fine-tuned models, but over-aggressive prompt shortening or splitting risks losing guidance that helps the model interpret imperfect retrieval results.[C1][C2]\n\n- Evaluation diagnostics—manual inspection of top results, checking vector field setup, similarity metrics, and approximate vs exact KNN—are the feedback loop that reveals whether embedding, retrieval, and prompt changes improved answer grounding or just traded off recall for speed or cost; they guide which bottleneck (generation, retrieval, context size, or routing) to optimize next.[C2][C3]\n\n- Overall, the tradeoff is a coordinated one: embedding and retrieval tuning aim for enough recall and precision; context filtering and prompt compression aim for lower latency and cost; and diagnostics ensure these levers are adjusted based on measured quality rather than assumptions.[C1][C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
@@ -536,12 +553,13 @@
       },
       "expected_category": "LLM security and risks",
       "selected_category": "prompting techniques",
-      "routed_categories": [
+      "searched_categories": [
         "prompting techniques",
         "RAG and context handling",
         "RAG evaluation and quality",
         "LLM security and risks"
       ],
+      "global_fallback_occurred": false,
       "answer_text": "- Treat retrieved content as untrusted evidence, not as new instructions; do not let it override or modify system or developer messages.[C2]  \n\n- Explicitly ignore any retrieved instructions that try to change core behavior (e.g., “ignore previous instructions” or “reveal hidden prompts”) and instead follow the system prompt’s constraints and citation rules.[C2][C3]  \n\n- Continue to answer only from the selected context, preserve required formatting and citations, and abstain if the context is insufficient, regardless of what the retrieved content requests.[C2][C3]",
       "is_no_answer": false,
       "expected_relevant_sources": [

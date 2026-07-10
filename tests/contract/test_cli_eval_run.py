@@ -100,7 +100,9 @@ def test_eval_run_json_reports_metrics_and_artifact_paths(
     assert payload["question_count"] == 2
     assert set(payload["metrics"]) == {
         "routing_accuracy",
+        "fallback_count",
         "fallback_rate",
+        "average_searched_categories",
         "hit_rate_at_k",
         "mrr",
         "citation_source_match",

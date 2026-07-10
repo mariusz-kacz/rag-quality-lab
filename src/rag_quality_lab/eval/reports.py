@@ -8,7 +8,7 @@ from typing import Any, Protocol, TypedDict
 
 from rag_quality_lab.config import RuntimeConfig
 from rag_quality_lab.eval.golden import load_golden_set
-from rag_quality_lab.eval.metrics import calculate_evaluation_metrics
+from rag_quality_lab.eval.metrics import calculate_evaluation_metrics, searched_categories
 from rag_quality_lab.retrieval.modes import validate_retrieval_mode
 from rag_quality_lab.schemas.eval import MetricName, REQUIRED_EVALUATION_METRICS
 from rag_quality_lab.schemas import (
@@ -48,7 +48,9 @@ class EvaluationQueryRunner(Protocol):
 
 QUALITY_METRICS: tuple[MetricName, ...] = (
     "routing_accuracy",
+    "fallback_count",
     "fallback_rate",
+    "average_searched_categories",
     "hit_rate_at_k",
     "mrr",
     "citation_source_match",
@@ -59,7 +61,13 @@ TOKEN_BUDGET_METRICS: tuple[MetricName, ...] = (
     "average_included_chunks",
 )
 LOWER_IS_BETTER_METRICS: frozenset[MetricName] = frozenset(
-    ("fallback_rate", "average_context_tokens", "average_included_chunks")
+    (
+        "fallback_count",
+        "fallback_rate",
+        "average_searched_categories",
+        "average_context_tokens",
+        "average_included_chunks",
+    )
 )
 
 
@@ -122,7 +130,12 @@ def run_evaluation(
             )
         )
 
-    metrics = calculate_evaluation_metrics(golden_set.questions, traces)
+    metrics = calculate_evaluation_metrics(
+        golden_set.questions,
+        traces,
+        retrieval_mode=retrieval_mode,
+        category_margin=effective_router_category_margin,
+    )
     if retrieval_mode == "baseline-vector":
         metrics = metrics.model_copy(update={"routing_accuracy": None})
 
@@ -453,11 +466,12 @@ def _question_result(
         ),
         expected_category=question.expected_category,
         selected_category=trace.route_decision.selected_category,
-        routed_categories=_effective_routed_categories(
+        searched_categories=searched_categories(
             trace,
             retrieval_mode=retrieval_mode,
-            margin=router_category_margin,
+            category_margin=router_category_margin,
         ),
+        global_fallback_occurred=trace.route_decision.fallback_all_categories,
         answer_text=trace.answer_result.answer_text,
         is_no_answer=trace.answer_result.is_no_answer,
         expected_relevant_sources=list(question.expected_relevant_sources),
@@ -544,32 +558,6 @@ def _unique_retrieved_sources(trace: QueryTrace) -> list[str]:
     return sources
 
 
-def _effective_routed_categories(
-    trace: QueryTrace,
-    *,
-    retrieval_mode: RetrievalMode,
-    margin: float,
-) -> list[str]:
-    if retrieval_mode != "routed-vector":
-        return []
-    route = trace.route_decision
-    if route.fallback_all_categories:
-        return list(route.category_scores)
-    if route.selected_category is None:
-        return []
-
-    cutoff = max(0.0, route.confidence - margin)
-    categories = [
-        category
-        for category, score in route.category_scores.items()
-        if score >= cutoff
-    ]
-    return [
-        route.selected_category,
-        *(category for category in categories if category != route.selected_category),
-    ]
-
-
 def _trace_errors(trace: QueryTrace) -> list[str]:
     errors: list[str] = []
     errors.extend(trace.answer_result.validation_errors)
@@ -626,8 +614,8 @@ def _render_question_table(
     retrieval_mode: RetrievalMode,
 ) -> str:
     lines = [
-        "| Question | Case type | Status | Trace | Expected sources | Retrieved sources | Errors |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| Question | Case type | Status | Top category | Searched categories | Global fallback | Trace | Expected sources | Retrieved sources | Errors |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for result in questions:
         lines.append(
@@ -635,6 +623,9 @@ def _render_question_table(
             f"{_escape_table(result.question_id)} | "
             f"{_escape_table(result.case_type)} | "
             f"{_escape_table(_question_status(result, retrieval_mode=retrieval_mode))} | "
+            f"{_escape_table(result.selected_category or 'none')} | "
+            f"{_escape_table(_format_list(result.searched_categories))} | "
+            f"{_escape_table('yes' if result.global_fallback_occurred else 'no')} | "
             f"{_escape_table(result.trace_path)} | "
             f"{_escape_table(_format_list(result.expected_relevant_sources))} | "
             f"{_escape_table(_format_list(result.retrieved_sources))} | "
@@ -677,9 +668,9 @@ def _route_filter_missed(
         return False
     if result.expected_category is None:
         return False
-    if not result.routed_categories:
+    if not result.searched_categories:
         return result.selected_category != result.expected_category
-    return result.expected_category not in result.routed_categories
+    return result.expected_category not in result.searched_categories
 
 
 def _render_request_response_pairs(
@@ -788,6 +779,7 @@ def _render_limitations() -> str:
             "- Metrics are lightweight regression signals over the current golden set and should not be interpreted as comprehensive benchmark scores.",
             "- No-answer accuracy depends on the selected context and generation behavior for this run.",
             "- Token diagnostics use recorded estimates and model usage when available; provider-side accounting can differ.",
+            "- The router uses heuristic embedding-similarity thresholds. Similarity scores are not calibrated probabilities, and the configured threshold and category margin are specific to the current embedding model, category descriptions, and benchmark.",
         ]
     )
 

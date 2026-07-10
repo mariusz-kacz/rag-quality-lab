@@ -97,7 +97,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - **FR-005**: Every ingested chunk MUST include stable metadata: chunk ID, source slug, category, section metadata, content hash, estimated token count, and source provenance.
 - **FR-006**: The query workflow MUST follow this deterministic sequence: question, route, retrieve, build bounded context, generate cited answer or no-answer, validate citations, persist trace.
 - **FR-007**: Routing MUST be deterministic and embedding-based by comparing the user question against category description embeddings.
-- **FR-008**: Routing MUST select one category when confidence is high enough and MUST fall back to all categories when confidence is insufficient.
+- **FR-008**: Routing MUST select the top category and any categories within the configured margin when confidence is high enough, and MUST fall back to global retrieval when the top score is below the confidence threshold.
 - **FR-009**: The MVP router MUST NOT use an LLM.
 - **FR-010**: Retrieval MUST support `baseline-vector`, which searches across all chunks without category filtering.
 - **FR-011**: Retrieval MUST support `routed-vector`, which applies route-first category filtering before vector search in Qdrant.
@@ -113,10 +113,10 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - **FR-021**: Citations MUST reference retrieved chunks only and MUST be validated against chunks present in the selected context.
 - **FR-022**: The project documentation MUST state that citation validation proves cited chunks were present in the selected context, but does not prove full claim-level factual correctness.
 - **FR-023**: The system MUST support no-answer behavior when retrieved evidence is insufficient.
-- **FR-024**: The golden set MUST include answerable questions, no-answer questions, ambiguous category-boundary questions, and fallback-routing cases.
+- **FR-024**: The golden set MUST include answerable questions, no-answer questions, ambiguous category-boundary questions, broad multi-category-routing cases, and genuine low-confidence fallback-routing cases.
 - **FR-025**: The evaluation harness MUST be lightweight and custom-built rather than based on a large evaluation framework such as RAGAS.
 - **FR-026**: The evaluation harness MUST compare retrieval modes using a golden question set of 12-15 cases.
-- **FR-027**: Evaluation metrics MUST include routing accuracy, fallback rate, hit rate at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks.
+- **FR-027**: Evaluation metrics MUST include routing accuracy, fallback count and rate, average searched categories, hit rate at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks.
 - **FR-028**: Evaluation MUST produce both machine-readable and Markdown artifacts.
 - **FR-029**: The README MUST explain the architecture, corpus and license choices, category design, CLI workflow, evaluation metrics, sample results, limitations, and future extensions.
 - **FR-030**: The MVP MUST explicitly exclude web UI, chatbot-style conversation, LangGraph or agents, multi-corpus ingestion, multiple vector stores, multiple model providers, reranking, production deployment, user authentication, full internet crawling, and large evaluation frameworks.
@@ -129,7 +129,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - **Knowledge Category**: One of the five allowed topical categories used by the deterministic router and by routed retrieval modes. Key attributes include category name, category description, and category description embedding reference.
 - **Chunk**: A stable unit of retrieved text derived from a source page. Key attributes include chunk ID, source slug, category, section metadata, content hash, estimated token count, text, and provenance.
 - **Question**: A user-supplied query or golden-set case. Key attributes include question text, expected category when applicable, expected relevant source or chunks when applicable, answerability label, and expected no-answer behavior when applicable.
-- **Route Decision**: The deterministic routing result for a question. Key attributes include selected category or all-category fallback, confidence score, threshold comparison, and category similarity scores.
+- **Route Decision**: The deterministic routing result for a question. Key attributes include the selected top category, effective searched categories, global-fallback status, confidence score, threshold comparison, and category similarity scores.
 - **Retrieval Result**: A ranked set of candidate chunks returned by a retrieval mode. Key attributes include retrieval mode, rank, score, chunk ID, source slug, and category.
 - **Context Build**: The bounded context selected for answer generation. Key attributes include included chunks, excluded chunks, exclusion reasons, estimated chunk tokens, final estimated context size, and output-token limit.
 - **Answer Result**: The generated cited answer or explicit no-answer result. Key attributes include answer text, citation list, no-answer flag, and validation status.
@@ -145,7 +145,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - **SC-003**: 100% of ingested chunks include stable chunk ID, source slug, category, section metadata, content hash, estimated token count, and source provenance.
 - **SC-004**: For every single-query run, the persisted trace records route decision, retrieval results, context inclusion and exclusion decisions, citation validation outcome, and token-budget diagnostics.
 - **SC-005**: On the golden question set, evaluation artifacts report all required metrics for each implemented retrieval mode with no manual post-processing.
-- **SC-006**: At least 12 and no more than 15 golden-set cases are included, covering answerable, no-answer, ambiguous category-boundary, and fallback-routing scenarios.
+- **SC-006**: Between 12 and 20 golden-set cases are included, covering answerable, no-answer, ambiguous category-boundary, multi-category-routing, and genuine fallback-routing scenarios.
 - **SC-007**: 100% of answer outputs are either cited answers whose citations validate against selected context or explicit no-answer responses.
 - **SC-008**: Re-running evaluation for the same pinned corpus and retrieval mode produces machine-readable artifacts with the same question identifiers, retrieval mode labels, metric names, and trace references.
 - **SC-009**: A reviewer can identify, from the README alone, the project purpose, MVP scope, excluded features, corpus source and license rationale, category design, CLI workflow, metrics, limitations, and future extensions.

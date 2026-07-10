@@ -5,7 +5,7 @@ RAG Quality Lab is a CLI-first Python project for inspecting retrieval-augmented
 The lab uses a curated local corpus, Azure AI Foundry models through an OpenAI-compatible project endpoint, and Qdrant for vector storage. It supports two retrieval modes:
 
 - `baseline-vector`: searches the full collection.
-- `routed-vector`: deterministically routes the question across five knowledge categories, then applies a category filter when routing confidence is high enough.
+- `routed-vector`: deterministically routes the question across five knowledge categories, then applies one or more category filters when routing confidence is high enough.
 
 ## Repository Map
 
@@ -72,6 +72,7 @@ QDRANT_API_KEY=
 RAGLAB_QDRANT_COLLECTION=rag_quality_lab
 
 RAGLAB_ROUTER_CATEGORY_MARGIN=0.15
+RAGLAB_ROUTER_CONFIDENCE_THRESHOLD=0.18
 ```
 
 Leave `FOUNDRY_API_KEY` empty to use `DefaultAzureCredential`; otherwise set the project API key. Leave `QDRANT_API_KEY` empty for the local container. Set `FOUNDRY_REASONING_EFFORT` only when the configured chat deployment supports that Responses API option.
@@ -131,6 +132,7 @@ Variables already present in the process environment take precedence over values
 | `QDRANT_URL` | Ingest, query, evaluation | Qdrant HTTP URL. |
 | `QDRANT_API_KEY` | No | Qdrant API key for a secured or hosted instance. |
 | `RAGLAB_QDRANT_COLLECTION` | Ingest, query, evaluation | Collection used by the query pipeline and by ingestion unless `--collection` overrides it. |
+| `RAGLAB_ROUTER_CONFIDENCE_THRESHOLD` | No | Removes category filtering when the top similarity is below this threshold; default `0.18`. |
 | `RAGLAB_ROUTER_CATEGORY_MARGIN` | No | Includes categories whose score is within this margin of the winning route; default `0.15`. |
 
 Model values are deployment identifiers, not separate Azure OpenAI deployment variables. The implementation uses the OpenAI Python SDK against the configured Foundry project base URL for both embeddings and Responses API generation.
@@ -210,9 +212,11 @@ golden questions
 
 Provider integration is project-owned. The OpenAI SDK handles Foundry embeddings and Responses calls; `langchain-core` supplies prompt and message types used by generation. The project does not use the older Azure-specific environment variables or a `langchain-openai` Azure chat-model client.
 
-Routed retrieval falls back to all categories when its top category score is below the configured confidence threshold. Context assembly admits retrieved chunks in rank order while they fit the token budget. Generation must cite selected chunks, and citation validation checks that every returned citation maps to included context. This is a context-membership check, not a claim-level factuality judge.
+Broad questions may search several categories through category-margin routing. Global fallback is reserved for cases where no category reaches the minimum similarity threshold. Concretely, a top score below the confidence threshold removes category filtering and searches the full collection; otherwise, retrieval searches the winning category and every category within the configured margin. Context assembly admits retrieved chunks in rank order while they fit the token budget. Generation must cite selected chunks, and citation validation checks that every returned citation maps to included context. This is a context-membership check, not a claim-level factuality judge.
 
-Evaluation reports include routing accuracy, fallback rate, hit rate at k (`hit_rate_at_k`), MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A question counts as a hit when at least one expected source or expected chunk appears in the top-k retrieved results. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
+Evaluation reports identify the top category, all searched categories, and whether global fallback occurred for every question. Aggregate metrics include routing accuracy, fallback count and rate, average searched categories, hit rate at k (`hit_rate_at_k`), MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A question counts as a hit when at least one expected source or expected chunk appears in the top-k retrieved results. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
+
+The router uses heuristic embedding-similarity thresholds. Similarity scores are not calibrated probabilities, and the configured threshold and category margin are specific to the current embedding model, category descriptions, and benchmark.
 
 ## Development
 

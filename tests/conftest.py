@@ -136,15 +136,29 @@ def golden_questions() -> GoldenSet:
             case_type="ambiguous_boundary",
         ),
         Question(
-            question_id="q-fallback-01",
+            question_id="q-multi-category-01",
             text="How do tokens, risk, and evaluation interact in a RAG workflow?",
             expected_relevant_sources=["source-05"],
             answerability="answerable",
+            case_type="multi_category_routing",
+            expected_fallback_all_categories=False,
+            expected_searched_categories=[
+                "RAG evaluation and quality",
+                "LLM settings, cost, and tokens",
+            ],
+        ),
+        Question(
+            question_id="q-fallback-01",
+            text="What information should I provide before we begin?",
+            expected_relevant_sources=[],
+            answerability="no_answer",
             case_type="fallback_routing",
+            expected_fallback_all_categories=True,
+            expected_searched_categories=list(REQUIRED_KNOWLEDGE_CATEGORIES),
         ),
     ]
 
-    for index in range(8):
+    for index in range(7):
         questions.append(
             Question(
                 question_id=f"q-answerable-{index + 2:02d}",

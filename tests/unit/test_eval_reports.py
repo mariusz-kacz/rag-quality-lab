@@ -169,7 +169,7 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
                 },
                 expected_category="LLM security and risks",
                 selected_category="prompting techniques",
-                routed_categories=[
+                searched_categories=[
                     "prompting techniques",
                     "LLM security and risks",
                 ],
@@ -191,7 +191,7 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
                 },
                 expected_category="LLM settings, cost, and tokens",
                 selected_category="RAG evaluation and quality",
-                routed_categories=["RAG evaluation and quality"],
+                searched_categories=["RAG evaluation and quality"],
                 answer_text="The answer used the wrong source.",
                 is_no_answer=False,
                 expected_relevant_sources=["expected-source"],
@@ -210,7 +210,7 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
                 },
                 expected_category="LLM settings, cost, and tokens",
                 selected_category="RAG evaluation and quality",
-                routed_categories=["RAG evaluation and quality"],
+                searched_categories=["RAG evaluation and quality"],
                 answer_text="The answer cited another source.",
                 is_no_answer=False,
                 expected_relevant_sources=["expected-source"],
@@ -221,7 +221,7 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
 
     markdown = render_markdown_report(run)
 
-    assert "| Question | Case type | Status | Trace | Expected sources | Retrieved sources | Errors |" in markdown
+    assert "| Question | Case type | Status | Top category | Searched categories | Global fallback |" in markdown
     assert "| q-pass | answerable | pass |" in markdown
     assert "## Request-response pairs" in markdown
     assert "### q-pass" in markdown
@@ -229,6 +229,9 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
     assert "The answer uses the expected source | with citation." in markdown
     assert "| q-miss | answerable | route filter miss |" in markdown
     assert "| q-route-citation | answerable | route filter miss |" in markdown
+    assert "Top category" in markdown
+    assert "Searched categories" in markdown
+    assert "Global fallback" in markdown
 
 
 def _write_run(path: Path, *, mode: str, metrics: EvaluationMetrics) -> Path:

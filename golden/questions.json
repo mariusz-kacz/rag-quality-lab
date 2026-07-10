@@ -135,7 +135,7 @@
       "case_type": "ambiguous_boundary"
     },
     {
-      "question_id": "q-fallback-001",
+      "question_id": "q-multi-category-001",
       "text": "How do prompt structure, retrieved context, evaluation metrics, and token budgets interact during a RAG quality review?",
       "expected_category": null,
       "expected_relevant_sources": [
@@ -145,10 +145,15 @@
         "openai-token-counting"
       ],
       "answerability": "answerable",
-      "case_type": "fallback_routing"
+      "case_type": "multi_category_routing",
+      "expected_fallback_all_categories": false,
+      "expected_searched_categories": [
+        "RAG evaluation and quality",
+        "LLM settings, cost, and tokens"
+      ]
     },
     {
-      "question_id": "q-fallback-002",
+      "question_id": "q-multi-category-002",
       "text": "What tradeoffs connect vector embedding weaknesses, retrieval filtering, prompt instructions, and evaluation diagnostics?",
       "expected_category": null,
       "expected_relevant_sources": [
@@ -158,7 +163,46 @@
         "microsoft-foundry-rag-evaluators"
       ],
       "answerability": "answerable",
-      "case_type": "fallback_routing"
+      "case_type": "multi_category_routing",
+      "expected_fallback_all_categories": false,
+      "expected_searched_categories": [
+        "prompting techniques",
+        "RAG and context handling",
+        "RAG evaluation and quality",
+        "LLM settings, cost, and tokens"
+      ]
+    },
+    {
+      "question_id": "q-fallback-001",
+      "text": "What information should I provide before we begin?",
+      "expected_category": null,
+      "expected_relevant_sources": [],
+      "answerability": "no_answer",
+      "case_type": "fallback_routing",
+      "expected_fallback_all_categories": true,
+      "expected_searched_categories": [
+        "prompting techniques",
+        "RAG and context handling",
+        "RAG evaluation and quality",
+        "LLM security and risks",
+        "LLM settings, cost, and tokens"
+      ]
+    },
+    {
+      "question_id": "q-fallback-002",
+      "text": "How should our team schedule a workshop and assign follow-up owners?",
+      "expected_category": null,
+      "expected_relevant_sources": [],
+      "answerability": "no_answer",
+      "case_type": "fallback_routing",
+      "expected_fallback_all_categories": true,
+      "expected_searched_categories": [
+        "prompting techniques",
+        "RAG and context handling",
+        "RAG evaluation and quality",
+        "LLM security and risks",
+        "LLM settings, cost, and tokens"
+      ]
     },
     {
       "question_id": "q-security-boundary-001",

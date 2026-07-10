@@ -53,33 +53,42 @@ def test_embedding_router_selects_high_confidence_category() -> None:
 
 
 def test_embedding_router_falls_back_when_confidence_below_threshold() -> None:
+    question = "What information should I provide before we begin?"
     provider = FakeEmbeddingProvider(
         query_vectors={
-            "How do risk, tokens, retrieval, and quality interact?": [
-                0.2,
-                0.2,
-                0.2,
-                0.2,
-                0.2,
-            ],
+            question: [-1.0, -1.0, -1.0, -1.0, -1.0],
         }
     )
     router = EmbeddingCategoryRouter(
         embedding_provider=provider,
-        threshold=0.9,
+        threshold=0.18,
     )
 
-    decision = router.route("How do risk, tokens, retrieval, and quality interact?")
+    decision = router.route(question)
 
     assert decision.selected_category is None
     assert decision.fallback_all_categories is True
-    assert decision.confidence == pytest.approx(0.4472135955)
-    assert decision.threshold == 0.9
+    assert decision.confidence == 0.0
+    assert decision.threshold == 0.18
     assert set(decision.category_scores) == set(REQUIRED_KNOWLEDGE_CATEGORIES)
-    assert all(
-        score == pytest.approx(0.4472135955)
-        for score in decision.category_scores.values()
+    assert all(score == 0.0 for score in decision.category_scores.values())
+
+
+def test_embedding_router_does_not_fall_back_at_confidence_threshold() -> None:
+    question = "Which settings affect token cost and latency?"
+    provider = FakeEmbeddingProvider(
+        query_vectors={question: [0.0, 0.0, 0.0, 0.0, 1.0]}
     )
+    router = EmbeddingCategoryRouter(
+        embedding_provider=provider,
+        threshold=1.0,
+    )
+
+    decision = router.route(question)
+
+    assert decision.confidence == pytest.approx(decision.threshold)
+    assert decision.selected_category == "LLM settings, cost, and tokens"
+    assert decision.fallback_all_categories is False
 
 
 def test_embedding_router_reports_all_category_scores_in_required_order() -> None:

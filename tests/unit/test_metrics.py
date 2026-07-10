@@ -50,6 +50,25 @@ def test_calculate_fallback_rate_counts_all_category_routes() -> None:
     assert calculate_fallback_rate(traces) == pytest.approx(0.5)
 
 
+def test_fallback_count_and_average_searched_categories_are_distinct() -> None:
+    from rag_quality_lab.eval.metrics import (
+        calculate_average_searched_categories,
+        calculate_fallback_count,
+    )
+
+    traces = [
+        trace("q-1", selected_category="RAG and context handling"),
+        trace("q-2", fallback_all_categories=True),
+    ]
+
+    assert calculate_fallback_count(traces) == 1
+    assert calculate_average_searched_categories(
+        traces,
+        retrieval_mode="routed-vector",
+        category_margin=0.0,
+    ) == pytest.approx(3.0)
+
+
 def test_calculate_hit_rate_at_k_returns_zero_when_no_expected_result_is_retrieved() -> None:
     from rag_quality_lab.eval.metrics import calculate_hit_rate_at_k
 

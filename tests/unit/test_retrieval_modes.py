@@ -163,6 +163,21 @@ def test_routed_vector_search_applies_multi_category_filter() -> None:
     ]
 
 
+def test_routed_vector_global_fallback_removes_category_filter() -> None:
+    client = FakeSearchClient(points=[])
+    store = QdrantStore(client=client)
+
+    store.search_chunks(
+        collection="rag_quality_lab",
+        query_vector=[0.1, 0.2, 0.3],
+        mode="routed-vector",
+        top_k=3,
+        fallback_all_categories=True,
+    )
+
+    assert client.search_calls[0]["query_filter"] is None
+
+
 def test_qdrant_query_retriever_passes_categories_within_margin() -> None:
     store = RecordingStore()
     retriever = QdrantQueryRetriever(
@@ -180,8 +195,8 @@ def test_qdrant_query_retriever_passes_categories_within_margin() -> None:
             "prompting techniques": 0.27,
             "RAG and context handling": 0.40,
             "RAG evaluation and quality": 0.46,
-            "LLM security and risks": 0.26,
-            "LLM settings, cost, and tokens": 0.39,
+            "LLM security and risks": 0.379,
+            "LLM settings, cost, and tokens": 0.38,
         },
     )
 

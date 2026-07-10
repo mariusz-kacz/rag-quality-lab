@@ -20,6 +20,7 @@ CaseType: TypeAlias = Literal[
     "answerable",
     "no_answer",
     "ambiguous_boundary",
+    "multi_category_routing",
     "fallback_routing",
 ]
 ValidationStatus: TypeAlias = Literal["valid", "invalid", "not_applicable"]
@@ -34,11 +35,35 @@ class Question(SchemaModel):
     expected_relevant_sources: list[str] = Field(default_factory=list)
     answerability: Answerability = "answerable"
     case_type: CaseType = "answerable"
+    expected_fallback_all_categories: bool | None = None
+    expected_searched_categories: list[KnowledgeCategoryName] = Field(
+        default_factory=list
+    )
 
     @model_validator(mode="after")
     def validate_case_alignment(self) -> "Question":
         if self.answerability == "no_answer" and self.case_type == "answerable":
             raise ValueError("no_answer questions cannot use the answerable case type")
+        if self.case_type == "multi_category_routing":
+            if self.expected_fallback_all_categories is not False:
+                raise ValueError(
+                    "multi_category_routing questions require fallback to be disabled"
+                )
+            if len(self.expected_searched_categories) < 2:
+                raise ValueError(
+                    "multi_category_routing questions require at least two searched categories"
+                )
+        if self.case_type == "fallback_routing":
+            if self.expected_fallback_all_categories is not True:
+                raise ValueError(
+                    "fallback_routing questions require all-category fallback"
+                )
+            if set(self.expected_searched_categories) != set(
+                REQUIRED_KNOWLEDGE_CATEGORIES
+            ):
+                raise ValueError(
+                    "fallback_routing questions must expect all categories to be searched"
+                )
         return self
 
 

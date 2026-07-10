@@ -4,19 +4,28 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from rag_quality_lab.schemas import EvaluationMetrics, QueryTrace, Question
+from rag_quality_lab.schemas import EvaluationMetrics, QueryTrace, Question, RetrievalMode
 
 
 def calculate_evaluation_metrics(
     questions: Sequence[Question],
     traces: Sequence[QueryTrace],
+    *,
+    retrieval_mode: RetrievalMode = "routed-vector",
+    category_margin: float = 0.0,
 ) -> EvaluationMetrics:
     """Calculate every aggregate metric required for an evaluation artifact."""
 
     token_averages = calculate_token_averages(traces)
     return EvaluationMetrics(
         routing_accuracy=calculate_routing_accuracy(questions, traces),
+        fallback_count=calculate_fallback_count(traces),
         fallback_rate=calculate_fallback_rate(traces),
+        average_searched_categories=calculate_average_searched_categories(
+            traces,
+            retrieval_mode=retrieval_mode,
+            category_margin=category_margin,
+        ),
         hit_rate_at_k=calculate_hit_rate_at_k(questions, traces),
         mrr=calculate_mrr(questions, traces),
         citation_source_match=calculate_citation_source_match(questions, traces),
@@ -53,8 +62,63 @@ def calculate_fallback_rate(traces: Sequence[QueryTrace]) -> float | None:
 
     if not traces:
         return None
-    fallback_count = sum(1 for trace in traces if trace.route_decision.fallback_all_categories)
+    fallback_count = calculate_fallback_count(traces)
+    assert fallback_count is not None
     return fallback_count / len(traces)
+
+
+def calculate_fallback_count(traces: Sequence[QueryTrace]) -> int | None:
+    """Return the number of routes that triggered global retrieval."""
+
+    if not traces:
+        return None
+    return sum(1 for trace in traces if trace.route_decision.fallback_all_categories)
+
+
+def calculate_average_searched_categories(
+    traces: Sequence[QueryTrace],
+    *,
+    retrieval_mode: RetrievalMode,
+    category_margin: float,
+) -> float | None:
+    """Return the mean number of categories searched by retrieval."""
+
+    if not traces:
+        return None
+    counts = [
+        len(
+            searched_categories(
+                trace,
+                retrieval_mode=retrieval_mode,
+                category_margin=category_margin,
+            )
+        )
+        for trace in traces
+    ]
+    return sum(counts) / len(counts)
+
+
+def searched_categories(
+    trace: QueryTrace,
+    *,
+    retrieval_mode: RetrievalMode,
+    category_margin: float,
+) -> list[str]:
+    """Return the effective category scope used for retrieval."""
+
+    route = trace.route_decision
+    if retrieval_mode == "baseline-vector" or route.fallback_all_categories:
+        return list(route.category_scores)
+    if route.selected_category is None:
+        return []
+    cutoff = max(0.0, route.confidence - category_margin)
+    within_margin = [
+        category for category, score in route.category_scores.items() if score >= cutoff
+    ]
+    return [
+        route.selected_category,
+        *(category for category in within_margin if category != route.selected_category),
+    ]
 
 
 def calculate_hit_rate_at_k(

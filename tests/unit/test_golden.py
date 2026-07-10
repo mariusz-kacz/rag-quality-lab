@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from rag_quality_lab.schemas import GoldenSet, Question
+from rag_quality_lab.schemas import REQUIRED_KNOWLEDGE_CATEGORIES, GoldenSet, Question
 
 
 pytestmark = pytest.mark.unit
@@ -82,6 +82,36 @@ def test_golden_set_accepts_no_answer_without_expected_sources() -> None:
     assert no_answer_question.expected_relevant_sources == []
 
 
+def test_checked_in_routing_cases_distinguish_multi_category_and_fallback() -> None:
+    from rag_quality_lab.eval.golden import load_golden_set
+
+    golden_set = load_golden_set(Path("golden/questions.json"))
+    multi_category = [
+        question
+        for question in golden_set.questions
+        if question.case_type == "multi_category_routing"
+    ]
+    fallback = [
+        question
+        for question in golden_set.questions
+        if question.case_type == "fallback_routing"
+    ]
+
+    assert len(multi_category) == 2
+    assert all(
+        question.expected_fallback_all_categories is False
+        and len(question.expected_searched_categories) > 1
+        for question in multi_category
+    )
+    assert len(fallback) == 2
+    assert all(
+        question.expected_fallback_all_categories is True
+        and set(question.expected_searched_categories)
+        == set(REQUIRED_KNOWLEDGE_CATEGORIES)
+        for question in fallback
+    )
+
+
 def valid_question_payloads() -> list[dict[str, object]]:
     questions = [
         question_payload(
@@ -106,6 +136,13 @@ def valid_question_payloads() -> list[dict[str, object]]:
             expected_relevant_sources=["wikipedia-ir-evaluation-measures"],
         ),
         question_payload(
+            "q-multi-category-001",
+            case_type="multi_category_routing",
+            answerability="answerable",
+            expected_category=None,
+            expected_relevant_sources=["rag-overview"],
+        ),
+        question_payload(
             "q-fallback-001",
             case_type="fallback_routing",
             answerability="answerable",
@@ -121,7 +158,7 @@ def valid_question_payloads() -> list[dict[str, object]]:
             expected_category="RAG and context handling",
             expected_relevant_sources=["rag-overview"],
         )
-        for index in range(2, 10)
+        for index in range(2, 9)
     )
     return questions
 
@@ -151,7 +188,7 @@ def question_payload(
     expected_category: str | None,
     expected_relevant_sources: list[str],
 ) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "question_id": question_id,
         "text": f"Golden question {question_id}?",
         "expected_category": expected_category,
@@ -159,3 +196,19 @@ def question_payload(
         "answerability": answerability,
         "case_type": case_type,
     }
+    if case_type == "multi_category_routing":
+        payload["expected_fallback_all_categories"] = False
+        payload["expected_searched_categories"] = [
+            "RAG and context handling",
+            "RAG evaluation and quality",
+        ]
+    elif case_type == "fallback_routing":
+        payload["expected_fallback_all_categories"] = True
+        payload["expected_searched_categories"] = [
+            "prompting techniques",
+            "RAG and context handling",
+            "RAG evaluation and quality",
+            "LLM security and risks",
+            "LLM settings, cost, and tokens",
+        ]
+    return payload

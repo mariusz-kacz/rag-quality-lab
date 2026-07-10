@@ -34,7 +34,7 @@ Quality judgment: DAIR.AI remains useful but should not be presented as fully co
 
 ## Decision: Use embedding similarity over five category descriptions for routing
 
-**Rationale**: The router must be deterministic, embedding-based, and non-LLM. Category description embeddings provide a small, inspectable decision surface. A confidence threshold selects one category when the top score is strong enough and falls back to all categories otherwise.
+**Rationale**: The router must be deterministic, embedding-based, and non-LLM. Category description embeddings provide a small, inspectable decision surface. A confidence threshold enables filtered retrieval when the top score is strong enough; a category margin can include several nearby categories. Only a top score below the threshold falls back to global retrieval.
 
 **Alternatives considered**: LLM classification was rejected by the spec. Keyword-only routing was rejected because ambiguous phrasing in the golden set should exercise semantic category matching.
 
@@ -70,7 +70,7 @@ Quality judgment: DAIR.AI remains useful but should not be presented as fully co
 
 ## Decision: Use a custom lightweight evaluation harness
 
-**Rationale**: Required metrics are straightforward and domain-specific: routing accuracy, fallback rate, hit rate at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A custom harness makes the formulas inspectable for a portfolio reviewer.
+**Rationale**: Required metrics are straightforward and domain-specific: routing accuracy, fallback count and rate, average searched categories, hit rate at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A custom harness makes the formulas inspectable for a portfolio reviewer.
 
 **Alternatives considered**: RAGAS or similar large frameworks were rejected by scope. Manual notebook evaluation was rejected because the CLI must write reproducible artifacts.
 

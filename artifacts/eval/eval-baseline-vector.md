@@ -11,7 +11,7 @@
 | Question count | 16 |
 | Trace count | 16 |
 | JSON artifact | artifacts\eval\eval-baseline-vector.json |
-| Case mix | ambiguous_boundary: 5, answerable: 7, fallback_routing: 2, no_answer: 2 |
+| Case mix | ambiguous_boundary: 5, answerable: 7, multi_category_routing: 2, no_answer: 2 |
 
 ## Retrieval mode and configuration
 
@@ -28,7 +28,9 @@
 | Metric | Value | Reason |
 | --- | --- | --- |
 | routing_accuracy | n/a | Not applicable for this run or no eligible golden questions. |
+| fallback_count | 0 |  |
 | fallback_rate | 0 |  |
+| average_searched_categories | 5 |  |
 | hit_rate_at_k | 0.8571 |  |
 | mrr | 0.6071 |  |
 | citation_source_match | 0.8571 |  |
@@ -38,24 +40,24 @@
 
 ## Per-question table
 
-| Question | Case type | Status | Trace | Expected sources | Retrieved sources | Errors |
-| --- | --- | --- | --- | --- | --- | --- |
-| q-answerable-001 | answerable | pass | artifacts\eval\traces\baseline-vector\trace-96c468a8ab1647bcbf4ec872d72910ec.json | openai-api-prompt-engineering | openai-gpt5-prompting-guide, openai-evaluation-flywheel, openai-api-prompt-engineering | none |
-| q-answerable-002 | answerable | pass | artifacts\eval\traces\baseline-vector\trace-fce25e0224ef4ac1b4f10ca3cb0e8f89.json | azure-ai-search-rag-overview, openai-question-answering-embeddings | microsoft-foundry-rag-evaluators, openai-question-answering-embeddings, owasp-llm04-data-model-poisoning | none |
-| q-answerable-003 | answerable | pass | artifacts\eval\traces\baseline-vector\trace-9950abc03e954ee2a9590c8be5d1b2bc.json | trec-common-evaluation-measures, ragas-rag-metrics | trec-common-evaluation-measures, microsoft-foundry-rag-evaluators, openai-api-prompt-engineering | none |
-| q-answerable-004 | answerable | pass | artifacts\eval\traces\baseline-vector\trace-de1893ce95ba4197908a78f5b9b96e01.json | owasp-llm01-prompt-injection | owasp-llm01-prompt-injection | none |
-| q-answerable-005 | answerable | pass | artifacts\eval\traces\baseline-vector\trace-ab0cd85aa2b7495898436b6389c1ce97.json | openai-token-counting | openai-token-counting, openai-prompt-caching | none |
-| q-answerable-006 | answerable | pass | artifacts\eval\traces\baseline-vector\trace-e1eb1a8010a94809923ecdf15f3f1922.json | azure-ai-search-chunk-documents | azure-ai-search-chunk-documents, azure-ai-search-rag-overview | none |
-| q-no-answer-001 | no_answer | pass | artifacts\eval\traces\baseline-vector\trace-4005ba0e18c3424187fba81bd9f63c13.json | none | owasp-llm08-vector-embedding-weaknesses, openai-rate-limits | none |
-| q-no-answer-002 | no_answer | pass | artifacts\eval\traces\baseline-vector\trace-1d5b4151bdbd4d43917dd5006ce56af1.json | none | azure-ai-search-chunk-documents, owasp-llm04-data-model-poisoning, openai-token-counting | none |
-| q-cross-category-001 | ambiguous_boundary | pass | artifacts\eval\traces\baseline-vector\trace-4b8a5c23ad6b42358de77565dead62ce.json | microsoft-foundry-rag-evaluators, ragas-rag-metrics | microsoft-foundry-rag-evaluators, trec-common-evaluation-measures | none |
-| q-cross-category-002 | ambiguous_boundary | pass | artifacts\eval\traces\baseline-vector\trace-e3dadb99662842d5963fb5fcf3a15b52.json | openai-cost-optimization, openai-latency-optimization, azure-ai-search-rag-overview | openai-latency-optimization, owasp-llm02-sensitive-information-disclosure, ragas-rag-metrics | none |
-| q-cross-category-003 | ambiguous_boundary | source retrieval miss | artifacts\eval\traces\baseline-vector\trace-88452fb7d24f41f28dcecf579ab2694a.json | openai-prompt-caching, openai-cost-optimization | openai-gpt5-prompting-guide, openai-api-prompt-engineering, openai-evaluation-flywheel | none |
-| q-cross-category-004 | ambiguous_boundary | pass | artifacts\eval\traces\baseline-vector\trace-480e44731eca4f78b05dddac6d161ed0.json | owasp-llm01-prompt-injection, owasp-llm08-vector-embedding-weaknesses | owasp-llm02-sensitive-information-disclosure, openai-api-prompt-engineering, owasp-llm01-prompt-injection | none |
-| q-cross-category-005 | ambiguous_boundary | pass | artifacts\eval\traces\baseline-vector\trace-04db403594e7402d9f3b5e1b6ee04345.json | ragas-rag-metrics, microsoft-foundry-rag-evaluators | openai-question-answering-embeddings, microsoft-foundry-rag-evaluators, azure-ai-search-vector-relevance-ranking | none |
-| q-fallback-001 | fallback_routing | pass | artifacts\eval\traces\baseline-vector\trace-b36714e211ac4b7c99b3a0f28f5d5bc0.json | openai-api-prompt-engineering, azure-ai-search-rag-overview, deepeval-rag-metrics, openai-token-counting | openai-latency-optimization, ragas-rag-metrics, openai-token-counting | none |
-| q-fallback-002 | fallback_routing | source retrieval miss | artifacts\eval\traces\baseline-vector\trace-8fcce30eedce47939a7083eaf1b08194.json | owasp-llm08-vector-embedding-weaknesses, azure-ai-search-vector-relevance-ranking, openai-gpt5-prompting-guide, microsoft-foundry-rag-evaluators | openai-latency-optimization, owasp-llm04-data-model-poisoning | none |
-| q-security-boundary-001 | answerable | pass | artifacts\eval\traces\baseline-vector\trace-59e2908c9ff340c185f9387d89548b06.json | owasp-llm01-prompt-injection | openai-gpt5-prompting-guide, owasp-llm01-prompt-injection | none |
+| Question | Case type | Status | Top category | Searched categories | Global fallback | Trace | Expected sources | Retrieved sources | Errors |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| q-answerable-001 | answerable | pass | prompting techniques | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-96c468a8ab1647bcbf4ec872d72910ec.json | openai-api-prompt-engineering | openai-gpt5-prompting-guide, openai-evaluation-flywheel, openai-api-prompt-engineering | none |
+| q-answerable-002 | answerable | pass | RAG and context handling | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-fce25e0224ef4ac1b4f10ca3cb0e8f89.json | azure-ai-search-rag-overview, openai-question-answering-embeddings | microsoft-foundry-rag-evaluators, openai-question-answering-embeddings, owasp-llm04-data-model-poisoning | none |
+| q-answerable-003 | answerable | pass | RAG evaluation and quality | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-9950abc03e954ee2a9590c8be5d1b2bc.json | trec-common-evaluation-measures, ragas-rag-metrics | trec-common-evaluation-measures, microsoft-foundry-rag-evaluators, openai-api-prompt-engineering | none |
+| q-answerable-004 | answerable | pass | LLM security and risks | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-de1893ce95ba4197908a78f5b9b96e01.json | owasp-llm01-prompt-injection | owasp-llm01-prompt-injection | none |
+| q-answerable-005 | answerable | pass | LLM settings, cost, and tokens | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-ab0cd85aa2b7495898436b6389c1ce97.json | openai-token-counting | openai-token-counting, openai-prompt-caching | none |
+| q-answerable-006 | answerable | pass | RAG and context handling | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-e1eb1a8010a94809923ecdf15f3f1922.json | azure-ai-search-chunk-documents | azure-ai-search-chunk-documents, azure-ai-search-rag-overview | none |
+| q-no-answer-001 | no_answer | pass | LLM settings, cost, and tokens | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-4005ba0e18c3424187fba81bd9f63c13.json | none | owasp-llm08-vector-embedding-weaknesses, openai-rate-limits | none |
+| q-no-answer-002 | no_answer | pass | RAG evaluation and quality | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-1d5b4151bdbd4d43917dd5006ce56af1.json | none | azure-ai-search-chunk-documents, owasp-llm04-data-model-poisoning, openai-token-counting | none |
+| q-cross-category-001 | ambiguous_boundary | pass | RAG evaluation and quality | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-4b8a5c23ad6b42358de77565dead62ce.json | microsoft-foundry-rag-evaluators, ragas-rag-metrics | microsoft-foundry-rag-evaluators, trec-common-evaluation-measures | none |
+| q-cross-category-002 | ambiguous_boundary | pass | RAG evaluation and quality | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-e3dadb99662842d5963fb5fcf3a15b52.json | openai-cost-optimization, openai-latency-optimization, azure-ai-search-rag-overview | openai-latency-optimization, owasp-llm02-sensitive-information-disclosure, ragas-rag-metrics | none |
+| q-cross-category-003 | ambiguous_boundary | source retrieval miss | RAG evaluation and quality | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-88452fb7d24f41f28dcecf579ab2694a.json | openai-prompt-caching, openai-cost-optimization | openai-gpt5-prompting-guide, openai-api-prompt-engineering, openai-evaluation-flywheel | none |
+| q-cross-category-004 | ambiguous_boundary | pass | prompting techniques | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-480e44731eca4f78b05dddac6d161ed0.json | owasp-llm01-prompt-injection, owasp-llm08-vector-embedding-weaknesses | owasp-llm02-sensitive-information-disclosure, openai-api-prompt-engineering, owasp-llm01-prompt-injection | none |
+| q-cross-category-005 | ambiguous_boundary | pass | RAG and context handling | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-04db403594e7402d9f3b5e1b6ee04345.json | ragas-rag-metrics, microsoft-foundry-rag-evaluators | openai-question-answering-embeddings, microsoft-foundry-rag-evaluators, azure-ai-search-vector-relevance-ranking | none |
+| q-multi-category-001 | multi_category_routing | pass | RAG evaluation and quality | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-b36714e211ac4b7c99b3a0f28f5d5bc0.json | openai-api-prompt-engineering, azure-ai-search-rag-overview, deepeval-rag-metrics, openai-token-counting | openai-latency-optimization, ragas-rag-metrics, openai-token-counting | none |
+| q-multi-category-002 | multi_category_routing | source retrieval miss | prompting techniques | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-8fcce30eedce47939a7083eaf1b08194.json | owasp-llm08-vector-embedding-weaknesses, azure-ai-search-vector-relevance-ranking, openai-gpt5-prompting-guide, microsoft-foundry-rag-evaluators | openai-latency-optimization, owasp-llm04-data-model-poisoning | none |
+| q-security-boundary-001 | answerable | pass | prompting techniques | prompting techniques, RAG and context handling, RAG evaluation and quality, LLM security and risks, LLM settings, cost, and tokens | no | artifacts\eval\traces\baseline-vector\trace-59e2908c9ff340c185f9387d89548b06.json | owasp-llm01-prompt-injection | openai-gpt5-prompting-guide, owasp-llm01-prompt-injection | none |
 
 ## Request-response pairs
 
@@ -377,11 +379,11 @@ Which checks tell me whether retrieved chunks contain enough relevant evidence f
 - Optionally add **document retrieval metrics** (when labels exist) to see if the relevant documents and chunks are ranked high enough; low scores suggest your retrieved chunks are not sufficiently evidence-rich. [C2]
 ````
 
-### q-fallback-001
+### q-multi-category-001
 
 | Field | Value |
 | --- | --- |
-| Case type | fallback_routing |
+| Case type | multi_category_routing |
 | Status | pass |
 | No-answer response | no |
 
@@ -405,11 +407,11 @@ How do prompt structure, retrieved context, evaluation metrics, and token budget
 - These metrics guide how you adjust prompt structure, trimming, and token budgets: metric inputs explicitly track `user_input`, `retrieved_contexts`, `response`, and optionally `reference` and context IDs, letting you see whether issues come from retrieval selection (context fields) or from how the model uses the provided context within the structured prompt under a given token budget. [C2][C3]
 ````
 
-### q-fallback-002
+### q-multi-category-002
 
 | Field | Value |
 | --- | --- |
-| Case type | fallback_routing |
+| Case type | multi_category_routing |
 | Status | source retrieval miss |
 | No-answer response | no |
 
@@ -479,8 +481,8 @@ If retrieved content contains instructions telling the assistant to ignore previ
 | q-cross-category-003 | 560 | 3 |
 | q-cross-category-004 | 356 | 3 |
 | q-cross-category-005 | 629 | 3 |
-| q-fallback-001 | 975 | 3 |
-| q-fallback-002 | 671 | 3 |
+| q-multi-category-001 | 975 | 3 |
+| q-multi-category-002 | 671 | 3 |
 | q-security-boundary-001 | 398 | 3 |
 
 ## No-answer cases
@@ -500,3 +502,4 @@ None recorded.
 - Metrics are lightweight regression signals over the current golden set and should not be interpreted as comprehensive benchmark scores.
 - No-answer accuracy depends on the selected context and generation behavior for this run.
 - Token diagnostics use recorded estimates and model usage when available; provider-side accounting can differ.
+- The router uses heuristic embedding-similarity thresholds. Similarity scores are not calibrated probabilities, and the configured threshold and category margin are specific to the current embedding model, category descriptions, and benchmark.

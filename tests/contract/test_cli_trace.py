@@ -34,6 +34,8 @@ def test_trace_inspect_json_outputs_trace_schema_fields(
         "expected_relevant_sources": [],
         "answerability": "answerable",
         "case_type": "answerable",
+        "expected_fallback_all_categories": None,
+        "expected_searched_categories": [],
     }
     assert payload["retrieval_mode"] == "routed-vector"
     assert payload["route_decision"]["selected_category"] == "RAG and context handling"

@@ -18,11 +18,14 @@ REQUIRED_CASE_TYPES: tuple[str, ...] = (
     "answerable",
     "no_answer",
     "ambiguous_boundary",
+    "multi_category_routing",
     "fallback_routing",
 )
 REQUIRED_EVALUATION_METRICS: tuple[str, ...] = (
     "routing_accuracy",
+    "fallback_count",
     "fallback_rate",
+    "average_searched_categories",
     "hit_rate_at_k",
     "mrr",
     "citation_source_match",
@@ -33,7 +36,9 @@ REQUIRED_EVALUATION_METRICS: tuple[str, ...] = (
 
 MetricName: TypeAlias = Literal[
     "routing_accuracy",
+    "fallback_count",
     "fallback_rate",
+    "average_searched_categories",
     "hit_rate_at_k",
     "mrr",
     "citation_source_match",
@@ -70,7 +75,9 @@ class EvaluationMetrics(SchemaModel):
     """Aggregate metrics required for every evaluation artifact."""
 
     routing_accuracy: float | None = Field(default=None, ge=0.0, le=1.0)
+    fallback_count: int | None = Field(default=None, ge=0)
     fallback_rate: float | None = Field(default=None, ge=0.0, le=1.0)
+    average_searched_categories: float | None = Field(default=None, ge=0.0)
     hit_rate_at_k: float | None = Field(default=None, ge=0.0, le=1.0)
     mrr: float | None = Field(default=None, ge=0.0, le=1.0)
     citation_source_match: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -89,7 +96,8 @@ class EvaluationQuestionResult(SchemaModel):
     metrics: dict[MetricName, float | None] = Field(default_factory=dict)
     expected_category: KnowledgeCategoryName | None = None
     selected_category: KnowledgeCategoryName | None = None
-    routed_categories: list[KnowledgeCategoryName] = Field(default_factory=list)
+    searched_categories: list[KnowledgeCategoryName] = Field(default_factory=list)
+    global_fallback_occurred: bool = False
     answer_text: str | None = None
     is_no_answer: bool | None = None
     expected_relevant_sources: list[str] = Field(default_factory=list)
