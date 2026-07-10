@@ -53,7 +53,7 @@ As a reviewer, I want to run a lightweight evaluation over a golden question set
 
 **Acceptance Scenarios**:
 
-1. **Given** a golden set with 12-20 cases, **When** the reviewer evaluates `baseline-vector`, **Then** the system reports routing accuracy as not applicable, plus fallback rate, recall@k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks.
+1. **Given** a golden set with 12-20 cases, **When** the reviewer evaluates `baseline-vector`, **Then** the system reports routing accuracy as not applicable, plus fallback rate, hit rate at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks.
 2. **Given** the same golden set, **When** the reviewer evaluates `routed-vector`, **Then** the system reports the same comparable metrics and includes routing decisions for each question.
 3. **Given** evaluation completes, **When** artifacts are written, **Then** reviewers can inspect both a machine-readable result and a human-readable Markdown report without rerunning the evaluation.
 
@@ -116,7 +116,7 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 - **FR-024**: The golden set MUST include answerable questions, no-answer questions, ambiguous category-boundary questions, and fallback-routing cases.
 - **FR-025**: The evaluation harness MUST be lightweight and custom-built rather than based on a large evaluation framework such as RAGAS.
 - **FR-026**: The evaluation harness MUST compare retrieval modes using a golden question set of 12-15 cases.
-- **FR-027**: Evaluation metrics MUST include routing accuracy, fallback rate, recall@k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks.
+- **FR-027**: Evaluation metrics MUST include routing accuracy, fallback rate, hit rate at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks.
 - **FR-028**: Evaluation MUST produce both machine-readable and Markdown artifacts.
 - **FR-029**: The README MUST explain the architecture, corpus and license choices, category design, CLI workflow, evaluation metrics, sample results, limitations, and future extensions.
 - **FR-030**: The MVP MUST explicitly exclude web UI, chatbot-style conversation, LangGraph or agents, multi-corpus ingestion, multiple vector stores, multiple model providers, reranking, production deployment, user authentication, full internet crawling, and large evaluation frameworks.

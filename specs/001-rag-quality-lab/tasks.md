@@ -146,7 +146,7 @@
 - [X] T045 [P] [US3] Add contract tests for `raglab eval run` JSON output, metric names, artifact paths, and unsupported optional modes in tests/contract/test_cli_eval_run.py
 - [X] T046 [P] [US3] Add contract tests for `raglab eval compare` JSON and Markdown output in tests/contract/test_cli_eval_compare.py
 - [X] T047 [P] [US3] Add unit tests for golden question validation, required case types, answerability labels, and expected relevant sources in tests/unit/test_golden.py
-- [X] T048 [P] [US3] Add unit tests for routing accuracy, fallback rate, recall@k, MRR, citation source match, no-answer accuracy, and token averages in tests/unit/test_metrics.py
+- [X] T048 [P] [US3] Add unit tests for routing accuracy, fallback rate, hit rate at k, MRR, citation source match, no-answer accuracy, and token averages in tests/unit/test_metrics.py
 - [X] T049 [P] [US3] Add integration tests for baseline-vector and routed-vector evaluation artifact generation in tests/integration/test_eval_workflow.py
 
 ### Implementation for User Story 3
@@ -260,7 +260,7 @@ Task: "T033 [P] [US2] Add unit tests for citation parsing, malformed citations, 
 Task: "T045 [P] [US3] Add contract tests for `raglab eval run` JSON output, metric names, artifact paths, and unsupported optional modes in tests/contract/test_cli_eval_run.py"
 Task: "T046 [P] [US3] Add contract tests for `raglab eval compare` JSON and Markdown output in tests/contract/test_cli_eval_compare.py"
 Task: "T047 [P] [US3] Add unit tests for golden question validation, required case types, answerability labels, and expected relevant sources in tests/unit/test_golden.py"
-Task: "T048 [P] [US3] Add unit tests for routing accuracy, fallback rate, recall@k, MRR, citation source match, no-answer accuracy, and token averages in tests/unit/test_metrics.py"
+Task: "T048 [P] [US3] Add unit tests for routing accuracy, fallback rate, hit rate at k, MRR, citation source match, no-answer accuracy, and token averages in tests/unit/test_metrics.py"
 ```
 
 ## Parallel Example: User Story 4

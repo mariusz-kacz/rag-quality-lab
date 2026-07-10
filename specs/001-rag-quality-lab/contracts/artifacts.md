@@ -56,7 +56,7 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 
 - `routing_accuracy`
 - `fallback_rate`
-- `recall_at_k`
+- `hit_rate_at_k`
 - `mrr`
 - `citation_source_match`
 - `no_answer_accuracy`

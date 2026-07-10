@@ -49,7 +49,7 @@ class EvaluationQueryRunner(Protocol):
 QUALITY_METRICS: tuple[MetricName, ...] = (
     "routing_accuracy",
     "fallback_rate",
-    "recall_at_k",
+    "hit_rate_at_k",
     "mrr",
     "citation_source_match",
     "no_answer_accuracy",
@@ -479,7 +479,7 @@ def _per_question_metrics(
             else _routing_match(question, trace)
         ),
         "fallback_rate": 1.0 if trace.route_decision.fallback_all_categories else 0.0,
-        "recall_at_k": _retrieval_hit(question, trace),
+        "hit_rate_at_k": _retrieval_hit(question, trace),
         "mrr": _reciprocal_rank(question, trace),
         "citation_source_match": _citation_match(question, trace),
         "no_answer_accuracy": (
@@ -654,7 +654,7 @@ def _question_status(
     route_filter_miss = _route_filter_missed(result, retrieval_mode=retrieval_mode)
     if route_filter_miss:
         status.append("route filter miss")
-    source_retrieval_miss = result.metrics.get("recall_at_k") == 0.0
+    source_retrieval_miss = result.metrics.get("hit_rate_at_k") == 0.0
     if not route_filter_miss and source_retrieval_miss:
         status.append("source retrieval miss")
     if (

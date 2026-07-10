@@ -23,7 +23,7 @@ REQUIRED_CASE_TYPES: tuple[str, ...] = (
 REQUIRED_EVALUATION_METRICS: tuple[str, ...] = (
     "routing_accuracy",
     "fallback_rate",
-    "recall_at_k",
+    "hit_rate_at_k",
     "mrr",
     "citation_source_match",
     "no_answer_accuracy",
@@ -34,7 +34,7 @@ REQUIRED_EVALUATION_METRICS: tuple[str, ...] = (
 MetricName: TypeAlias = Literal[
     "routing_accuracy",
     "fallback_rate",
-    "recall_at_k",
+    "hit_rate_at_k",
     "mrr",
     "citation_source_match",
     "no_answer_accuracy",
@@ -71,7 +71,7 @@ class EvaluationMetrics(SchemaModel):
 
     routing_accuracy: float | None = Field(default=None, ge=0.0, le=1.0)
     fallback_rate: float | None = Field(default=None, ge=0.0, le=1.0)
-    recall_at_k: float | None = Field(default=None, ge=0.0, le=1.0)
+    hit_rate_at_k: float | None = Field(default=None, ge=0.0, le=1.0)
     mrr: float | None = Field(default=None, ge=0.0, le=1.0)
     citation_source_match: float | None = Field(default=None, ge=0.0, le=1.0)
     no_answer_accuracy: float | None = Field(default=None, ge=0.0, le=1.0)

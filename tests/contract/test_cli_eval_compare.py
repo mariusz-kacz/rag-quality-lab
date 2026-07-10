@@ -72,7 +72,7 @@ def test_eval_compare_json_reports_metric_table_token_diagnostics_and_markdown_p
     assert payload["markdown_path"] == str(markdown_path)
     assert payload["metrics"] == [
         {
-            "metric": "recall_at_k",
+            "metric": "hit_rate_at_k",
             "values": {
                 "baseline-vector": 0.5,
                 "routed-vector": 0.75,
@@ -150,7 +150,7 @@ def test_eval_compare_human_output_reports_metrics_and_markdown_path(
     assert "Evaluation comparison" in result.stdout
     assert "Artifacts: 2" in result.stdout
     assert (
-        "recall_at_k: baseline-vector=0.5, routed-vector=0.75, "
+        "hit_rate_at_k: baseline-vector=0.5, routed-vector=0.75, "
         "best=routed-vector"
     ) in result.stdout
     assert (
@@ -174,7 +174,7 @@ def sample_comparison_result(
         "markdown_path": str(markdown_path) if markdown_path is not None else None,
         "metrics": [
             {
-                "metric": "recall_at_k",
+                "metric": "hit_rate_at_k",
                 "values": {
                     "baseline-vector": 0.5,
                     "routed-vector": 0.75,

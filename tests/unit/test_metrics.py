@@ -50,29 +50,48 @@ def test_calculate_fallback_rate_counts_all_category_routes() -> None:
     assert calculate_fallback_rate(traces) == pytest.approx(0.5)
 
 
-def test_calculate_recall_at_k_uses_expected_sources_or_chunk_ids() -> None:
-    from rag_quality_lab.eval.metrics import calculate_recall_at_k
+def test_calculate_hit_rate_at_k_returns_zero_when_no_expected_result_is_retrieved() -> None:
+    from rag_quality_lab.eval.metrics import calculate_hit_rate_at_k
 
-    questions = [
-        question("q-1", expected_relevant_sources=["source-a"]),
-        question("q-2", expected_relevant_sources=["chunk-b-1"]),
-        question("q-3", expected_relevant_sources=["source-missing"]),
-        no_answer_question("q-4"),
-    ]
+    questions = [question("q-1", expected_relevant_sources=["source-missing"])]
     traces = [
-        trace("q-1", retrievals=[retrieval("chunk-a-1", "source-a", rank=1)]),
+        trace("q-1", retrievals=[retrieval("chunk-a-1", "source-a", rank=1)])
+    ]
+
+    assert calculate_hit_rate_at_k(questions, traces) == 0.0
+
+
+def test_calculate_hit_rate_at_k_returns_one_when_an_expected_chunk_is_retrieved() -> None:
+    from rag_quality_lab.eval.metrics import calculate_hit_rate_at_k
+
+    questions = [question("q-1", expected_relevant_sources=["chunk-b-1"])]
+    traces = [
         trace(
-            "q-2",
+            "q-1",
             retrievals=[
                 retrieval("chunk-x-1", "source-x", rank=1),
                 retrieval("chunk-b-1", "source-b", rank=2),
             ],
-        ),
-        trace("q-3", retrievals=[retrieval("chunk-c-1", "source-c", rank=1)]),
-        trace("q-4", retrievals=[retrieval("chunk-d-1", "source-d", rank=1)]),
+        )
     ]
 
-    assert calculate_recall_at_k(questions, traces) == pytest.approx(2 / 3)
+    assert calculate_hit_rate_at_k(questions, traces) == 1.0
+
+
+def test_calculate_hit_rate_at_k_returns_one_for_one_of_several_expected_sources() -> None:
+    from rag_quality_lab.eval.metrics import calculate_hit_rate_at_k
+
+    questions = [
+        question(
+            "q-1",
+            expected_relevant_sources=["source-missing", "source-b", "source-other"],
+        )
+    ]
+    traces = [
+        trace("q-1", retrievals=[retrieval("chunk-b-1", "source-b", rank=1)])
+    ]
+
+    assert calculate_hit_rate_at_k(questions, traces) == 1.0
 
 
 def test_calculate_mrr_uses_first_relevant_retrieval_rank() -> None:

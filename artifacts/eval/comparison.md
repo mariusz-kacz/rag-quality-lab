@@ -13,7 +13,7 @@
 | --- | --- | --- | --- |
 | routing_accuracy | n/a | 0.5833 | n/a |
 | fallback_rate | 0 | 0 | tie |
-| recall_at_k | 0.8571 | 0.9286 | routed-vector |
+| hit_rate_at_k | 0.8571 | 0.9286 | routed-vector |
 | mrr | 0.6071 | 0.6786 | routed-vector |
 | citation_source_match | 0.8571 | 0.9286 | routed-vector |
 | no_answer_accuracy | 1 | 1 | tie |

@@ -43,14 +43,14 @@ Latest comparison artifact: `artifacts/eval/comparison.md`
 | --- | ---: | ---: | --- |
 | `routing_accuracy` | n/a | 0.5833 | not comparable |
 | `fallback_rate` | 0 | 0 | tie |
-| `recall_at_k` | 0.8571 | 0.9286 | routed wins |
+| `hit_rate_at_k` | 0.8571 | 0.9286 | routed wins |
 | `mrr` | 0.6071 | 0.6786 | routed wins |
 | `citation_source_match` | 0.8571 | 0.9286 | routed wins |
 | `no_answer_accuracy` | 1 | 1 | tie |
 | `average_context_tokens` | 609.7 | 597.8 | routed wins |
 | `average_included_chunks` | 2.938 | 2.812 | routed wins |
 
-After tightening `top_k` and context budget, `routed-vector` became the clear winner on the retrieval-sensitive metrics: recall, first relevant rank, citation source match, and token/context efficiency. Routing accuracy is intentionally not compared against `baseline-vector`, because baseline global vector search does not use route filtering.
+After tightening `top_k` and context budget, `routed-vector` became the clear winner on the retrieval-sensitive metrics: hit rate, first relevant rank, citation source match, and token/context efficiency. Routing accuracy is intentionally not compared against `baseline-vector`, because baseline global vector search does not use route filtering.
 
 ## Why The Earlier Runs Were Inconclusive
 

@@ -17,7 +17,7 @@ def calculate_evaluation_metrics(
     return EvaluationMetrics(
         routing_accuracy=calculate_routing_accuracy(questions, traces),
         fallback_rate=calculate_fallback_rate(traces),
-        recall_at_k=calculate_recall_at_k(questions, traces),
+        hit_rate_at_k=calculate_hit_rate_at_k(questions, traces),
         mrr=calculate_mrr(questions, traces),
         citation_source_match=calculate_citation_source_match(questions, traces),
         no_answer_accuracy=calculate_no_answer_accuracy(questions, traces),
@@ -57,11 +57,15 @@ def calculate_fallback_rate(traces: Sequence[QueryTrace]) -> float | None:
     return fallback_count / len(traces)
 
 
-def calculate_recall_at_k(
+def calculate_hit_rate_at_k(
     questions: Sequence[Question],
     traces: Sequence[QueryTrace],
 ) -> float | None:
-    """Score whether each answerable expected source or chunk appears in results."""
+    """Calculate the share of answerable questions that are retrieval hits.
+
+    A question counts as a hit when at least one expected source or expected chunk
+    appears in the top-k retrieved results.
+    """
 
     scored_pairs = _retrieval_scored_pairs(questions, traces)
     if not scored_pairs:

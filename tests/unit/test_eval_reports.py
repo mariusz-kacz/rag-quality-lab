@@ -26,7 +26,7 @@ def test_compare_evaluation_artifacts_builds_metric_and_token_budget_tables(
         metrics=EvaluationMetrics(
             routing_accuracy=None,
             fallback_rate=0.2,
-            recall_at_k=0.5,
+            hit_rate_at_k=0.5,
             mrr=0.4,
             citation_source_match=0.75,
             no_answer_accuracy=1.0,
@@ -40,7 +40,7 @@ def test_compare_evaluation_artifacts_builds_metric_and_token_budget_tables(
         metrics=EvaluationMetrics(
             routing_accuracy=0.8,
             fallback_rate=0.1,
-            recall_at_k=0.75,
+            hit_rate_at_k=0.75,
             mrr=0.6,
             citation_source_match=0.75,
             no_answer_accuracy=1.0,
@@ -54,8 +54,8 @@ def test_compare_evaluation_artifacts_builds_metric_and_token_budget_tables(
     assert comparison["schema_version"] == "1.0"
     assert comparison["artifact_paths"] == [str(baseline_path), str(routed_path)]
     assert comparison["markdown_path"] is None
-    assert _row(comparison, "recall_at_k") == {
-        "metric": "recall_at_k",
+    assert _row(comparison, "hit_rate_at_k") == {
+        "metric": "hit_rate_at_k",
         "values": {
             "baseline-vector": 0.5,
             "routed-vector": 0.75,
@@ -95,7 +95,7 @@ def test_compare_evaluation_artifacts_writes_markdown_report(tmp_path: Path) -> 
         metrics=EvaluationMetrics(
             routing_accuracy=None,
             fallback_rate=0.0,
-            recall_at_k=1.0,
+            hit_rate_at_k=1.0,
             mrr=1.0,
             citation_source_match=1.0,
             no_answer_accuracy=1.0,
@@ -114,7 +114,7 @@ def test_compare_evaluation_artifacts_writes_markdown_report(tmp_path: Path) -> 
     assert "## Token-budget diagnostics" in markdown
     assert "## Interpretation notes" in markdown
     assert "baseline-vector" in markdown
-    assert "recall_at_k" in markdown
+    assert "hit_rate_at_k" in markdown
 
 
 def test_compare_evaluation_artifacts_rejects_duplicate_modes(tmp_path: Path) -> None:
@@ -126,12 +126,12 @@ def test_compare_evaluation_artifacts_rejects_duplicate_modes(tmp_path: Path) ->
     first_path = _write_run(
         tmp_path / "eval-baseline-vector-a.json",
         mode="baseline-vector",
-        metrics=EvaluationMetrics(recall_at_k=0.5),
+        metrics=EvaluationMetrics(hit_rate_at_k=0.5),
     )
     second_path = _write_run(
         tmp_path / "eval-baseline-vector-b.json",
         mode="baseline-vector",
-        metrics=EvaluationMetrics(recall_at_k=0.75),
+        metrics=EvaluationMetrics(hit_rate_at_k=0.75),
     )
 
     with pytest.raises(EvaluationRunError, match="Duplicate evaluation artifact"):
@@ -151,7 +151,7 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
             "output_token_limit": 800,
         },
         metrics=EvaluationMetrics(
-            recall_at_k=0.5,
+            hit_rate_at_k=0.5,
             citation_source_match=0.5,
             no_answer_accuracy=1.0,
         ),
@@ -163,7 +163,7 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
                 trace_path=Path("artifacts/traces/q-pass.json"),
                 metrics={
                     "routing_accuracy": 0.0,
-                    "recall_at_k": 1.0,
+                    "hit_rate_at_k": 1.0,
                     "citation_source_match": 1.0,
                     "no_answer_accuracy": 1.0,
                 },
@@ -185,7 +185,7 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
                 trace_path=Path("artifacts/traces/q-miss.json"),
                 metrics={
                     "routing_accuracy": 0.0,
-                    "recall_at_k": 0.0,
+                    "hit_rate_at_k": 0.0,
                     "citation_source_match": 0.0,
                     "no_answer_accuracy": 1.0,
                 },
@@ -204,7 +204,7 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
                 trace_path=Path("artifacts/traces/q-route-citation.json"),
                 metrics={
                     "routing_accuracy": 0.0,
-                    "recall_at_k": 1.0,
+                    "hit_rate_at_k": 1.0,
                     "citation_source_match": 0.0,
                     "no_answer_accuracy": 1.0,
                 },

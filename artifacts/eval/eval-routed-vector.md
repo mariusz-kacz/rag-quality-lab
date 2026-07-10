@@ -29,7 +29,7 @@
 | --- | --- | --- |
 | routing_accuracy | 0.5833 |  |
 | fallback_rate | 0 |  |
-| recall_at_k | 0.9286 |  |
+| hit_rate_at_k | 0.9286 |  |
 | mrr | 0.6786 |  |
 | citation_source_match | 0.9286 |  |
 | no_answer_accuracy | 1 |  |

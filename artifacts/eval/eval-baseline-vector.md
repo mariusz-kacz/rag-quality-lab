@@ -29,7 +29,7 @@
 | --- | --- | --- |
 | routing_accuracy | n/a | Not applicable for this run or no eligible golden questions. |
 | fallback_rate | 0 |  |
-| recall_at_k | 0.8571 |  |
+| hit_rate_at_k | 0.8571 |  |
 | mrr | 0.6071 |  |
 | citation_source_match | 0.8571 |  |
 | no_answer_accuracy | 1 |  |

@@ -101,7 +101,7 @@ def test_eval_run_json_reports_metrics_and_artifact_paths(
     assert set(payload["metrics"]) == {
         "routing_accuracy",
         "fallback_rate",
-        "recall_at_k",
+        "hit_rate_at_k",
         "mrr",
         "citation_source_match",
         "no_answer_accuracy",
@@ -110,7 +110,7 @@ def test_eval_run_json_reports_metrics_and_artifact_paths(
     }
     assert payload["metrics"]["routing_accuracy"] == 0.5
     assert payload["metrics"]["fallback_rate"] == 0.25
-    assert payload["metrics"]["recall_at_k"] == 0.75
+    assert payload["metrics"]["hit_rate_at_k"] == 0.75
     assert payload["metrics"]["mrr"] == 0.625
     assert payload["metrics"]["citation_source_match"] == 1.0
     assert payload["metrics"]["no_answer_accuracy"] == 1.0
@@ -180,7 +180,7 @@ def test_eval_run_human_output_reports_summary_and_artifacts(
     assert "Questions: 2" in result.stdout
     assert "routing_accuracy: 0.5" in result.stdout
     assert "fallback_rate: 0.25" in result.stdout
-    assert "recall_at_k: 0.75" in result.stdout
+    assert "hit_rate_at_k: 0.75" in result.stdout
     assert f"JSON: {artifacts_dir / 'eval-baseline-vector.json'}" in result.stdout
     assert f"Markdown: {artifacts_dir / 'eval-baseline-vector.md'}" in result.stdout
 
@@ -226,7 +226,7 @@ def sample_evaluation_run(
         metrics=EvaluationMetrics(
             routing_accuracy=0.5,
             fallback_rate=0.25,
-            recall_at_k=0.75,
+            hit_rate_at_k=0.75,
             mrr=0.625,
             citation_source_match=1.0,
             no_answer_accuracy=1.0,
@@ -239,7 +239,7 @@ def sample_evaluation_run(
                 question_text="How does RAG ground answers?",
                 case_type="answerable",
                 trace_path=trace_paths[0],
-                metrics={"recall_at_k": 1.0, "mrr": 1.0},
+                metrics={"hit_rate_at_k": 1.0, "mrr": 1.0},
                 expected_relevant_sources=["source-02"],
                 retrieved_sources=["source-02"],
             ),

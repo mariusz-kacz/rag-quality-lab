@@ -212,7 +212,7 @@ Provider integration is project-owned. The OpenAI SDK handles Foundry embeddings
 
 Routed retrieval falls back to all categories when its top category score is below the configured confidence threshold. Context assembly admits retrieved chunks in rank order while they fit the token budget. Generation must cite selected chunks, and citation validation checks that every returned citation maps to included context. This is a context-membership check, not a claim-level factuality judge.
 
-Evaluation reports include routing accuracy, fallback rate, recall at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
+Evaluation reports include routing accuracy, fallback rate, hit rate at k (`hit_rate_at_k`), MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A question counts as a hit when at least one expected source or expected chunk appears in the top-k retrieved results. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
 
 ## Development
 

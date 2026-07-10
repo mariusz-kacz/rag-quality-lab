@@ -13,7 +13,7 @@
   "metrics": {
     "routing_accuracy": 0.5833333333333334,
     "fallback_rate": 0.0,
-    "recall_at_k": 0.9285714285714286,
+    "hit_rate_at_k": 0.9285714285714286,
     "mrr": 0.6785714285714286,
     "citation_source_match": 0.9285714285714286,
     "no_answer_accuracy": 1.0,
@@ -29,7 +29,7 @@
       "metrics": {
         "routing_accuracy": 1.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 0.5,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -60,7 +60,7 @@
       "metrics": {
         "routing_accuracy": 1.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -92,7 +92,7 @@
       "metrics": {
         "routing_accuracy": 1.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -124,7 +124,7 @@
       "metrics": {
         "routing_accuracy": 1.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -154,7 +154,7 @@
       "metrics": {
         "routing_accuracy": 1.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -186,7 +186,7 @@
       "metrics": {
         "routing_accuracy": 1.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -218,7 +218,7 @@
       "metrics": {
         "routing_accuracy": null,
         "fallback_rate": 0.0,
-        "recall_at_k": null,
+        "hit_rate_at_k": null,
         "mrr": null,
         "citation_source_match": null,
         "no_answer_accuracy": 1.0,
@@ -249,7 +249,7 @@
       "metrics": {
         "routing_accuracy": null,
         "fallback_rate": 0.0,
-        "recall_at_k": null,
+        "hit_rate_at_k": null,
         "mrr": null,
         "citation_source_match": null,
         "no_answer_accuracy": 1.0,
@@ -283,7 +283,7 @@
       "metrics": {
         "routing_accuracy": 1.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -315,7 +315,7 @@
       "metrics": {
         "routing_accuracy": 0.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -351,7 +351,7 @@
       "metrics": {
         "routing_accuracy": 0.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 0.0,
+        "hit_rate_at_k": 0.0,
         "mrr": 0.0,
         "citation_source_match": 0.0,
         "no_answer_accuracy": 1.0,
@@ -385,7 +385,7 @@
       "metrics": {
         "routing_accuracy": 0.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 0.3333333333333333,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -420,7 +420,7 @@
       "metrics": {
         "routing_accuracy": 0.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 0.5,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -454,7 +454,7 @@
       "metrics": {
         "routing_accuracy": null,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 0.3333333333333333,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -490,7 +490,7 @@
       "metrics": {
         "routing_accuracy": null,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 0.3333333333333333,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,
@@ -527,7 +527,7 @@
       "metrics": {
         "routing_accuracy": 0.0,
         "fallback_rate": 0.0,
-        "recall_at_k": 1.0,
+        "hit_rate_at_k": 1.0,
         "mrr": 0.5,
         "citation_source_match": 1.0,
         "no_answer_accuracy": 1.0,

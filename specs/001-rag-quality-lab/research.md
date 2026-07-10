@@ -70,7 +70,7 @@ Quality judgment: DAIR.AI remains useful but should not be presented as fully co
 
 ## Decision: Use a custom lightweight evaluation harness
 
-**Rationale**: Required metrics are straightforward and domain-specific: routing accuracy, fallback rate, recall@k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A custom harness makes the formulas inspectable for a portfolio reviewer.
+**Rationale**: Required metrics are straightforward and domain-specific: routing accuracy, fallback rate, hit rate at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A custom harness makes the formulas inspectable for a portfolio reviewer.
 
 **Alternatives considered**: RAGAS or similar large frameworks were rejected by scope. Manual notebook evaluation was rejected because the CLI must write reproducible artifacts.
 
