@@ -11,6 +11,7 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 **Required Top-Level Fields**
 
 - `schema_version`
+- `benchmark_scope`
 - `trace_id`
 - `created_at`
 - `question`
@@ -49,6 +50,7 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 - `golden_set_path`
 - `configuration`
 - `metrics`
+- `metric_counts`
 - `questions`
 - `trace_paths`
 
@@ -63,7 +65,7 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 - `average_context_tokens`
 - `average_included_chunks`
 
-Metrics that are not applicable for a mode must be present with `null` and a reason in the Markdown report. `routing_accuracy` is not applicable for `baseline-vector` because baseline retrieval does not use route filtering.
+Rate metrics should include raw numerator and denominator values in `metric_counts`. Metrics that are not applicable for a mode must be present with `null` and a reason in the Markdown report. `routing_accuracy` is not applicable for `baseline-vector` because baseline retrieval does not use route filtering.
 
 ## Markdown Evaluation Report
 
@@ -82,6 +84,8 @@ Metrics that are not applicable for a mode must be present with `null` and a rea
 - No-answer cases
 - Citation validation failures
 - Limitations and interpretation notes
+
+The report must identify the small, manually curated benchmark scope and render counts alongside percentages for rate metrics where a numerator and denominator are available.
 
 ## Corpus Summary Artifact
 

@@ -1,5 +1,6 @@
 {
   "schema_version": "1.0",
+  "benchmark_scope": "These results are evidence from a small, manually curated benchmark over the pinned corpus and included golden questions; they should not be generalized to other corpora or query distributions.",
   "run_id": "eval-baseline-vector",
   "created_at": "2026-07-10T11:23:41.371849Z",
   "retrieval_mode": "baseline-vector",
@@ -21,6 +22,24 @@
     "no_answer_accuracy": 1.0,
     "average_context_tokens": 609.6875,
     "average_included_chunks": 2.9375
+  },
+  "metric_counts": {
+    "no_answer_accuracy": {
+      "numerator": 16,
+      "denominator": 16
+    },
+    "hit_rate_at_k": {
+      "numerator": 12,
+      "denominator": 14
+    },
+    "citation_source_match": {
+      "numerator": 12,
+      "denominator": 14
+    },
+    "fallback_rate": {
+      "numerator": 0,
+      "denominator": 16
+    }
   },
   "questions": [
     {

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "rag-quality-lab"
 version = "0.1.0"
-description = "CLI-first RAG quality engineering lab with reproducible retrieval, traces, and evaluation."
+description = "CLI-first RAG quality engineering lab over a pinned corpus with traceable retrieval and curated-benchmark evaluation."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

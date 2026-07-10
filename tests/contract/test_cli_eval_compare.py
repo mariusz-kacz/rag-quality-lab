@@ -77,7 +77,11 @@ def test_eval_compare_json_reports_metric_table_token_diagnostics_and_markdown_p
                 "baseline-vector": 0.5,
                 "routed-vector": 0.75,
             },
-            "best_mode": "routed-vector",
+            "counts": {
+                "baseline-vector": {"numerator": 2, "denominator": 4},
+                "routed-vector": {"numerator": 3, "denominator": 4},
+            },
+            "included_benchmark_mode": "routed-vector",
         },
         {
             "metric": "mrr",
@@ -85,7 +89,7 @@ def test_eval_compare_json_reports_metric_table_token_diagnostics_and_markdown_p
                 "baseline-vector": 0.4,
                 "routed-vector": 0.6,
             },
-            "best_mode": "routed-vector",
+            "included_benchmark_mode": "routed-vector",
         },
         {
             "metric": "no_answer_accuracy",
@@ -93,7 +97,7 @@ def test_eval_compare_json_reports_metric_table_token_diagnostics_and_markdown_p
                 "baseline-vector": 1.0,
                 "routed-vector": 1.0,
             },
-            "best_mode": "tie",
+            "included_benchmark_mode": "tie",
         },
     ]
     assert payload["token_budget"] == {
@@ -102,14 +106,14 @@ def test_eval_compare_json_reports_metric_table_token_diagnostics_and_markdown_p
                 "baseline-vector": 300.0,
                 "routed-vector": 420.0,
             },
-            "best_mode": "baseline-vector",
+            "included_benchmark_mode": "baseline-vector",
         },
         "average_included_chunks": {
             "values": {
                 "baseline-vector": 2.0,
                 "routed-vector": 3.0,
             },
-            "best_mode": "baseline-vector",
+            "included_benchmark_mode": "baseline-vector",
         },
     }
 
@@ -150,15 +154,17 @@ def test_eval_compare_human_output_reports_metrics_and_markdown_path(
     assert "Evaluation comparison" in result.stdout
     assert "Artifacts: 2" in result.stdout
     assert (
-        "hit_rate_at_k: baseline-vector=0.5, routed-vector=0.75, "
-        "best=routed-vector"
+        "hit_rate_at_k: baseline-vector=2/4 questions, 50.0%, "
+        "routed-vector=3/4 questions, 75.0%, "
+        "included-benchmark value=routed-vector"
     ) in result.stdout
     assert (
-        "mrr: baseline-vector=0.4, routed-vector=0.6, best=routed-vector"
+        "mrr: baseline-vector=0.4, routed-vector=0.6, "
+        "included-benchmark value=routed-vector"
     ) in result.stdout
     assert (
         "average_context_tokens: baseline-vector=300.0, routed-vector=420.0, "
-        "best=baseline-vector"
+        "included-benchmark value=baseline-vector"
     ) in result.stdout
     assert f"Markdown: {markdown_path}" in result.stdout
 
@@ -179,7 +185,11 @@ def sample_comparison_result(
                     "baseline-vector": 0.5,
                     "routed-vector": 0.75,
                 },
-                "best_mode": "routed-vector",
+                "counts": {
+                    "baseline-vector": {"numerator": 2, "denominator": 4},
+                    "routed-vector": {"numerator": 3, "denominator": 4},
+                },
+                "included_benchmark_mode": "routed-vector",
             },
             {
                 "metric": "mrr",
@@ -187,7 +197,7 @@ def sample_comparison_result(
                     "baseline-vector": 0.4,
                     "routed-vector": 0.6,
                 },
-                "best_mode": "routed-vector",
+                "included_benchmark_mode": "routed-vector",
             },
             {
                 "metric": "no_answer_accuracy",
@@ -195,7 +205,7 @@ def sample_comparison_result(
                     "baseline-vector": 1.0,
                     "routed-vector": 1.0,
                 },
-                "best_mode": "tie",
+                "included_benchmark_mode": "tie",
             },
         ],
         "token_budget": {
@@ -204,14 +214,14 @@ def sample_comparison_result(
                     "baseline-vector": 300.0,
                     "routed-vector": 420.0,
                 },
-                "best_mode": "baseline-vector",
+                "included_benchmark_mode": "baseline-vector",
             },
             "average_included_chunks": {
                 "values": {
                     "baseline-vector": 2.0,
                     "routed-vector": 3.0,
                 },
-                "best_mode": "baseline-vector",
+                "included_benchmark_mode": "baseline-vector",
             },
         },
     }

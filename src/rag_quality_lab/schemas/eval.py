@@ -47,6 +47,12 @@ MetricName: TypeAlias = Literal[
     "average_included_chunks",
 ]
 
+BENCHMARK_SCOPE_STATEMENT = (
+    "These results are evidence from a small, manually curated benchmark over the "
+    "pinned corpus and included golden questions; they should not be generalized to "
+    "other corpora or query distributions."
+)
+
 
 class GoldenSet(SchemaModel):
     """Validated golden question set used by evaluation runs."""
@@ -86,6 +92,19 @@ class EvaluationMetrics(SchemaModel):
     average_included_chunks: float | None = Field(default=None, ge=0.0)
 
 
+class EvaluationMetricCount(SchemaModel):
+    """Raw numerator and denominator supporting an aggregate rate metric."""
+
+    numerator: int = Field(ge=0)
+    denominator: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def validate_numerator(self) -> "EvaluationMetricCount":
+        if self.numerator > self.denominator:
+            raise ValueError("metric numerator cannot exceed denominator")
+        return self
+
+
 class EvaluationQuestionResult(SchemaModel):
     """Per-question evaluation result and trace reference."""
 
@@ -116,12 +135,14 @@ class EvaluationRun(SchemaModel):
     """Machine-readable evaluation run artifact."""
 
     schema_version: str = Field(default="1.0", min_length=1)
+    benchmark_scope: str = Field(default=BENCHMARK_SCOPE_STATEMENT, min_length=1)
     run_id: str = Field(min_length=1)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     retrieval_mode: RetrievalMode
     golden_set_path: Path
     configuration: dict[str, Any] = Field(default_factory=dict)
     metrics: EvaluationMetrics
+    metric_counts: dict[MetricName, EvaluationMetricCount] = Field(default_factory=dict)
     questions: list[EvaluationQuestionResult] = Field(default_factory=list)
     trace_paths: list[Path] = Field(default_factory=list)
     artifact_paths: EvaluationArtifactPaths | None = None

@@ -1,6 +1,6 @@
 # RAG Quality Lab
 
-RAG Quality Lab is a CLI-first Python project for inspecting retrieval-augmented generation quality. It keeps the corpus, golden questions, retrieval decisions, context budgets, citations, traces, and evaluation reports reviewable and reproducible.
+RAG Quality Lab is a CLI-first Python project for inspecting retrieval-augmented generation quality over a pinned corpus and a small curated benchmark. It keeps the corpus, golden questions, retrieval decisions, context budgets, citations, traces, and evaluation reports reviewable and reproducible.
 
 The lab uses a curated local corpus, Azure AI Foundry models through an OpenAI-compatible project endpoint, and Qdrant for vector storage. It supports two retrieval modes:
 
@@ -217,6 +217,31 @@ Broad questions may search several categories through category-margin routing. G
 Evaluation reports identify the top category, all searched categories, and whether global fallback occurred for every question. Aggregate metrics include routing accuracy, fallback count and rate, average searched categories, hit rate at k (`hit_rate_at_k`), MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A question counts as a hit when at least one expected source or expected chunk appears in the top-k retrieved results. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
 
 The router uses heuristic embedding-similarity thresholds. Similarity scores are not calibrated probabilities, and the configured threshold and category margin are specific to the current embedding model, category descriptions, and benchmark.
+
+## Results and limitations
+
+The checked-in reports capture one run over the 26 pinned corpus snapshots and 16 manually curated golden questions. Fourteen questions are eligible for retrieval scoring; the other two are no-answer cases. The results are useful as inspectable evidence about this configuration, not as proof that routed retrieval is generally superior.
+
+| Metric | `baseline-vector` | `routed-vector` |
+| --- | ---: | ---: |
+| Top-category routing accuracy | n/a | 7/12 eligible questions, 58.3% |
+| Global fallback rate | 0/16 questions, 0.0% | 0/16 questions, 0.0% |
+| Retrieval hit rate at k | 12/14 questions, 85.7% | 13/14 questions, 92.9% |
+| Mean reciprocal rank | 0.6071 | 0.6786 |
+| Citation source match | 12/14 questions, 85.7% | 13/14 questions, 92.9% |
+| Answer/no-answer accuracy | 16/16 questions, 100.0% | 16/16 questions, 100.0% |
+| Average context tokens | 609.7 | 597.8 |
+
+Routed retrieval achieved a higher hit rate on the included curated benchmark: 13/14 questions (92.9%) versus 12/14 (85.7%) for baseline retrieval. This one-question difference is useful evidence that category filtering can help under the included corpus, questions, and tight retrieval settings; it is not evidence of general superiority.
+
+Interpretation boundaries:
+
+- The benchmark is small and manually curated. Results apply to the pinned corpus and included golden questions and should not be generalized to other corpora or query distributions.
+- Small differences can represent a single question: here, the 7.1 percentage-point hit-rate difference is exactly one of 14 retrieval-scored questions.
+- Top-category accuracy is lower than retrieval hit rate. Soft multi-category routing can still search the expected category and recover relevant evidence when the top category is incorrect.
+- Global fallback thresholds and the category margin are heuristic embedding-similarity settings, not calibrated probabilities.
+- Retrieval pressure and routing configuration were adjusted while inspecting this same small benchmark. The reports are therefore engineering evidence and regression fixtures, not holdout validation.
+- Citation source match and citation validation remain useful diagnostics, but they do not establish claim-level factual correctness.
 
 ## Development
 

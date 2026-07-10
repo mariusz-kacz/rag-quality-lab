@@ -21,8 +21,10 @@ from rag_quality_lab.schemas.corpus import (
     SourceSection,
 )
 from rag_quality_lab.schemas.eval import (
+    BENCHMARK_SCOPE_STATEMENT,
     REQUIRED_EVALUATION_METRICS,
     EvaluationArtifactPaths,
+    EvaluationMetricCount,
     EvaluationMetrics,
     EvaluationQuestionResult,
     EvaluationRun,
@@ -46,6 +48,7 @@ from rag_quality_lab.schemas.query import (
 from rag_quality_lab.schemas.retrieval import RetrievalMode, RetrievalResult
 
 __all__ = [
+    "BENCHMARK_SCOPE_STATEMENT",
     "REQUIRED_EVALUATION_METRICS",
     "REQUIRED_KNOWLEDGE_CATEGORIES",
     "AnswerResult",
@@ -60,6 +63,7 @@ __all__ = [
     "CorpusSummaryArtifact",
     "DEFAULT_SCHEMA_VERSION",
     "EvaluationArtifactPaths",
+    "EvaluationMetricCount",
     "EvaluationMetrics",
     "EvaluationQuestionResult",
     "EvaluationRun",

@@ -11,6 +11,7 @@ import rag_quality_lab.cli as cli
 from rag_quality_lab.cli import app
 from rag_quality_lab.schemas import (
     EvaluationArtifactPaths,
+    EvaluationMetricCount,
     EvaluationMetrics,
     EvaluationQuestionResult,
     EvaluationRun,
@@ -180,9 +181,10 @@ def test_eval_run_human_output_reports_summary_and_artifacts(
     assert "Evaluation: eval-baseline-vector" in result.stdout
     assert "Mode: baseline-vector" in result.stdout
     assert "Questions: 2" in result.stdout
-    assert "routing_accuracy: 0.5" in result.stdout
-    assert "fallback_rate: 0.25" in result.stdout
-    assert "hit_rate_at_k: 0.75" in result.stdout
+    assert "routing_accuracy: 1/2 questions, 50.0%" in result.stdout
+    assert "fallback_rate: 1/2 questions, 25.0%" in result.stdout
+    assert "hit_rate_at_k: 3/4 questions, 75.0%" in result.stdout
+    assert "Scope: These results are evidence from a small, manually curated benchmark" in result.stdout
     assert f"JSON: {artifacts_dir / 'eval-baseline-vector.json'}" in result.stdout
     assert f"Markdown: {artifacts_dir / 'eval-baseline-vector.md'}" in result.stdout
 
@@ -235,6 +237,13 @@ def sample_evaluation_run(
             average_context_tokens=420.0,
             average_included_chunks=3.0,
         ),
+        metric_counts={
+            "routing_accuracy": EvaluationMetricCount(numerator=1, denominator=2),
+            "fallback_rate": EvaluationMetricCount(numerator=1, denominator=2),
+            "hit_rate_at_k": EvaluationMetricCount(numerator=3, denominator=4),
+            "citation_source_match": EvaluationMetricCount(numerator=4, denominator=4),
+            "no_answer_accuracy": EvaluationMetricCount(numerator=2, denominator=2),
+        },
         questions=[
             EvaluationQuestionResult(
                 question_id="q-001",

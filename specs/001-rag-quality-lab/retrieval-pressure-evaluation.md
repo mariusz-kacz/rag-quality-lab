@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-10
 
-This note summarizes the evaluation exercise where the golden set was expanded with ambiguous cross-category questions and the retrieval defaults were tightened to expose differences between `baseline-vector` and `routed-vector`.
+This note summarizes the evaluation exercise where the golden set was expanded with ambiguous cross-category questions and the retrieval defaults were tightened to make differences between `baseline-vector` and `routed-vector` observable on the included cases. It reports a small, manually curated benchmark over the pinned corpus, not a general comparison of retrieval strategies.
 
 ## Purpose
 
@@ -39,24 +39,26 @@ Evaluation output token limit remains higher for eval runs than for ad hoc queri
 
 Latest comparison artifact: `artifacts/eval/comparison.md`
 
-| Metric | baseline-vector | routed-vector | Result |
+| Metric | baseline-vector | routed-vector | Included-benchmark observation |
 | --- | ---: | ---: | --- |
-| `routing_accuracy` | n/a | 0.5833 | not comparable |
-| `fallback_rate` | 0 | 0 | tie |
-| `hit_rate_at_k` | 0.8571 | 0.9286 | routed wins |
-| `mrr` | 0.6071 | 0.6786 | routed wins |
-| `citation_source_match` | 0.8571 | 0.9286 | routed wins |
-| `no_answer_accuracy` | 1 | 1 | tie |
-| `average_context_tokens` | 609.7 | 597.8 | routed wins |
-| `average_included_chunks` | 2.938 | 2.812 | routed wins |
+| `routing_accuracy` | n/a | 7/12 eligible questions, 58.3% | only routed retrieval uses route filtering |
+| `fallback_rate` | 0/16 questions, 0.0% | 0/16 questions, 0.0% | same observed value |
+| `hit_rate_at_k` | 12/14 questions, 85.7% | 13/14 questions, 92.9% | routed value higher by one question |
+| `mrr` | 0.6071 | 0.6786 | routed value higher |
+| `citation_source_match` | 12/14 questions, 85.7% | 13/14 questions, 92.9% | routed value higher by one question |
+| `no_answer_accuracy` | 16/16 questions, 100.0% | 16/16 questions, 100.0% | same observed value |
+| `average_context_tokens` | 609.7 | 597.8 | routed value lower by 11.9 tokens |
+| `average_included_chunks` | 2.938 | 2.812 | routed value lower by 0.126 chunks |
 
-After tightening `top_k` and context budget, `routed-vector` became the clear winner on the retrieval-sensitive metrics: hit rate, first relevant rank, citation source match, and token/context efficiency. Routing accuracy is intentionally not compared against `baseline-vector`, because baseline global vector search does not use route filtering.
+Routed retrieval achieved a higher hit rate on the included curated benchmark: 13/14 questions (92.9%) versus 12/14 (85.7%) for baseline retrieval. This one-question difference is useful evidence that category filtering can help under the included corpus, questions, and tight retrieval settings; it is not evidence of general superiority. Routing accuracy is not compared with `baseline-vector`, because baseline global vector search does not use route filtering.
+
+The top-category result also illustrates why route accuracy and retrieval hit rate should be read separately. The routed mode selected the expected top category for 7/12 eligible questions (58.3%), while soft multi-category routing searched an average of 2.312 categories and could recover relevant evidence when the expected category was not first.
 
 ## Why The Earlier Runs Were Inconclusive
 
 The corpus is intentionally small. With `top_k=6` and `max_context_tokens=2500`, baseline vector search often had enough room to include both noisy matches and useful matches. That made the difference between filtered and unfiltered retrieval hard to see.
 
-This is a saturation problem, not necessarily proof that routing is unnecessary. If the retriever can return many chunks and the context builder can include most of them, the downstream model receives enough evidence despite imperfect ranking. Routing is most useful when:
+This is a saturation problem, not necessarily proof that routing is unnecessary. If the retriever can return many chunks and the context builder can include most of them, the downstream model receives enough evidence despite imperfect ranking. In this evaluation design, routing has more opportunity to affect the measured result when:
 
 - the corpus has overlapping concepts across categories;
 - the result list is short;
@@ -97,6 +99,8 @@ A per-question `Status` column was added to the Markdown report. It can now surf
 Route status is based on the effective routed category filter, not only the strict top category. If multi-category routing keeps the expected category in scope, the question is not marked as a route filter miss even when the top selected category differs. This makes cases like `q-cross-category-003` visible without requiring manual comparison between expected and retrieved source lists, while avoiding false route failures for recovered multi-route cases such as `q-security-boundary-001`.
 
 ## Interpretation
+
+These results apply only to the pinned corpus and included golden questions. The benchmark is small and manually curated, so differences may reflect one changed question, as the hit-rate result does here. They should not be generalized to other corpora or query distributions. The fallback threshold and category margin are heuristic, and retrieval pressure and routing configuration were adjusted while inspecting this same benchmark rather than against a separate holdout set.
 
 The current result supports this evaluation design:
 

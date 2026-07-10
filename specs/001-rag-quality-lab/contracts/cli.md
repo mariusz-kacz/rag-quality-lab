@@ -128,12 +128,14 @@ Run the golden question set for one retrieval mode.
 - retrieval mode
 - number of questions evaluated
 - aggregate metrics
+- raw counts alongside rate percentages where available
+- benchmark-scope statement
 - machine-readable artifact path
 - Markdown report path
 
 **Failure Cases**
 
-- golden set outside 12-15 questions
+- golden set outside 12-20 questions
 - missing required case type
 - unsupported retrieval mode, including future-extension modes that are not part of the MVP runtime contract
 - one or more traces cannot be written
@@ -155,4 +157,5 @@ Compare previously written evaluation artifacts.
 
 - metric table by retrieval mode
 - token-budget diagnostics by retrieval mode
-- highlighted best value per comparable metric
+- observed higher or lower value on the included benchmark per comparable metric
+- benchmark-scope and interpretation notes

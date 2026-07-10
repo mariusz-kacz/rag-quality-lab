@@ -21,7 +21,11 @@ from rag_quality_lab.config import (
 )
 from rag_quality_lab.corpus.ingest import IngestionError, ingest_corpus
 from rag_quality_lab.corpus.inspect import CorpusInspectionError, inspect_corpus
-from rag_quality_lab.eval.reports import EvaluationRunError
+from rag_quality_lab.eval.reports import (
+    BENCHMARK_SCOPE_STATEMENT,
+    RATE_METRICS,
+    EvaluationRunError,
+)
 from rag_quality_lab.providers import ProviderError
 from rag_quality_lab.rag.traces import load_trace
 from rag_quality_lab.retrieval.modes import RetrievalModeError, validate_retrieval_mode
@@ -554,6 +558,11 @@ def _echo_eval_run_json(run: EvaluationRun) -> None:
         "golden_set_path": str(run.golden_set_path),
         "question_count": len(run.questions),
         "metrics": run.metrics.model_dump(mode="json"),
+        "metric_counts": {
+            metric: count.model_dump(mode="json")
+            for metric, count in run.metric_counts.items()
+        },
+        "benchmark_scope": BENCHMARK_SCOPE_STATEMENT,
         "json_path": str(paths.json_path) if paths is not None and paths.json_path else None,
         "markdown_path": (
             str(paths.markdown_path)
@@ -570,7 +579,9 @@ def _echo_eval_run(run: EvaluationRun) -> None:
     typer.echo(f"Mode: {run.retrieval_mode}")
     typer.echo(f"Questions: {len(run.questions)}")
     for metric, value in run.metrics.model_dump().items():
-        typer.echo(f"{metric}: {_format_metric_value(value)}")
+        count = run.metric_counts.get(metric)
+        typer.echo(f"{metric}: {_format_eval_metric(metric, value, count)}")
+    typer.echo(f"Scope: {BENCHMARK_SCOPE_STATEMENT}")
 
     paths = run.artifact_paths
     if paths is not None and paths.json_path is not None:
@@ -583,6 +594,7 @@ def _echo_eval_comparison(comparison: dict[str, Any]) -> None:
     typer.echo("Evaluation comparison")
     artifact_paths = comparison.get("artifact_paths", [])
     typer.echo(f"Artifacts: {len(artifact_paths)}")
+    typer.echo(f"Scope: {comparison.get('benchmark_scope', BENCHMARK_SCOPE_STATEMENT)}")
 
     for row in comparison.get("metrics", []):
         typer.echo(_format_comparison_row(row))
@@ -598,14 +610,33 @@ def _echo_eval_comparison(comparison: dict[str, Any]) -> None:
 
 def _format_comparison_row(row: dict[str, Any]) -> str:
     values = row.get("values", {})
+    counts = row.get("counts", {})
     formatted_values = ", ".join(
-        f"{mode}={_format_metric_value(value)}"
+        f"{mode}={_format_eval_metric(row.get('metric'), value, counts.get(mode))}"
         for mode, value in values.items()
     )
-    best_mode = row.get("best_mode") or "n/a"
+    included_benchmark_mode = row.get("included_benchmark_mode") or "n/a"
     reason = row.get("reason")
     suffix = f" ({reason})" if reason else ""
-    return f"{row.get('metric')}: {formatted_values}, best={best_mode}{suffix}"
+    return (
+        f"{row.get('metric')}: {formatted_values}, "
+        f"included-benchmark value={included_benchmark_mode}{suffix}"
+    )
+
+
+def _format_eval_metric(metric: object, value: object, count: object = None) -> str:
+    if value is None:
+        return "n/a"
+    if metric not in RATE_METRICS or not isinstance(value, int | float):
+        return _format_metric_value(value)
+    if count is None:
+        return f"{value:.1%}"
+    numerator = getattr(count, "numerator", None)
+    denominator = getattr(count, "denominator", None)
+    if isinstance(count, dict):
+        numerator = count.get("numerator")
+        denominator = count.get("denominator")
+    return f"{numerator}/{denominator} questions, {value:.1%}"
 
 
 def _route_label(trace: QueryTrace) -> str:

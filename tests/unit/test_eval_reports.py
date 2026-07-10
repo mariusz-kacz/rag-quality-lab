@@ -60,7 +60,7 @@ def test_compare_evaluation_artifacts_builds_metric_and_token_budget_tables(
             "baseline-vector": 0.5,
             "routed-vector": 0.75,
         },
-        "best_mode": "routed-vector",
+        "included_benchmark_mode": "routed-vector",
     }
     assert _row(comparison, "routing_accuracy") == {
         "metric": "routing_accuracy",
@@ -68,21 +68,21 @@ def test_compare_evaluation_artifacts_builds_metric_and_token_budget_tables(
             "baseline-vector": None,
             "routed-vector": 0.8,
         },
-        "best_mode": None,
+        "included_benchmark_mode": None,
         "reason": (
             "Routing accuracy is not applicable to baseline-vector because baseline "
             "retrieval does not use route filtering."
         ),
     }
-    assert _row(comparison, "fallback_rate")["best_mode"] == "routed-vector"
-    assert _row(comparison, "citation_source_match")["best_mode"] == "tie"
+    assert _row(comparison, "fallback_rate")["included_benchmark_mode"] == "routed-vector"
+    assert _row(comparison, "citation_source_match")["included_benchmark_mode"] == "tie"
     assert comparison["token_budget"]["average_context_tokens"] == {
         "metric": "average_context_tokens",
         "values": {
             "baseline-vector": 300.0,
             "routed-vector": 420.0,
         },
-        "best_mode": "baseline-vector",
+        "included_benchmark_mode": "baseline-vector",
     }
 
 

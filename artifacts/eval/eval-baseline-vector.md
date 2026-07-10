@@ -1,5 +1,7 @@
 # Evaluation report: eval-baseline-vector
 
+These results are evidence from a small, manually curated benchmark over the pinned corpus and included golden questions; they should not be generalized to other corpora or query distributions.
+
 ## Run summary
 
 | Field | Value |
@@ -29,12 +31,12 @@
 | --- | --- | --- |
 | routing_accuracy | n/a | Not applicable for this run or no eligible golden questions. |
 | fallback_count | 0 |  |
-| fallback_rate | 0 |  |
+| fallback_rate | 0/16 questions, 0.0% |  |
 | average_searched_categories | 5 |  |
-| hit_rate_at_k | 0.8571 |  |
+| hit_rate_at_k | 12/14 questions, 85.7% |  |
 | mrr | 0.6071 |  |
-| citation_source_match | 0.8571 |  |
-| no_answer_accuracy | 1 |  |
+| citation_source_match | 12/14 questions, 85.7% |  |
+| no_answer_accuracy | 16/16 questions, 100.0% |  |
 | average_context_tokens | 609.7 |  |
 | average_included_chunks | 2.938 |  |
 
@@ -498,8 +500,11 @@ None recorded.
 
 ## Limitations and interpretation notes
 
+- These results are evidence from a small, manually curated benchmark over the pinned corpus and included golden questions; they should not be generalized to other corpora or query distributions.
+- The benchmark is small enough that a difference between modes may represent only one changed question; the current hit-rate difference is exactly one of 14 retrieval-scored questions.
+- Top-category routing accuracy can be lower than retrieval hit rate because soft multi-category routing may search the expected category even when it is not ranked first.
+- Global fallback thresholds and category margins are heuristic rather than calibrated probabilities.
+- Retrieval and routing configuration was adjusted while inspecting this same small benchmark, so these results are useful engineering evidence, not holdout validation.
 - Citation validation checks whether cited chunk IDs were included in the selected context; it does not prove claim-level factual correctness.
-- Metrics are lightweight regression signals over the current golden set and should not be interpreted as comprehensive benchmark scores.
 - No-answer accuracy depends on the selected context and generation behavior for this run.
 - Token diagnostics use recorded estimates and model usage when available; provider-side accounting can differ.
-- The router uses heuristic embedding-similarity thresholds. Similarity scores are not calibrated probabilities, and the configured threshold and category margin are specific to the current embedding model, category descriptions, and benchmark.

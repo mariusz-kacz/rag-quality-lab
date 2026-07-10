@@ -12,7 +12,9 @@ from rag_quality_lab.eval.metrics import calculate_evaluation_metrics, searched_
 from rag_quality_lab.retrieval.modes import validate_retrieval_mode
 from rag_quality_lab.schemas.eval import MetricName, REQUIRED_EVALUATION_METRICS
 from rag_quality_lab.schemas import (
+    BENCHMARK_SCOPE_STATEMENT,
     EvaluationArtifactPaths,
+    EvaluationMetricCount,
     EvaluationQuestionResult,
     EvaluationRun,
     QueryTrace,
@@ -70,6 +72,13 @@ LOWER_IS_BETTER_METRICS: frozenset[MetricName] = frozenset(
     )
 )
 
+RATE_METRICS: tuple[MetricName, ...] = (
+    "routing_accuracy",
+    "fallback_rate",
+    "hit_rate_at_k",
+    "citation_source_match",
+    "no_answer_accuracy",
+)
 
 def run_evaluation(
     *,
@@ -150,6 +159,7 @@ def run_evaluation(
             "router_category_margin": effective_router_category_margin,
         },
         metrics=metrics,
+        metric_counts=_metric_counts(question_results),
         questions=question_results,
         trace_paths=trace_paths,
     )
@@ -202,6 +212,7 @@ def compare_evaluation_artifacts(
 
     result = {
         "schema_version": "1.0",
+        "benchmark_scope": BENCHMARK_SCOPE_STATEMENT,
         "artifact_paths": [str(path) for path in artifact_paths],
         "markdown_path": str(markdown) if markdown is not None else None,
         "metrics": [
@@ -235,6 +246,7 @@ def render_comparison_markdown(comparison: Mapping[str, Any]) -> str:
 
     sections = [
         "# Evaluation comparison",
+        str(comparison.get("benchmark_scope", BENCHMARK_SCOPE_STATEMENT)),
         "## Compared artifacts",
         _render_compared_artifacts(comparison),
         "## Metric comparison",
@@ -262,6 +274,7 @@ def render_markdown_report(run: EvaluationRun) -> str:
 
     sections = [
         f"# Evaluation report: {run.run_id}",
+        run.benchmark_scope,
         "## Run summary",
         _render_run_summary(run, case_counts, json_path),
         "## Retrieval mode and configuration",
@@ -302,8 +315,17 @@ def _comparison_row(metric: MetricName, runs: list[EvaluationRun]) -> dict[str, 
     row = {
         "metric": metric,
         "values": values,
-        "best_mode": _best_mode(values, lower_is_better=metric in LOWER_IS_BETTER_METRICS),
+        "included_benchmark_mode": _included_benchmark_mode(
+            values, lower_is_better=metric in LOWER_IS_BETTER_METRICS
+        ),
     }
+    counts = {
+        run.retrieval_mode: count.model_dump(mode="json")
+        for run in runs
+        if (count := _counts_for_run(run).get(metric)) is not None
+    }
+    if counts:
+        row["counts"] = counts
     if metric == "routing_accuracy":
         row["reason"] = (
             "Routing accuracy is not applicable to baseline-vector because baseline "
@@ -312,7 +334,7 @@ def _comparison_row(metric: MetricName, runs: list[EvaluationRun]) -> dict[str, 
     return row
 
 
-def _best_mode(
+def _included_benchmark_mode(
     values: Mapping[str, float | None],
     *,
     lower_is_better: bool,
@@ -330,12 +352,12 @@ def _best_mode(
         if lower_is_better
         else max(numeric_values.values())
     )
-    best_modes = [
+    observed_modes = [
         mode
         for mode, value in numeric_values.items()
         if value == best_value
     ]
-    return "tie" if len(best_modes) > 1 else best_modes[0]
+    return "tie" if len(observed_modes) > 1 else observed_modes[0]
 
 
 def _render_compared_artifacts(comparison: Mapping[str, Any]) -> str:
@@ -362,17 +384,23 @@ def _render_comparison_rows(rows: Any) -> str:
             for mode in row.get("values", {})
         }
     )
-    header = ["Metric", *modes, "Best mode"]
+    header = ["Metric", *modes, "Observed value on included benchmark"]
     lines = [
         "| " + " | ".join(header) + " |",
         "| " + " | ".join("---" for _ in header) + " |",
     ]
     for row in row_list:
         values = row.get("values", {})
+        counts = row.get("counts", {})
         cells = [
             row.get("metric", "unknown"),
-            *[_format_metric_value(values.get(mode)) for mode in modes],
-            row.get("best_mode") or "n/a",
+            *[
+                _format_metric_result(
+                    row.get("metric"), values.get(mode), counts.get(mode)
+                )
+                for mode in modes
+            ],
+            row.get("included_benchmark_mode") or "n/a",
         ]
         lines.append("| " + " | ".join(_escape_table(cell) for cell in cells) + " |")
     return "\n".join(lines)
@@ -380,6 +408,11 @@ def _render_comparison_rows(rows: Any) -> str:
 
 def _render_comparison_notes(comparison: Mapping[str, Any]) -> str:
     notes = [
+        BENCHMARK_SCOPE_STATEMENT,
+        "With 14 retrieval-scored questions, a one-question change moves hit rate by 7.1 percentage points.",
+        "Top-category routing accuracy and retrieval hit rate measure different behavior: soft multi-category routing can retain the expected category and recover a hit even when the top category is incorrect.",
+        "Fallback thresholds and category margins are heuristic, and configuration was adjusted while inspecting this same small benchmark.",
+    ] + [
         row.get("reason")
         for row in comparison.get("metrics", [])
         if row.get("reason")
@@ -595,6 +628,7 @@ def _render_aggregate_metrics(run: EvaluationRun) -> str:
         "| Metric | Value | Reason |",
         "| --- | --- | --- |",
     ]
+    counts = _counts_for_run(run)
     for name, value in run.metrics.model_dump().items():
         reason = ""
         if value is None:
@@ -602,7 +636,7 @@ def _render_aggregate_metrics(run: EvaluationRun) -> str:
         lines.append(
             "| "
             f"{_escape_table(name)} | "
-            f"{_escape_table(_format_metric_value(value))} | "
+            f"{_escape_table(_format_metric_result(name, value, counts.get(name)))} | "
             f"{_escape_table(reason)} |"
         )
     return "\n".join(lines)
@@ -775,13 +809,67 @@ def _render_citation_failures(questions: list[EvaluationQuestionResult]) -> str:
 def _render_limitations() -> str:
     return "\n".join(
         [
+            f"- {BENCHMARK_SCOPE_STATEMENT}",
+            "- The benchmark is small enough that a difference between modes may represent only one changed question; the current hit-rate difference is exactly one of 14 retrieval-scored questions.",
+            "- Top-category routing accuracy can be lower than retrieval hit rate because soft multi-category routing may search the expected category even when it is not ranked first.",
+            "- Global fallback thresholds and category margins are heuristic rather than calibrated probabilities.",
+            "- Retrieval and routing configuration was adjusted while inspecting this same small benchmark, so these results are useful engineering evidence, not holdout validation.",
             "- Citation validation checks whether cited chunk IDs were included in the selected context; it does not prove claim-level factual correctness.",
-            "- Metrics are lightweight regression signals over the current golden set and should not be interpreted as comprehensive benchmark scores.",
             "- No-answer accuracy depends on the selected context and generation behavior for this run.",
             "- Token diagnostics use recorded estimates and model usage when available; provider-side accounting can differ.",
-            "- The router uses heuristic embedding-similarity thresholds. Similarity scores are not calibrated probabilities, and the configured threshold and category margin are specific to the current embedding model, category descriptions, and benchmark.",
         ]
     )
+
+
+def _metric_counts(
+    questions: list[EvaluationQuestionResult],
+) -> dict[MetricName, EvaluationMetricCount]:
+    counts: dict[MetricName, EvaluationMetricCount] = {}
+    for metric in RATE_METRICS:
+        if metric == "fallback_rate":
+            if questions:
+                counts[metric] = EvaluationMetricCount(
+                    numerator=sum(
+                        1 for question in questions if question.global_fallback_occurred
+                    ),
+                    denominator=len(questions),
+                )
+            continue
+        values = [
+            question.metrics.get(metric)
+            for question in questions
+            if question.metrics.get(metric) is not None
+        ]
+        if values:
+            counts[metric] = EvaluationMetricCount(
+                numerator=sum(1 for value in values if value == 1.0),
+                denominator=len(values),
+            )
+    return counts
+
+
+def _counts_for_run(
+    run: EvaluationRun,
+) -> dict[MetricName, EvaluationMetricCount]:
+    return run.metric_counts or _metric_counts(run.questions)
+
+
+def _format_metric_result(
+    metric: object,
+    value: object,
+    count: Mapping[str, Any] | EvaluationMetricCount | None,
+) -> str:
+    if value is None:
+        return "n/a"
+    if metric not in RATE_METRICS or not isinstance(value, int | float):
+        return _format_metric_value(value)
+    if isinstance(count, EvaluationMetricCount):
+        numerator, denominator = count.numerator, count.denominator
+    elif count:
+        numerator, denominator = count["numerator"], count["denominator"]
+    else:
+        return f"{value:.1%}"
+    return f"{numerator}/{denominator} questions, {value:.1%}"
 
 
 def _render_key_value_table(rows: list[tuple[str, object]]) -> str:
