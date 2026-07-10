@@ -171,8 +171,8 @@ def test_eval_run_human_output_reports_summary_and_artifacts(
 
     assert result.exit_code == 0, result.stderr
     assert captured == {
-        "top_k": 6,
-        "max_context_tokens": 2500,
+        "top_k": 3,
+        "max_context_tokens": 1000,
         "output_token_limit": 800,
     }
     assert "Evaluation: eval-baseline-vector" in result.stdout

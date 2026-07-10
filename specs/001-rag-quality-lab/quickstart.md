@@ -58,7 +58,7 @@ Expected outcome:
 ## 3. Run an Answerable Query
 
 ```powershell
-raglab query "How does retrieval augmented generation help with context grounding?" --mode routed-vector --top-k 6 --max-context-tokens 2500 --output-token-limit 500
+raglab query "How does retrieval augmented generation help with context grounding?" --mode routed-vector --top-k 3 --max-context-tokens 1000 --output-token-limit 500
 ```
 
 Expected outcome:

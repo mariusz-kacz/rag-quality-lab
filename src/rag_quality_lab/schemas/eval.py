@@ -9,6 +9,7 @@ from typing import Any, Literal, TypeAlias
 from pydantic import Field, model_validator
 
 from rag_quality_lab.schemas.base import SchemaModel
+from rag_quality_lab.schemas.categories import KnowledgeCategoryName
 from rag_quality_lab.schemas.query import CaseType, Question
 from rag_quality_lab.schemas.retrieval import RetrievalMode
 
@@ -45,7 +46,7 @@ MetricName: TypeAlias = Literal[
 class GoldenSet(SchemaModel):
     """Validated golden question set used by evaluation runs."""
 
-    questions: list[Question] = Field(min_length=12, max_length=15)
+    questions: list[Question] = Field(min_length=12, max_length=20)
 
     @model_validator(mode="after")
     def validate_required_cases(self) -> "GoldenSet":
@@ -86,6 +87,11 @@ class EvaluationQuestionResult(SchemaModel):
     case_type: CaseType
     trace_path: Path
     metrics: dict[MetricName, float | None] = Field(default_factory=dict)
+    expected_category: KnowledgeCategoryName | None = None
+    selected_category: KnowledgeCategoryName | None = None
+    routed_categories: list[KnowledgeCategoryName] = Field(default_factory=list)
+    answer_text: str | None = None
+    is_no_answer: bool | None = None
     expected_relevant_sources: list[str] = Field(default_factory=list)
     retrieved_sources: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)

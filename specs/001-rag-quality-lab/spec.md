@@ -53,7 +53,7 @@ As a reviewer, I want to run a lightweight evaluation over a golden question set
 
 **Acceptance Scenarios**:
 
-1. **Given** a golden set with 12-15 cases, **When** the reviewer evaluates `baseline-vector`, **Then** the system reports routing accuracy where applicable, fallback rate, recall@k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks.
+1. **Given** a golden set with 12-20 cases, **When** the reviewer evaluates `baseline-vector`, **Then** the system reports routing accuracy as not applicable, plus fallback rate, recall@k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks.
 2. **Given** the same golden set, **When** the reviewer evaluates `routed-vector`, **Then** the system reports the same comparable metrics and includes routing decisions for each question.
 3. **Given** evaluation completes, **When** artifacts are written, **Then** reviewers can inspect both a machine-readable result and a human-readable Markdown report without rerunning the evaluation.
 

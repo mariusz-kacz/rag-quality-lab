@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Protocol, TypedDict
 
+from rag_quality_lab.config import RuntimeConfig
 from rag_quality_lab.eval.golden import load_golden_set
 from rag_quality_lab.eval.metrics import calculate_evaluation_metrics
 from rag_quality_lab.retrieval.modes import validate_retrieval_mode
@@ -70,12 +71,18 @@ def run_evaluation(
     top_k: int,
     max_context_tokens: int,
     output_token_limit: int,
+    router_category_margin: float | None = None,
     query_runner: EvaluationQueryRunner | None = None,
     trace_dir: str | Path | None = None,
 ) -> EvaluationRun:
     """Run one retrieval mode over the golden set and return an evaluation model."""
 
     retrieval_mode = validate_retrieval_mode(mode)
+    effective_router_category_margin = (
+        RuntimeConfig().router_category_margin
+        if router_category_margin is None
+        else router_category_margin
+    )
     golden_file = Path(golden_path)
     artifact_directory = Path(artifacts_dir)
     trace_directory = (
@@ -110,8 +117,14 @@ def run_evaluation(
                 trace,
                 trace_path=trace_path,
                 ordinal=ordinal,
+                retrieval_mode=retrieval_mode,
+                router_category_margin=effective_router_category_margin,
             )
         )
+
+    metrics = calculate_evaluation_metrics(golden_set.questions, traces)
+    if retrieval_mode == "baseline-vector":
+        metrics = metrics.model_copy(update={"routing_accuracy": None})
 
     run = EvaluationRun(
         run_id=f"eval-{retrieval_mode}",
@@ -121,8 +134,9 @@ def run_evaluation(
             "top_k": top_k,
             "max_context_tokens": max_context_tokens,
             "output_token_limit": output_token_limit,
+            "router_category_margin": effective_router_category_margin,
         },
-        metrics=calculate_evaluation_metrics(golden_set.questions, traces),
+        metrics=metrics,
         questions=question_results,
         trace_paths=trace_paths,
     )
@@ -214,6 +228,8 @@ def render_comparison_markdown(comparison: Mapping[str, Any]) -> str:
         _render_comparison_rows(comparison.get("metrics", [])),
         "## Token-budget diagnostics",
         _render_comparison_rows(comparison.get("token_budget", {}).values()),
+        "## Interpretation notes",
+        _render_comparison_notes(comparison),
     ]
     return "\n\n".join(sections).rstrip() + "\n"
 
@@ -240,7 +256,9 @@ def render_markdown_report(run: EvaluationRun) -> str:
         "## Aggregate metrics",
         _render_aggregate_metrics(run),
         "## Per-question table",
-        _render_question_table(run.questions),
+        _render_question_table(run.questions, retrieval_mode=run.retrieval_mode),
+        "## Request-response pairs",
+        _render_request_response_pairs(run.questions, retrieval_mode=run.retrieval_mode),
         "## Token-budget diagnostics",
         _render_token_budget_diagnostics(run),
         "## No-answer cases",
@@ -268,11 +286,17 @@ def _comparison_row(metric: MetricName, runs: list[EvaluationRun]) -> dict[str, 
         run.retrieval_mode: getattr(run.metrics, metric)
         for run in runs
     }
-    return {
+    row = {
         "metric": metric,
         "values": values,
         "best_mode": _best_mode(values, lower_is_better=metric in LOWER_IS_BETTER_METRICS),
     }
+    if metric == "routing_accuracy":
+        row["reason"] = (
+            "Routing accuracy is not applicable to baseline-vector because baseline "
+            "retrieval does not use route filtering."
+        )
+    return row
 
 
 def _best_mode(
@@ -285,7 +309,7 @@ def _best_mode(
         for mode, value in values.items()
         if isinstance(value, int | float)
     }
-    if not numeric_values:
+    if len(numeric_values) < 2:
         return None
 
     best_value = (
@@ -339,6 +363,18 @@ def _render_comparison_rows(rows: Any) -> str:
         ]
         lines.append("| " + " | ".join(_escape_table(cell) for cell in cells) + " |")
     return "\n".join(lines)
+
+
+def _render_comparison_notes(comparison: Mapping[str, Any]) -> str:
+    notes = [
+        row.get("reason")
+        for row in comparison.get("metrics", [])
+        if row.get("reason")
+    ]
+    if not notes:
+        return "No metric-specific notes."
+    unique_notes = list(dict.fromkeys(str(note) for note in notes))
+    return "\n".join(f"- {note}" for note in unique_notes)
 
 
 def _run_query_for_evaluation(
@@ -402,13 +438,28 @@ def _question_result(
     *,
     trace_path: Path,
     ordinal: int,
+    retrieval_mode: RetrievalMode,
+    router_category_margin: float,
 ) -> EvaluationQuestionResult:
     return EvaluationQuestionResult(
         question_id=question.question_id or f"q-{ordinal:03d}",
         question_text=question.text,
         case_type=question.case_type,
         trace_path=trace_path,
-        metrics=_per_question_metrics(question, trace),
+        metrics=_per_question_metrics(
+            question,
+            trace,
+            retrieval_mode=retrieval_mode,
+        ),
+        expected_category=question.expected_category,
+        selected_category=trace.route_decision.selected_category,
+        routed_categories=_effective_routed_categories(
+            trace,
+            retrieval_mode=retrieval_mode,
+            margin=router_category_margin,
+        ),
+        answer_text=trace.answer_result.answer_text,
+        is_no_answer=trace.answer_result.is_no_answer,
         expected_relevant_sources=list(question.expected_relevant_sources),
         retrieved_sources=_unique_retrieved_sources(trace),
         errors=_trace_errors(trace),
@@ -418,9 +469,15 @@ def _question_result(
 def _per_question_metrics(
     question: Question,
     trace: QueryTrace,
+    *,
+    retrieval_mode: RetrievalMode,
 ) -> dict[MetricName, float | None]:
     metrics: dict[MetricName, float | None] = {
-        "routing_accuracy": _routing_match(question, trace),
+        "routing_accuracy": (
+            None
+            if retrieval_mode == "baseline-vector"
+            else _routing_match(question, trace)
+        ),
         "fallback_rate": 1.0 if trace.route_decision.fallback_all_categories else 0.0,
         "recall_at_k": _retrieval_hit(question, trace),
         "mrr": _reciprocal_rank(question, trace),
@@ -487,6 +544,32 @@ def _unique_retrieved_sources(trace: QueryTrace) -> list[str]:
     return sources
 
 
+def _effective_routed_categories(
+    trace: QueryTrace,
+    *,
+    retrieval_mode: RetrievalMode,
+    margin: float,
+) -> list[str]:
+    if retrieval_mode != "routed-vector":
+        return []
+    route = trace.route_decision
+    if route.fallback_all_categories:
+        return list(route.category_scores)
+    if route.selected_category is None:
+        return []
+
+    cutoff = max(0.0, route.confidence - margin)
+    categories = [
+        category
+        for category, score in route.category_scores.items()
+        if score >= cutoff
+    ]
+    return [
+        route.selected_category,
+        *(category for category in categories if category != route.selected_category),
+    ]
+
+
 def _trace_errors(trace: QueryTrace) -> list[str]:
     errors: list[str] = []
     errors.extend(trace.answer_result.validation_errors)
@@ -537,22 +620,102 @@ def _render_aggregate_metrics(run: EvaluationRun) -> str:
     return "\n".join(lines)
 
 
-def _render_question_table(questions: list[EvaluationQuestionResult]) -> str:
+def _render_question_table(
+    questions: list[EvaluationQuestionResult],
+    *,
+    retrieval_mode: RetrievalMode,
+) -> str:
     lines = [
-        "| Question | Case type | Trace | Expected sources | Retrieved sources | Errors |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Question | Case type | Status | Trace | Expected sources | Retrieved sources | Errors |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for result in questions:
         lines.append(
             "| "
             f"{_escape_table(result.question_id)} | "
             f"{_escape_table(result.case_type)} | "
+            f"{_escape_table(_question_status(result, retrieval_mode=retrieval_mode))} | "
             f"{_escape_table(result.trace_path)} | "
             f"{_escape_table(_format_list(result.expected_relevant_sources))} | "
             f"{_escape_table(_format_list(result.retrieved_sources))} | "
             f"{_escape_table(_format_list(result.errors))} |"
         )
     return "\n".join(lines)
+
+
+def _question_status(
+    result: EvaluationQuestionResult,
+    *,
+    retrieval_mode: RetrievalMode,
+) -> str:
+    status: list[str] = []
+    if result.errors:
+        status.append("runtime/citation error")
+    route_filter_miss = _route_filter_missed(result, retrieval_mode=retrieval_mode)
+    if route_filter_miss:
+        status.append("route filter miss")
+    source_retrieval_miss = result.metrics.get("recall_at_k") == 0.0
+    if not route_filter_miss and source_retrieval_miss:
+        status.append("source retrieval miss")
+    if (
+        not route_filter_miss
+        and not source_retrieval_miss
+        and result.metrics.get("citation_source_match") == 0.0
+    ):
+        status.append("citation source miss")
+    if result.metrics.get("no_answer_accuracy") == 0.0:
+        status.append("answerability miss")
+    return ", ".join(status) if status else "pass"
+
+
+def _route_filter_missed(
+    result: EvaluationQuestionResult,
+    *,
+    retrieval_mode: RetrievalMode,
+) -> bool:
+    if retrieval_mode != "routed-vector":
+        return False
+    if result.expected_category is None:
+        return False
+    if not result.routed_categories:
+        return result.selected_category != result.expected_category
+    return result.expected_category not in result.routed_categories
+
+
+def _render_request_response_pairs(
+    questions: list[EvaluationQuestionResult],
+    *,
+    retrieval_mode: RetrievalMode,
+) -> str:
+    if not questions:
+        return "No question responses were recorded."
+
+    sections: list[str] = []
+    for result in questions:
+        sections.extend(
+            [
+                f"### {_escape_heading(result.question_id)}",
+                _render_key_value_table(
+                    [
+                        ("Case type", result.case_type),
+                        ("Status", _question_status(result, retrieval_mode=retrieval_mode)),
+                        (
+                            "No-answer response",
+                            (
+                                "yes"
+                                if result.is_no_answer is True
+                                else "no" if result.is_no_answer is False else "unknown"
+                            ),
+                        ),
+                    ]
+                ),
+                "**Request**",
+                _fenced_text(result.question_text),
+                "**Response**",
+                _fenced_text(result.answer_text or "No answer text was recorded."),
+            ]
+        )
+    return "\n\n".join(sections)
 
 
 def _render_token_budget_diagnostics(run: EvaluationRun) -> str:
@@ -661,3 +824,11 @@ def _format_metric_value(value: object) -> str:
 
 def _escape_table(value: object) -> str:
     return str(value).replace("\n", " ").replace("|", "\\|")
+
+
+def _escape_heading(value: object) -> str:
+    return str(value).replace("\n", " ").strip()
+
+
+def _fenced_text(value: str) -> str:
+    return f"````text\n{value.rstrip()}\n````"

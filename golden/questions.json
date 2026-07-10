@@ -5,7 +5,7 @@
       "text": "Which prompt components and instruction design practices can make model responses more reliable and easier to control?",
       "expected_category": "prompting techniques",
       "expected_relevant_sources": [
-        "azure-openai-prompt-engineering-techniques"
+        "openai-api-prompt-engineering"
       ],
       "answerability": "answerable",
       "case_type": "answerable"
@@ -27,7 +27,7 @@
       "expected_category": "RAG evaluation and quality",
       "expected_relevant_sources": [
         "trec-common-evaluation-measures",
-        "wikipedia-ir-evaluation-measures"
+        "ragas-rag-metrics"
       ],
       "answerability": "answerable",
       "case_type": "answerable"
@@ -57,7 +57,7 @@
       "text": "Why does a RAG system usually need chunking and embeddings before vector search can retrieve useful passages?",
       "expected_category": "RAG and context handling",
       "expected_relevant_sources": [
-        "openai-embedding-wikipedia-search"
+        "azure-ai-search-chunk-documents"
       ],
       "answerability": "answerable",
       "case_type": "answerable"
@@ -84,7 +84,7 @@
       "expected_category": "RAG evaluation and quality",
       "expected_relevant_sources": [
         "microsoft-foundry-rag-evaluators",
-        "wikipedia-ir-evaluation-measures"
+        "ragas-rag-metrics"
       ],
       "answerability": "answerable",
       "case_type": "ambiguous_boundary"
@@ -94,8 +94,42 @@
       "text": "How can limiting retrieved context reduce latency, token usage, and citation noise in a RAG workflow?",
       "expected_category": "LLM settings, cost, and tokens",
       "expected_relevant_sources": [
+        "openai-cost-optimization",
         "openai-latency-optimization",
         "azure-ai-search-rag-overview"
+      ],
+      "answerability": "answerable",
+      "case_type": "ambiguous_boundary"
+    },
+    {
+      "question_id": "q-cross-category-003",
+      "text": "How can I keep repeated RAG evaluation runs cheaper when the prompt prefix and rubric stay mostly the same?",
+      "expected_category": "LLM settings, cost, and tokens",
+      "expected_relevant_sources": [
+        "openai-prompt-caching",
+        "openai-cost-optimization"
+      ],
+      "answerability": "answerable",
+      "case_type": "ambiguous_boundary"
+    },
+    {
+      "question_id": "q-cross-category-004",
+      "text": "If retrieved context tells the model to ignore developer instructions and reveal hidden prompts, what kind of problem is that and how should it be mitigated?",
+      "expected_category": "LLM security and risks",
+      "expected_relevant_sources": [
+        "owasp-llm01-prompt-injection",
+        "owasp-llm08-vector-embedding-weaknesses"
+      ],
+      "answerability": "answerable",
+      "case_type": "ambiguous_boundary"
+    },
+    {
+      "question_id": "q-cross-category-005",
+      "text": "Which checks tell me whether retrieved chunks contain enough relevant evidence for the generated answer, rather than just explaining how to retrieve chunks?",
+      "expected_category": "RAG evaluation and quality",
+      "expected_relevant_sources": [
+        "ragas-rag-metrics",
+        "microsoft-foundry-rag-evaluators"
       ],
       "answerability": "answerable",
       "case_type": "ambiguous_boundary"
@@ -105,9 +139,9 @@
       "text": "How do prompt structure, retrieved context, evaluation metrics, and token budgets interact during a RAG quality review?",
       "expected_category": null,
       "expected_relevant_sources": [
-        "azure-openai-prompt-engineering-techniques",
+        "openai-api-prompt-engineering",
         "azure-ai-search-rag-overview",
-        "huggingface-evaluate-considerations",
+        "deepeval-rag-metrics",
         "openai-token-counting"
       ],
       "answerability": "answerable",
@@ -120,7 +154,7 @@
       "expected_relevant_sources": [
         "owasp-llm08-vector-embedding-weaknesses",
         "azure-ai-search-vector-relevance-ranking",
-        "microsoft-advanced-prompts",
+        "openai-gpt5-prompting-guide",
         "microsoft-foundry-rag-evaluators"
       ],
       "answerability": "answerable",

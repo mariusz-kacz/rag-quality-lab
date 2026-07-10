@@ -39,7 +39,8 @@ def test_load_app_config_reads_required_environment() -> None:
     assert config.qdrant.url == "http://localhost:6333"
     assert config.qdrant.api_key is None
     assert config.qdrant.collection == "rag_quality_lab"
-    assert config.runtime.top_k == 6
+    assert config.runtime.top_k == 3
+    assert config.runtime.max_context_tokens == 1000
 
 
 def test_load_app_config_normalizes_foundry_responses_url() -> None:

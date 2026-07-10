@@ -110,7 +110,7 @@ uv run raglab corpus ingest --collection rag_quality_lab --recreate --json
 Run one traced query:
 
 ```powershell
-uv run raglab query "How does retrieval augmented generation help with context grounding?" --mode routed-vector --top-k 6 --max-context-tokens 2500 --output-token-limit 500
+uv run raglab query "How does retrieval augmented generation help with context grounding?" --mode routed-vector --top-k 3 --max-context-tokens 1000 --output-token-limit 500
 ```
 
 Inspect a persisted trace:
@@ -138,12 +138,12 @@ Corpus inspection confirms the curated corpus shape before ingestion:
 
 ```text
 Corpus inspection
-Sources: 27
-Pinned version: huggingface-evaluate@main, microsoft-azure-ai-docs@main, microsoft-azure-docs@main, microsoft-generative-ai-for-beginners@75d89e41403186a1e3613297b1c5483c7d087e5f, nist-ai-600-1@2024-07, openai-api-docs@current-snapshot, openai-cookbook@8730772, owasp-llm-top-10@0205957, trec-common-evaluation-measures-2006, wikipedia@current-snapshot
+Sources: 26
+Pinned version: deepeval@main-snapshot-2026-07-10, microsoft-azure-ai-docs@main, microsoft-azure-docs@main, microsoft-azure-docs@main-snapshot-2026-07-10, nist-ai-600-1@2024-07, openai-api-docs@current-snapshot, openai-api-docs@current-snapshot-2026-07-10, openai-cookbook@8730772, openai-cookbook@main-snapshot-2026-07-10, owasp-llm-top-10@0205957, qdrant-landing-page@master-snapshot-2026-07-10, ragas@main-snapshot-2026-07-10, trec-common-evaluation-measures-2006
 Categories:
   - prompting techniques: 5
   - RAG and context handling: 5
-  - RAG evaluation and quality: 6
+  - RAG evaluation and quality: 5
   - LLM security and risks: 6
   - LLM settings, cost, and tokens: 5
 Validation errors: none
@@ -152,30 +152,30 @@ Validation errors: none
 A trace inspection shows the route, context budget, citation status, and model token accounting for a single query:
 
 ```text
-Trace: trace-67fa1006210d44ca8c6b70742e7f2192
-Question: How does retrieval augmented generation use retrieved context to ground an answer?
+Trace: trace-1ec3130e708a4660a32bf9a80d8f9622
+Question: Which prompt components and instruction design practices can make model responses more reliable and easier to control?
 Mode: routed-vector
-Route: RAG and context handling
-Retrieved chunks: 6
-Included chunks: 6
+Route: prompting techniques
+Retrieved chunks: 3
+Included chunks: 3
 Excluded chunks: 0
 Citation validation: valid
-Model usage: 2971 tokens
+Model usage: 868 tokens
 ```
 
-Evaluation comparison output highlights the intended mode-level tradeoff: routed retrieval improves recall and MRR in this sample, while the baseline spends fewer average context tokens.
+Evaluation comparison output highlights the intended mode-level tradeoff under the current pressure settings (`top_k=3`, `max_context_tokens=1000`, `output_token_limit=800`): routed retrieval improves recall, MRR, citation source match, and context efficiency. Baseline routing accuracy is `n/a` because baseline retrieval does not use route filtering.
 
 ```text
 Evaluation comparison
 Artifacts: 2
-routing_accuracy: baseline-vector=0.7, routed-vector=0.7, best=tie
-fallback_rate: baseline-vector=0.0, routed-vector=0.0, best=tie
-recall_at_k: baseline-vector=0.7, routed-vector=0.9, best=routed-vector
-mrr: baseline-vector=0.55, routed-vector=0.61, best=routed-vector
-citation_source_match: baseline-vector=0.7, routed-vector=0.7, best=tie
-no_answer_accuracy: baseline-vector=1.0, routed-vector=1.0, best=tie
-average_context_tokens: baseline-vector=1328.5, routed-vector=1417.0833333333333, best=baseline-vector
-average_included_chunks: baseline-vector=6.0, routed-vector=6.0, best=tie
+routing_accuracy: baseline-vector=n/a, routed-vector=0.5833, best=n/a
+fallback_rate: baseline-vector=0, routed-vector=0, best=tie
+recall_at_k: baseline-vector=0.8571, routed-vector=0.9286, best=routed-vector
+mrr: baseline-vector=0.6071, routed-vector=0.6786, best=routed-vector
+citation_source_match: baseline-vector=0.8571, routed-vector=0.9286, best=routed-vector
+no_answer_accuracy: baseline-vector=1, routed-vector=1, best=tie
+average_context_tokens: baseline-vector=609.7, routed-vector=597.8, best=routed-vector
+average_included_chunks: baseline-vector=2.938, routed-vector=2.812, best=routed-vector
 ```
 
 Sample artifacts produced by the quickstart flow:
@@ -185,12 +185,18 @@ Sample artifacts produced by the quickstart flow:
 - `artifacts/eval/eval-routed-vector.json`
 - `artifacts/eval/eval-routed-vector.md`
 - `artifacts/eval/comparison.md`
-- `artifacts/eval/traces/routed-vector/trace-67fa1006210d44ca8c6b70742e7f2192.json`
-- `artifacts/traces/trace-86887ad82e4f4eb88fe3588f5a2d93b4.json`
+- `artifacts/eval/traces/routed-vector/trace-1ec3130e708a4660a32bf9a80d8f9622.json`
+
+The evaluation Markdown reports also include request-response pairs so reviewers can inspect generated answers without opening trace JSON files:
+
+- `artifacts/eval/eval-baseline-vector.md`
+- `artifacts/eval/eval-routed-vector.md`
 
 ## Corpus At A Glance
 
-The corpus is intentionally small and pinned so reviewers can inspect exactly what the system is allowed to know. The current manifest contains 27 local Markdown snapshots from Microsoft Learn, Microsoft Generative AI for Beginners, OpenAI Cookbook, OpenAI API docs, OWASP Top 10 for LLM Applications, NIST, TREC, Wikipedia, and Hugging Face Evaluate.
+The corpus is intentionally small and pinned so reviewers can inspect exactly what the system is allowed to know. The current manifest contains 26 local Markdown snapshots from Microsoft Learn, OpenAI Cookbook, OpenAI API docs, Qdrant documentation, Ragas, DeepEval, OWASP Top 10 for LLM Applications, NIST, and TREC.
+
+The final human review index is [specs/001-rag-quality-lab/corpus-final-review.md](specs/001-rag-quality-lab/corpus-final-review.md). It lists the current corpus files, upstream reference pages, pinned versions, licenses, and review sections in one place.
 
 The corpus started from a single-source idea, but the five-category taxonomy needed broader coverage than one prompt-engineering source could provide. The final curation uses a small multi-source set so each category has enough substance for routing, retrieval, no-answer checks, and golden-set evaluation while staying manually reviewable.
 
@@ -211,15 +217,15 @@ License rationale:
 - Keep license and reuse uncertainty visible instead of hiding it. OpenAI API docs and some public/government sources are marked with `reuse metadata pending snapshot verification` where the local snapshot still needs final reuse review.
 - Store normalized local snapshots rather than scraping live pages during ingestion, so reviewers can inspect the exact text being embedded.
 
-Pinned provenance is part of the runtime contract. GitHub-backed sources use commit or short commit references such as `openai-cookbook@8730772`, `owasp-llm-top-10@0205957`, and `microsoft-generative-ai-for-beginners@75d89e41403186a1e3613297b1c5483c7d087e5f`. Documentation sources without a repo commit use explicit snapshot labels such as `nist-ai-600-1@2024-07`, `trec-common-evaluation-measures-2006`, `wikipedia@current-snapshot`, or provider documentation snapshot labels. Ingestion validates local references before writing vectors, and chunk provenance carries the source URL, license, pinned version, and local file path forward into Qdrant payloads and traces.
+Pinned provenance is part of the runtime contract. GitHub-backed sources use commit, short commit, or snapshot references such as `openai-cookbook@8730772`, `openai-cookbook@main-snapshot-2026-07-10`, `qdrant-landing-page@master-snapshot-2026-07-10`, `ragas@main-snapshot-2026-07-10`, `deepeval@main-snapshot-2026-07-10`, and `owasp-llm-top-10@0205957`. Documentation sources without a repo commit use explicit snapshot labels such as `microsoft-azure-docs@main-snapshot-2026-07-10`, `nist-ai-600-1@2024-07`, `trec-common-evaluation-measures-2006`, or provider documentation snapshot labels. Ingestion validates local references before writing vectors, and chunk provenance carries the source URL, license, pinned version, and local file path forward into Qdrant payloads and traces.
 
 The five categories are deliberately coarse enough for deterministic embedding routing but specific enough for evaluation:
 
-- `prompting techniques` (5 sources): instruction design, prompt patterns, structured outputs, model-specific prompting guidance, and examples.
-- `RAG and context handling` (5 sources): chunking, embeddings, vector search, context assembly, grounding, and retrieval architecture.
-- `RAG evaluation and quality` (6 sources): golden sets, retrieval metrics, answer evaluation, groundedness, metric selection, and diagnostic reporting.
+- `prompting techniques` (5 sources): current prompt engineering guidance, GPT-5/GPT-4.1/o-series model-specific prompting, structured outputs, instruction design, and examples.
+- `RAG and context handling` (5 sources): RAG architecture, chunking, vector relevance, Search-Ask context assembly, grounding, Qdrant hybrid retrieval, and multistage retrieval patterns.
+- `RAG evaluation and quality` (5 sources): RAG evaluator taxonomy, evaluation flywheels, retrieval metrics, faithfulness, context precision/recall, response relevancy, thresholds, and diagnostic reporting.
 - `LLM security and risks` (6 sources): prompt injection, sensitive information disclosure, data/model poisoning, excessive agency, vector/embedding weaknesses, and generative AI risk management.
-- `LLM settings, cost, and tokens` (5 sources): token counting, latency, rate limits, prompt caching, request shape, and operational budget tradeoffs.
+- `LLM settings, cost, and tokens` (5 sources): token counting, cost optimization, latency, rate-limit dimensions, prompt caching, cache breakpoints, and operational budget tradeoffs.
 
 ## Retrieval, Tracing, And Evaluation
 
@@ -230,7 +236,7 @@ The MVP runtime supports exactly two retrieval modes:
 
 Routing is deterministic and non-LLM. The router embeds the question, compares it with the five category description embeddings using cosine similarity, records all category scores, and selects the top category only when its confidence is at or above the configured threshold. The default threshold is `0.18` from `RuntimeConfig`. If confidence is below the threshold, `fallback_all_categories` is recorded as `true`, `selected_category` is empty, and `routed-vector` searches all categories instead of applying a weak filter. When confidence is high enough, the retriever includes the selected category plus any category within `RAGLAB_ROUTER_CATEGORY_MARGIN` of the selected category score; the default margin is `0.15`.
 
-Context budgeting is also deterministic. Retrieved chunks are sorted by retrieval rank and considered in order. A chunk is included only if its estimated token count fits within `max_context_tokens`; otherwise it is recorded under `excluded_chunks` with reason `budget_exceeded`. The trace records `final_estimated_context_tokens`, `max_context_tokens`, `output_token_limit`, included chunks, and excluded chunks. The CLI defaults are `--top-k 6`, `--max-context-tokens 2500`, and `--output-token-limit 500` for ad hoc queries. Evaluation runs default to `--output-token-limit 800` to reduce max-output truncation during golden-set reporting. Each value can be overridden per command.
+Context budgeting is also deterministic. Retrieved chunks are sorted by retrieval rank and considered in order. A chunk is included only if its estimated token count fits within `max_context_tokens`; otherwise it is recorded under `excluded_chunks` with reason `budget_exceeded`. The trace records `final_estimated_context_tokens`, `max_context_tokens`, `output_token_limit`, included chunks, and excluded chunks. The CLI defaults are `--top-k 3`, `--max-context-tokens 1000`, and `--output-token-limit 500` for ad hoc queries. Evaluation runs default to `--output-token-limit 800` to reduce max-output truncation during golden-set reporting. Each value can be overridden per command.
 
 Each `raglab query` run writes a trace under `artifacts/traces/` by default. A trace contains:
 
@@ -248,7 +254,7 @@ Evaluation runs execute the same traced query pipeline over `golden/questions.js
 
 The required evaluation metrics are:
 
-- `routing_accuracy`: share of golden questions with an expected category where the selected category matches.
+- `routing_accuracy`: share of routed-vector golden questions with an expected category where the selected category matches. This is `n/a` for `baseline-vector` because baseline retrieval searches globally and does not use route filtering.
 - `fallback_rate`: share of traces that fell back to all-category retrieval.
 - `recall_at_k`: share of answerable golden questions where any expected source slug or chunk ID appears in retrieved results.
 - `mrr`: mean reciprocal rank of the first expected source or chunk in retrieved results.

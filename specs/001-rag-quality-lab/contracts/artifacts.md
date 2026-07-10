@@ -63,7 +63,7 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 - `average_context_tokens`
 - `average_included_chunks`
 
-Metrics that are not applicable for a mode must be present with `null` and a `reason` field in the Markdown report.
+Metrics that are not applicable for a mode must be present with `null` and a reason in the Markdown report. `routing_accuracy` is not applicable for `baseline-vector` because baseline retrieval does not use route filtering.
 
 ## Markdown Evaluation Report
 
@@ -77,6 +77,7 @@ Metrics that are not applicable for a mode must be present with `null` and a `re
 - Retrieval mode and configuration
 - Aggregate metrics
 - Per-question table
+- Request-response pairs
 - Token-budget diagnostics
 - No-answer cases
 - Citation validation failures

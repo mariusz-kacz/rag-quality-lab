@@ -30,6 +30,7 @@ REQUIRED_MARKDOWN_SECTIONS = (
     "Retrieval mode and configuration",
     "Aggregate metrics",
     "Per-question table",
+    "Request-response pairs",
     "Token-budget diagnostics",
     "No-answer cases",
     "Citation validation failures",
@@ -128,9 +129,18 @@ def _assert_evaluation_artifacts(
         "top_k": 3,
         "max_context_tokens": 500,
         "output_token_limit": 120,
+        "router_category_margin": 0.15,
     }
 
     assert set(REQUIRED_EVALUATION_METRICS) <= set(payload["metrics"])
+    if mode == "baseline-vector":
+        assert payload["metrics"]["routing_accuracy"] is None
+        assert all(
+            question["metrics"]["routing_accuracy"] is None
+            for question in payload["questions"]
+        )
+    else:
+        assert payload["metrics"]["routing_accuracy"] is not None
     assert len(payload["questions"]) == 12
     assert len(payload["trace_paths"]) == 12
     assert {question["case_type"] for question in payload["questions"]} >= {
@@ -139,6 +149,8 @@ def _assert_evaluation_artifacts(
         "ambiguous_boundary",
         "fallback_routing",
     }
+    assert all("answer_text" in question for question in payload["questions"])
+    assert all("is_no_answer" in question for question in payload["questions"])
 
     trace_paths = [Path(path) for path in payload["trace_paths"]]
     assert all(path.exists() for path in trace_paths)
@@ -152,6 +164,7 @@ def _assert_evaluation_artifacts(
         assert section.lower() in normalized_markdown
     assert mode in markdown
     assert str(json_path) in markdown
+    assert "The selected context supports the answer." in markdown
 
 
 class FakeEvaluationQueryRunner:

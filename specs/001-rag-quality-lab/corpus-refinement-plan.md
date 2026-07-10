@@ -103,14 +103,14 @@ Prompting replacements are approved. The refined prompt category should use the 
 
 | Task | Status | Source slug | Local file | Manifest sections | Notes |
 | --- | --- | --- | --- | --- | --- |
-| CRP-P01 | Pending | `openai-api-prompt-engineering` | `corpus/sources/openai-api-prompt-engineering.md` | Message roles and instruction hierarchy; Prompt testing, model snapshots, and output control | Add manifest entry replacing `azure-openai-prompt-engineering-techniques`. Capture current snapshot metadata and reuse terms. |
-| CRP-P02 | Pending | `openai-gpt5-prompting-guide` | `corpus/sources/openai-gpt5-prompting-guide.md` | GPT-5 prompt behavior and instruction tuning; Agentic workflows, verbosity, and migration patterns | Add manifest entry replacing `microsoft-advanced-prompts`. Capture source pin or snapshot metadata. |
-| CRP-P03 | Pending | `openai-gpt41-prompting-guide` | `corpus/sources/openai-gpt41-prompting-guide.md` | Instruction following and agentic workflows; Long context guidance and prompt migration | Review existing local source against the stricter checklist; update only if needed. |
-| CRP-P04 | Pending | `openai-o-series-prompting-guide` | `corpus/sources/openai-o-series-prompting-guide.md` | Reasoning model instruction design; Concise instructions versus detailed constraints | Review existing local source against the stricter checklist; update only if needed. |
-| CRP-P05 | Pending | `azure-openai-structured-outputs` | `corpus/sources/azure-openai-structured-outputs.md` | Schema constrained outputs; Constraints, model support, and compact examples | Keep in prompting category unless a later taxonomy change moves schema control elsewhere. |
-| CRP-P06 | Pending | Prompting category | `corpus/manifest.json` | n/a | Remove manifest references to `azure-openai-prompt-engineering-techniques` and `microsoft-advanced-prompts` after replacements are generated. |
-| CRP-P07 | Pending | Prompting category | `README.md` and proposal artifacts | n/a | Update source list/counts and rationale. |
-| CRP-P08 | Pending | Prompting category | `golden/questions.json` | n/a | Review expected sources for prompt-related golden questions after content changes. |
+| CRP-P01 | Completed | `openai-api-prompt-engineering` | `corpus/sources/openai-api-prompt-engineering.md` | Message roles and instruction hierarchy; Prompt testing, model snapshots, and output control | Added manifest entry replacing `azure-openai-prompt-engineering-techniques`. Captured current snapshot metadata and reuse-term note. |
+| CRP-P02 | Completed | `openai-gpt5-prompting-guide` | `corpus/sources/openai-gpt5-prompting-guide.md` | GPT-5 prompt behavior and instruction tuning; Agentic workflows, verbosity, and migration patterns | Added manifest entry replacing `microsoft-advanced-prompts`. Captured current snapshot metadata. |
+| CRP-P03 | Completed | `openai-gpt41-prompting-guide` | `corpus/sources/openai-gpt41-prompting-guide.md` | Instruction following and agentic workflows; Long context guidance and prompt migration | Reviewed existing local source against the stricter checklist; no edit required. |
+| CRP-P04 | Completed | `openai-o-series-prompting-guide` | `corpus/sources/openai-o-series-prompting-guide.md` | Reasoning model instruction design; Concise instructions versus detailed constraints | Reviewed existing local source against the stricter checklist; no edit required. |
+| CRP-P05 | Completed | `azure-openai-structured-outputs` | `corpus/sources/azure-openai-structured-outputs.md` | Schema constrained outputs; Constraints, model support, and compact examples | Kept in prompting category as prompt-adjacent output reliability and schema-control material. |
+| CRP-P06 | Completed | Prompting category | `corpus/manifest.json` | n/a | Removed manifest references to `azure-openai-prompt-engineering-techniques` and `microsoft-advanced-prompts`; removed replaced local source files after manifest validation. |
+| CRP-P07 | Completed | Prompting category | `README.md` and proposal artifacts | n/a | Updated source list/counts and rationale for the refined prompt category. |
+| CRP-P08 | Completed | Prompting category | `golden/questions.json` | n/a | Updated prompt-related expected sources after content changes. |
 
 ## Approved RAG And Context Handling Refinement
 
@@ -144,14 +144,14 @@ The approved direction is to keep the strongest architecture, retrieval, and Sea
 
 | Task | Status | Source slug | Local file | Manifest sections | Notes |
 | --- | --- | --- | --- | --- | --- |
-| CRP-RC01 | Pending | `azure-ai-search-rag-overview` | `corpus/sources/azure-ai-search-rag-overview.md` | RAG architecture and query understanding; Token constraints, security trimming, and retrieval patterns | Review existing local source against the stricter checklist; update only if needed. |
-| CRP-RC02 | Pending | `azure-ai-search-chunk-documents` | `corpus/sources/azure-ai-search-chunk-documents.md` | Chunking workflow and strategy selection; Chunk size, overlap, token limits, and indexing implications | Add manifest entry replacing `openai-embedding-wikipedia-search`. Resolve Microsoft Learn source commit before ingest. |
-| CRP-RC03 | Pending | `openai-question-answering-embeddings` | `corpus/sources/openai-question-answering-embeddings.md` | Search-Ask retrieval workflow; Context assembly, answer grounding, and no-answer behavior | Review existing local source against the stricter checklist; update only if needed. |
-| CRP-RC04 | Pending | `azure-ai-search-vector-relevance-ranking` | `corpus/sources/azure-ai-search-vector-relevance-ranking.md` | KNN, ANN, and similarity metrics; Score interpretation, k selection, chunk tuning, and hybrid ranking | Review existing local source against the stricter checklist; update only if needed. |
-| CRP-RC05 | Pending | `qdrant-hybrid-and-multistage-queries` | `corpus/sources/qdrant-hybrid-and-multistage-queries.md` | Hybrid retrieval and dense-sparse fusion; Multi-stage retrieval, prefetch, and reranking patterns | Add manifest entry replacing `openai-file-search-responses`. |
-| CRP-RC06 | Pending | RAG and context category | `corpus/manifest.json` | n/a | Remove manifest references to replaced sources after replacement snapshots are generated. |
-| CRP-RC07 | Pending | RAG and context category | `README.md` and proposal artifacts | n/a | Update source list/counts and rationale. |
-| CRP-RC08 | Pending | RAG and context category | `golden/questions.json` | n/a | Review expected relevant sources for RAG/context golden questions after content changes. |
+| CRP-RC01 | Completed | `azure-ai-search-rag-overview` | `corpus/sources/azure-ai-search-rag-overview.md` | RAG architecture and query understanding; Token constraints, security trimming, and retrieval patterns | Reviewed existing local source against the stricter checklist; no edit required. |
+| CRP-RC02 | Completed | `azure-ai-search-chunk-documents` | `corpus/sources/azure-ai-search-chunk-documents.md` | Chunking workflow and strategy selection; Chunk size, overlap, token limits, and indexing implications | Added manifest entry replacing `openai-embedding-wikipedia-search`. Captured Microsoft Learn source snapshot metadata. |
+| CRP-RC03 | Completed | `openai-question-answering-embeddings` | `corpus/sources/openai-question-answering-embeddings.md` | Search-Ask retrieval workflow; Context assembly, answer grounding, and no-answer behavior | Reviewed existing local source against the stricter checklist; no edit required. |
+| CRP-RC04 | Completed | `azure-ai-search-vector-relevance-ranking` | `corpus/sources/azure-ai-search-vector-relevance-ranking.md` | KNN, ANN, and similarity metrics; Score interpretation, k selection, chunk tuning, and hybrid ranking | Reviewed existing local source against the stricter checklist; no edit required. |
+| CRP-RC05 | Completed | `qdrant-hybrid-and-multistage-queries` | `corpus/sources/qdrant-hybrid-and-multistage-queries.md` | Hybrid retrieval and dense-sparse fusion; Multi-stage retrieval, prefetch, and reranking patterns | Added manifest entry replacing `openai-file-search-responses`. Captured Qdrant documentation snapshot metadata with reuse terms visible. |
+| CRP-RC06 | Completed | RAG and context category | `corpus/manifest.json` | n/a | Removed manifest references to `openai-embedding-wikipedia-search` and `openai-file-search-responses`; removed replaced local source files after manifest validation. |
+| CRP-RC07 | Completed | RAG and context category | `README.md` and proposal artifacts | n/a | Updated source list/counts and rationale for the refined RAG/context category. |
+| CRP-RC08 | Completed | RAG and context category | `golden/questions.json` | n/a | Updated RAG/context expected sources after content changes. |
 
 ## Approved RAG Evaluation Refinement
 
@@ -183,14 +183,14 @@ The approved refined category should use five sources instead of six. This remov
 
 | Task | Status | Source slug | Local file | Manifest sections | Notes |
 | --- | --- | --- | --- | --- | --- |
-| CRP-E01 | Pending | `microsoft-foundry-rag-evaluators` | `corpus/sources/microsoft-foundry-rag-evaluators.md` | Process and system evaluation taxonomy; Retrieval quality, groundedness, relevance, and thresholds | Review existing local source against the stricter checklist; update only if needed. |
-| CRP-E02 | Pending | `openai-evaluation-flywheel` | `corpus/sources/openai-evaluation-flywheel.md` | Failure-mode discovery and annotation; Automatic graders, prompt improvement, and test expansion | Review existing local source against the stricter checklist; update only if needed. |
-| CRP-E03 | Pending | `trec-common-evaluation-measures` | `corpus/sources/trec-common-evaluation-measures.md` | Recall, precision, and ranked-list evaluation; Average precision, R-precision, bpref, and GMAP | Keep as the only generic retrieval-metric source; review existing snapshot for source closeness. |
-| CRP-E04 | Pending | `ragas-rag-metrics` | `corpus/sources/ragas-rag-metrics.md` | RAG metric surfaces and required inputs; Faithfulness, context quality, response relevancy, and noise sensitivity | Add manifest entry replacing `wikipedia-ir-evaluation-measures`. Build from Ragas docs pages after resolving source paths and commit. |
-| CRP-E05 | Pending | `deepeval-rag-metrics` | `corpus/sources/deepeval-rag-metrics.md` | Retriever and generator metric taxonomy; Thresholds, scoring, and test-case requirements | Add manifest entry replacing `huggingface-evaluate-choosing-metric`. Build from DeepEval docs after resolving source paths and commit. |
-| CRP-E06 | Pending | Evaluation category | `corpus/manifest.json` | n/a | Remove manifest references to `wikipedia-ir-evaluation-measures`, `huggingface-evaluate-choosing-metric`, and `huggingface-evaluate-considerations` after replacements are generated. |
-| CRP-E07 | Pending | Evaluation category | `README.md` and proposal artifacts | n/a | Update source list/counts and rationale from six evaluation sources to five. |
-| CRP-E08 | Pending | Evaluation category | `golden/questions.json` | n/a | Review expected relevant sources for evaluation-category golden questions after content changes. |
+| CRP-E01 | Completed | `microsoft-foundry-rag-evaluators` | `corpus/sources/microsoft-foundry-rag-evaluators.md` | Process and system evaluation taxonomy; Retrieval quality, groundedness, relevance, and thresholds | Reviewed existing local source against the stricter checklist; no edit required. |
+| CRP-E02 | Completed | `openai-evaluation-flywheel` | `corpus/sources/openai-evaluation-flywheel.md` | Failure-mode discovery and annotation; Automatic graders, prompt improvement, and test expansion | Reviewed existing local source against the stricter checklist; no edit required. |
+| CRP-E03 | Completed | `trec-common-evaluation-measures` | `corpus/sources/trec-common-evaluation-measures.md` | Recall, precision, and ranked-list evaluation; Average precision, R-precision, bpref, and GMAP | Kept as the only generic retrieval-metric source after source-closeness review. |
+| CRP-E04 | Completed | `ragas-rag-metrics` | `corpus/sources/ragas-rag-metrics.md` | RAG metric surfaces and required inputs; Faithfulness, context quality, response relevancy, and noise sensitivity | Added manifest entry replacing `wikipedia-ir-evaluation-measures`. Built from Ragas docs pages with Apache-2.0 repository license and snapshot metadata. |
+| CRP-E05 | Completed | `deepeval-rag-metrics` | `corpus/sources/deepeval-rag-metrics.md` | Retriever and generator metric taxonomy; Thresholds, scoring, and test-case requirements | Added manifest entry replacing `huggingface-evaluate-choosing-metric`. Built from DeepEval docs with Apache-2.0 repository license and snapshot metadata. |
+| CRP-E06 | Completed | Evaluation category | `corpus/manifest.json` | n/a | Removed manifest references to `wikipedia-ir-evaluation-measures`, `huggingface-evaluate-choosing-metric`, and `huggingface-evaluate-considerations`; removed replaced local source files after manifest validation. |
+| CRP-E07 | Completed | Evaluation category | `README.md` and proposal artifacts | n/a | Updated source list/counts and rationale from six evaluation sources to five. |
+| CRP-E08 | Completed | Evaluation category | `golden/questions.json` | n/a | Updated evaluation expected sources after content changes. |
 
 ## Approved LLM Settings, Cost, And Tokens Refinement
 
@@ -225,14 +225,14 @@ The approved direction is to keep the strong token-counting, latency, and prompt
 
 | Task | Status | Source slug | Local file | Manifest sections | Notes |
 | --- | --- | --- | --- | --- | --- |
-| CRP-LS01 | Pending | `openai-cost-optimization` | `corpus/sources/openai-cost-optimization.md` | Cost and latency reduction levers; Batch, flex processing, model choice, and token minimization | Add manifest entry replacing `openai-text-generation`. Capture snapshot metadata and OpenAI docs reuse terms. |
-| CRP-LS02 | Pending | `openai-token-counting` | `corpus/sources/openai-token-counting.md` | Token counting concepts; Prompt budgeting and model-specific token accounting | Keep and review existing local source against current model names and the stricter checklist. |
-| CRP-LS03 | Pending | `openai-latency-optimization` | `corpus/sources/openai-latency-optimization.md` | Latency and efficiency principles; Token reduction, fewer requests, streaming, and RAG trimming | Keep and refresh only if the current docs materially differ from the pinned local snapshot. |
-| CRP-LS04 | Pending | `openai-rate-limits` | `corpus/sources/openai-rate-limits.md` | Rate-limit scope, usage tiers, and limit dimensions; Headers, shared limits, retries, batching, and ingestion limits | Add manifest entry replacing `openai-handle-rate-limits`. |
-| CRP-LS05 | Pending | `openai-prompt-caching` | `corpus/sources/openai-prompt-caching.md` | Prompt caching mechanics; Static and dynamic prompt layout, cache keys, breakpoints, and usage observability | Keep but refresh to current docs, especially cache-write and breakpoint behavior. |
-| CRP-LS06 | Pending | LLM settings category | `corpus/manifest.json` | n/a | Remove manifest references to replaced sources after replacement snapshots are generated. |
-| CRP-LS07 | Pending | LLM settings category | `README.md` and proposal artifacts | n/a | Update source list/counts and rationale. |
-| CRP-LS08 | Pending | LLM settings category | `golden/questions.json` | n/a | Review expected relevant sources for settings/cost/token questions after content changes. |
+| CRP-LS01 | Completed | `openai-cost-optimization` | `corpus/sources/openai-cost-optimization.md` | Cost and latency reduction levers; Batch, flex processing, model choice, and token minimization | Added manifest entry replacing `openai-text-generation`; captured OpenAI docs snapshot metadata and reuse-term note. |
+| CRP-LS02 | Completed | `openai-token-counting` | `corpus/sources/openai-token-counting.md` | Token counting concepts; Prompt budgeting and model-specific token accounting | Reviewed and kept existing pinned Cookbook snapshot because it still supports deterministic local token budgeting. |
+| CRP-LS03 | Completed | `openai-latency-optimization` | `corpus/sources/openai-latency-optimization.md` | Latency and efficiency principles; Token reduction, fewer requests, streaming, and RAG trimming | Reviewed and kept existing pinned Cookbook snapshot; current docs did not require a replacement for this category pass. |
+| CRP-LS04 | Completed | `openai-rate-limits` | `corpus/sources/openai-rate-limits.md` | Rate-limit scope, usage tiers, and limit dimensions; Headers, shared limits, retries, batching, and ingestion limits | Added manifest entry replacing `openai-handle-rate-limits` with current OpenAI rate-limit guidance. |
+| CRP-LS05 | Completed | `openai-prompt-caching` | `corpus/sources/openai-prompt-caching.md` | Prompt caching mechanics; Static and dynamic prompt layout, cache keys, breakpoints, and usage observability | Refreshed snapshot for cache-write accounting, explicit breakpoints, and updated cache observability fields. |
+| CRP-LS06 | Completed | LLM settings category | `corpus/manifest.json` | n/a | Removed manifest references to replaced sources and removed superseded local source files. |
+| CRP-LS07 | Completed | LLM settings category | `README.md` and proposal artifacts | n/a | Updated source list/counts and settings rationale. |
+| CRP-LS08 | Completed | LLM settings category | `golden/questions.json` | n/a | Reviewed expected relevant sources and added `openai-cost-optimization` to the context-trimming/cost tradeoff question. |
 
 ## Categories Not Requiring Refinement
 

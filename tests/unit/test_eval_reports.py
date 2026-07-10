@@ -6,6 +6,7 @@ import pytest
 
 from rag_quality_lab.schemas import (
     EvaluationMetrics,
+    EvaluationQuestionResult,
     EvaluationRun,
     write_json_artifact,
 )
@@ -61,6 +62,18 @@ def test_compare_evaluation_artifacts_builds_metric_and_token_budget_tables(
         },
         "best_mode": "routed-vector",
     }
+    assert _row(comparison, "routing_accuracy") == {
+        "metric": "routing_accuracy",
+        "values": {
+            "baseline-vector": None,
+            "routed-vector": 0.8,
+        },
+        "best_mode": None,
+        "reason": (
+            "Routing accuracy is not applicable to baseline-vector because baseline "
+            "retrieval does not use route filtering."
+        ),
+    }
     assert _row(comparison, "fallback_rate")["best_mode"] == "routed-vector"
     assert _row(comparison, "citation_source_match")["best_mode"] == "tie"
     assert comparison["token_budget"]["average_context_tokens"] == {
@@ -80,7 +93,7 @@ def test_compare_evaluation_artifacts_writes_markdown_report(tmp_path: Path) -> 
         tmp_path / "eval-baseline-vector.json",
         mode="baseline-vector",
         metrics=EvaluationMetrics(
-            routing_accuracy=1.0,
+            routing_accuracy=None,
             fallback_rate=0.0,
             recall_at_k=1.0,
             mrr=1.0,
@@ -99,6 +112,7 @@ def test_compare_evaluation_artifacts_writes_markdown_report(tmp_path: Path) -> 
     assert "# Evaluation comparison" in markdown
     assert "## Metric comparison" in markdown
     assert "## Token-budget diagnostics" in markdown
+    assert "## Interpretation notes" in markdown
     assert "baseline-vector" in markdown
     assert "recall_at_k" in markdown
 
@@ -122,6 +136,99 @@ def test_compare_evaluation_artifacts_rejects_duplicate_modes(tmp_path: Path) ->
 
     with pytest.raises(EvaluationRunError, match="Duplicate evaluation artifact"):
         compare_evaluation_artifacts([first_path, second_path])
+
+
+def test_render_markdown_report_includes_per_question_statuses() -> None:
+    from rag_quality_lab.eval.reports import render_markdown_report
+
+    run = EvaluationRun(
+        run_id="eval-routed-vector",
+        retrieval_mode="routed-vector",
+        golden_set_path=Path("golden/questions.json"),
+        configuration={
+            "top_k": 3,
+            "max_context_tokens": 1000,
+            "output_token_limit": 800,
+        },
+        metrics=EvaluationMetrics(
+            recall_at_k=0.5,
+            citation_source_match=0.5,
+            no_answer_accuracy=1.0,
+        ),
+        questions=[
+            EvaluationQuestionResult(
+                question_id="q-pass",
+                question_text="Which source answers this?",
+                case_type="answerable",
+                trace_path=Path("artifacts/traces/q-pass.json"),
+                metrics={
+                    "routing_accuracy": 0.0,
+                    "recall_at_k": 1.0,
+                    "citation_source_match": 1.0,
+                    "no_answer_accuracy": 1.0,
+                },
+                expected_category="LLM security and risks",
+                selected_category="prompting techniques",
+                routed_categories=[
+                    "prompting techniques",
+                    "LLM security and risks",
+                ],
+                answer_text="The answer uses the expected source | with citation.",
+                is_no_answer=False,
+                expected_relevant_sources=["expected-source"],
+                retrieved_sources=["expected-source"],
+            ),
+            EvaluationQuestionResult(
+                question_id="q-miss",
+                question_text="Which source should have been retrieved?",
+                case_type="answerable",
+                trace_path=Path("artifacts/traces/q-miss.json"),
+                metrics={
+                    "routing_accuracy": 0.0,
+                    "recall_at_k": 0.0,
+                    "citation_source_match": 0.0,
+                    "no_answer_accuracy": 1.0,
+                },
+                expected_category="LLM settings, cost, and tokens",
+                selected_category="RAG evaluation and quality",
+                routed_categories=["RAG evaluation and quality"],
+                answer_text="The answer used the wrong source.",
+                is_no_answer=False,
+                expected_relevant_sources=["expected-source"],
+                retrieved_sources=["wrong-source"],
+            ),
+            EvaluationQuestionResult(
+                question_id="q-route-citation",
+                question_text="Which source was retrieved but not cited?",
+                case_type="answerable",
+                trace_path=Path("artifacts/traces/q-route-citation.json"),
+                metrics={
+                    "routing_accuracy": 0.0,
+                    "recall_at_k": 1.0,
+                    "citation_source_match": 0.0,
+                    "no_answer_accuracy": 1.0,
+                },
+                expected_category="LLM settings, cost, and tokens",
+                selected_category="RAG evaluation and quality",
+                routed_categories=["RAG evaluation and quality"],
+                answer_text="The answer cited another source.",
+                is_no_answer=False,
+                expected_relevant_sources=["expected-source"],
+                retrieved_sources=["expected-source"],
+            ),
+        ],
+    )
+
+    markdown = render_markdown_report(run)
+
+    assert "| Question | Case type | Status | Trace | Expected sources | Retrieved sources | Errors |" in markdown
+    assert "| q-pass | answerable | pass |" in markdown
+    assert "## Request-response pairs" in markdown
+    assert "### q-pass" in markdown
+    assert "Which source answers this?" in markdown
+    assert "The answer uses the expected source | with citation." in markdown
+    assert "| q-miss | answerable | route filter miss |" in markdown
+    assert "| q-route-citation | answerable | route filter miss |" in markdown
 
 
 def _write_run(path: Path, *, mode: str, metrics: EvaluationMetrics) -> Path:

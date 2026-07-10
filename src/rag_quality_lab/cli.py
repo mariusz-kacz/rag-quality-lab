@@ -602,7 +602,10 @@ def _format_comparison_row(row: dict[str, Any]) -> str:
         f"{mode}={_format_metric_value(value)}"
         for mode, value in values.items()
     )
-    return f"{row.get('metric')}: {formatted_values}, best={row.get('best_mode')}"
+    best_mode = row.get("best_mode") or "n/a"
+    reason = row.get("reason")
+    suffix = f" ({reason})" if reason else ""
+    return f"{row.get('metric')}: {formatted_values}, best={best_mode}{suffix}"
 
 
 def _route_label(trace: QueryTrace) -> str:

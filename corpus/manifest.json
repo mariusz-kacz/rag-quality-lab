@@ -2,48 +2,48 @@
   "schema_version": "1.0",
   "sources": [
     {
-      "source_slug": "azure-openai-prompt-engineering-techniques",
-      "title": "Prompt engineering techniques",
+      "source_slug": "openai-api-prompt-engineering",
+      "title": "Prompt engineering",
       "category": "prompting techniques",
-      "url": "https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/prompt-engineering",
-      "license": "CC BY 4.0 content / MIT code examples",
-      "pinned_version": "microsoft-azure-ai-docs@main",
-      "local_ref": "corpus/sources/azure-openai-prompt-engineering-techniques.md",
+      "url": "https://developers.openai.com/api/docs/guides/prompt-engineering",
+      "license": "OpenAI API docs reuse terms pending snapshot verification",
+      "pinned_version": "openai-api-docs@current-snapshot",
+      "local_ref": "corpus/sources/openai-api-prompt-engineering.md",
       "sections": [
         {
-          "heading": "Prompt components and instruction design",
+          "heading": "Message roles and instruction hierarchy",
           "level": 1,
           "ordinal": 0,
-          "anchor": "prompt-components-and-instruction-design"
+          "anchor": "message-roles-and-instruction-hierarchy"
         },
         {
-          "heading": "Examples, separators, decomposition, and grounding cautions",
+          "heading": "Prompt testing, model snapshots, and output control",
           "level": 1,
           "ordinal": 1,
-          "anchor": "examples-separators-decomposition-and-grounding-cautions"
+          "anchor": "prompt-testing-model-snapshots-and-output-control"
         }
       ]
     },
     {
-      "source_slug": "microsoft-advanced-prompts",
-      "title": "Advanced prompts",
+      "source_slug": "openai-gpt5-prompting-guide",
+      "title": "GPT-5 prompting guide",
       "category": "prompting techniques",
-      "url": "https://github.com/microsoft/generative-ai-for-beginners/tree/main/05-advanced-prompts",
+      "url": "https://developers.openai.com/cookbook/examples/gpt-5/gpt-5_prompting_guide",
       "license": "MIT",
-      "pinned_version": "microsoft-generative-ai-for-beginners@75d89e41403186a1e3613297b1c5483c7d087e5f",
-      "local_ref": "corpus/sources/microsoft-advanced-prompts.md",
+      "pinned_version": "openai-cookbook@main-snapshot-2026-07-10",
+      "local_ref": "corpus/sources/openai-gpt5-prompting-guide.md",
       "sections": [
         {
-          "heading": "Advanced prompt patterns",
+          "heading": "GPT-5 prompt behavior and instruction tuning",
           "level": 1,
           "ordinal": 0,
-          "anchor": "advanced-prompt-patterns"
+          "anchor": "gpt-5-prompt-behavior-and-instruction-tuning"
         },
         {
-          "heading": "Iterative prompting methods and tradeoffs",
+          "heading": "Agentic workflows, verbosity, and migration patterns",
           "level": 1,
           "ordinal": 1,
-          "anchor": "iterative-prompting-methods-and-tradeoffs"
+          "anchor": "agentic-workflows-verbosity-and-migration-patterns"
         }
       ]
     },
@@ -140,25 +140,25 @@
       ]
     },
     {
-      "source_slug": "openai-embedding-wikipedia-search",
-      "title": "Embedding Wikipedia articles for search",
+      "source_slug": "azure-ai-search-chunk-documents",
+      "title": "Chunk documents",
       "category": "RAG and context handling",
-      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/Embedding_Wikipedia_articles_for_search.ipynb",
-      "license": "MIT",
-      "pinned_version": "openai-cookbook@8730772",
-      "local_ref": "corpus/sources/openai-embedding-wikipedia-search.md",
+      "url": "https://learn.microsoft.com/en-us/azure/search/vector-search-how-to-chunk-documents",
+      "license": "CC BY 4.0 content / MIT code examples",
+      "pinned_version": "microsoft-azure-docs@main-snapshot-2026-07-10",
+      "local_ref": "corpus/sources/azure-ai-search-chunk-documents.md",
       "sections": [
         {
-          "heading": "Document collection and cleaning",
+          "heading": "Chunking workflow and strategy selection",
           "level": 1,
           "ordinal": 0,
-          "anchor": "document-collection-and-cleaning"
+          "anchor": "chunking-workflow-and-strategy-selection"
         },
         {
-          "heading": "Token-budget chunking, embedding, and storage",
+          "heading": "Chunk size, overlap, token limits, and indexing implications",
           "level": 1,
           "ordinal": 1,
-          "anchor": "token-budget-chunking-embedding-and-storage"
+          "anchor": "chunk-size-overlap-token-limits-and-indexing-implications"
         }
       ]
     },
@@ -209,25 +209,25 @@
       ]
     },
     {
-      "source_slug": "openai-file-search-responses",
-      "title": "File search with responses",
+      "source_slug": "qdrant-hybrid-and-multistage-queries",
+      "title": "Hybrid and multi-stage queries",
       "category": "RAG and context handling",
-      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/File_Search_Responses.ipynb",
-      "license": "MIT",
-      "pinned_version": "openai-cookbook@8730772",
-      "local_ref": "corpus/sources/openai-file-search-responses.md",
+      "url": "https://qdrant.tech/documentation/search/hybrid-queries/",
+      "license": "Qdrant documentation reuse terms pending snapshot verification",
+      "pinned_version": "qdrant-landing-page@master-snapshot-2026-07-10",
+      "local_ref": "corpus/sources/qdrant-hybrid-and-multistage-queries.md",
       "sections": [
         {
-          "heading": "Managed file-search workflow",
+          "heading": "Hybrid retrieval and dense-sparse fusion",
           "level": 1,
           "ordinal": 0,
-          "anchor": "managed-file-search-workflow"
+          "anchor": "hybrid-retrieval-and-dense-sparse-fusion"
         },
         {
-          "heading": "Vector-store retrieval and context delivery",
+          "heading": "Multi-stage retrieval, prefetch, and reranking patterns",
           "level": 1,
           "ordinal": 1,
-          "anchor": "vector-store-retrieval-and-context-delivery"
+          "anchor": "multi-stage-retrieval-prefetch-and-reranking-patterns"
         }
       ]
     },
@@ -301,71 +301,48 @@
       ]
     },
     {
-      "source_slug": "wikipedia-ir-evaluation-measures",
-      "title": "Evaluation measures for information retrieval",
+      "source_slug": "ragas-rag-metrics",
+      "title": "Ragas RAG metrics",
       "category": "RAG evaluation and quality",
-      "url": "https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)",
-      "license": "CC BY-SA 4.0",
-      "pinned_version": "wikipedia@current-snapshot",
-      "local_ref": "corpus/sources/wikipedia-ir-evaluation-measures.md",
+      "url": "https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/",
+      "license": "Apache-2.0",
+      "pinned_version": "ragas@main-snapshot-2026-07-10",
+      "local_ref": "corpus/sources/ragas-rag-metrics.md",
       "sections": [
         {
-          "heading": "Precision, recall, F-score, and precision at k",
+          "heading": "RAG metric surfaces and required inputs",
           "level": 1,
           "ordinal": 0,
-          "anchor": "precision-recall-f-score-and-precision-at-k"
+          "anchor": "rag-metric-surfaces-and-required-inputs"
         },
         {
-          "heading": "MAP, DCG, nDCG, MRR, hit rate, and metric caveats",
+          "heading": "Faithfulness, context quality, response relevancy, and noise sensitivity",
           "level": 1,
           "ordinal": 1,
-          "anchor": "map-dcg-ndcg-mrr-hit-rate-and-metric-caveats"
+          "anchor": "faithfulness-context-quality-response-relevancy-and-noise-sensitivity"
         }
       ]
     },
     {
-      "source_slug": "huggingface-evaluate-choosing-metric",
-      "title": "Choosing a metric for your task",
+      "source_slug": "deepeval-rag-metrics",
+      "title": "DeepEval RAG metrics",
       "category": "RAG evaluation and quality",
-      "url": "https://huggingface.co/docs/evaluate/main/en/choosing_a_metric",
+      "url": "https://deepeval.com/docs/metrics-introduction",
       "license": "Apache-2.0",
-      "pinned_version": "huggingface-evaluate@main",
-      "local_ref": "corpus/sources/huggingface-evaluate-choosing-metric.md",
+      "pinned_version": "deepeval@main-snapshot-2026-07-10",
+      "local_ref": "corpus/sources/deepeval-rag-metrics.md",
       "sections": [
         {
-          "heading": "Generic, task-specific, and dataset-specific metrics",
+          "heading": "Retriever and generator metric taxonomy",
           "level": 1,
           "ordinal": 0,
-          "anchor": "generic-task-specific-and-dataset-specific-metrics"
+          "anchor": "retriever-and-generator-metric-taxonomy"
         },
         {
-          "heading": "Selecting retrieval, answer, benchmark, and custom checks",
+          "heading": "Thresholds, scoring, and test-case requirements",
           "level": 1,
           "ordinal": 1,
-          "anchor": "selecting-retrieval-answer-benchmark-and-custom-checks"
-        }
-      ]
-    },
-    {
-      "source_slug": "huggingface-evaluate-considerations",
-      "title": "Considerations for model evaluation",
-      "category": "RAG evaluation and quality",
-      "url": "https://huggingface.co/docs/evaluate/main/en/considerations",
-      "license": "Apache-2.0",
-      "pinned_version": "huggingface-evaluate@main",
-      "local_ref": "corpus/sources/huggingface-evaluate-considerations.md",
-      "sections": [
-        {
-          "heading": "Evaluation splits, imbalance, and metric combinations",
-          "level": 1,
-          "ordinal": 0,
-          "anchor": "evaluation-splits-imbalance-and-metric-combinations"
-        },
-        {
-          "heading": "Offline evaluation, interpretability, resource tradeoffs, and limitations",
-          "level": 1,
-          "ordinal": 1,
-          "anchor": "offline-evaluation-interpretability-resource-tradeoffs-and-limitations"
+          "anchor": "thresholds-scoring-and-test-case-requirements"
         }
       ]
     },
@@ -508,25 +485,25 @@
       ]
     },
     {
-      "source_slug": "openai-text-generation",
-      "title": "Text generation",
+      "source_slug": "openai-cost-optimization",
+      "title": "Cost optimization",
       "category": "LLM settings, cost, and tokens",
-      "url": "https://developers.openai.com/api/docs/guides/text-generation",
+      "url": "https://developers.openai.com/api/docs/guides/cost-optimization",
       "license": "OpenAI API docs reuse terms pending snapshot verification",
-      "pinned_version": "openai-api-docs@current-snapshot",
-      "local_ref": "corpus/sources/openai-text-generation.md",
+      "pinned_version": "openai-api-docs@current-snapshot-2026-07-10",
+      "local_ref": "corpus/sources/openai-cost-optimization.md",
       "sections": [
         {
-          "heading": "Request shape and message roles",
+          "heading": "Cost and latency reduction levers",
           "level": 1,
           "ordinal": 0,
-          "anchor": "request-shape-and-message-roles"
+          "anchor": "cost-and-latency-reduction-levers"
         },
         {
-          "heading": "Instruction guidance and context-management implications",
+          "heading": "Batch, flex processing, model choice, and token minimization",
           "level": 1,
           "ordinal": 1,
-          "anchor": "instruction-guidance-and-context-management-implications"
+          "anchor": "batch-flex-processing-model-choice-and-token-minimization"
         }
       ]
     },
@@ -577,25 +554,25 @@
       ]
     },
     {
-      "source_slug": "openai-handle-rate-limits",
-      "title": "How to handle rate limits",
+      "source_slug": "openai-rate-limits",
+      "title": "Rate limits",
       "category": "LLM settings, cost, and tokens",
-      "url": "https://github.com/openai/openai-cookbook/blob/8730772/examples/How_to_handle_rate_limits.ipynb",
-      "license": "MIT",
-      "pinned_version": "openai-cookbook@8730772",
-      "local_ref": "corpus/sources/openai-handle-rate-limits.md",
+      "url": "https://developers.openai.com/api/docs/guides/rate-limits",
+      "license": "OpenAI API docs reuse terms pending snapshot verification",
+      "pinned_version": "openai-api-docs@current-snapshot-2026-07-10",
+      "local_ref": "corpus/sources/openai-rate-limits.md",
       "sections": [
         {
-          "heading": "Rate-limit causes and backoff strategies",
+          "heading": "Rate-limit scope, usage tiers, and limit dimensions",
           "level": 1,
           "ordinal": 0,
-          "anchor": "rate-limit-causes-and-backoff-strategies"
+          "anchor": "rate-limit-scope-usage-tiers-and-limit-dimensions"
         },
         {
-          "heading": "RPM, TPM, fallback models, max tokens, and throughput",
+          "heading": "Headers, shared limits, retries, batching, and ingestion limits",
           "level": 1,
           "ordinal": 1,
-          "anchor": "rpm-tpm-fallback-models-max-tokens-and-throughput"
+          "anchor": "headers-shared-limits-retries-batching-and-ingestion-limits"
         }
       ]
     },
@@ -605,7 +582,7 @@
       "category": "LLM settings, cost, and tokens",
       "url": "https://developers.openai.com/api/docs/guides/prompt-caching",
       "license": "OpenAI API docs reuse terms pending snapshot verification",
-      "pinned_version": "openai-api-docs@current-snapshot",
+      "pinned_version": "openai-api-docs@current-snapshot-2026-07-10",
       "local_ref": "corpus/sources/openai-prompt-caching.md",
       "sections": [
         {
@@ -615,10 +592,10 @@
           "anchor": "prompt-caching-mechanics"
         },
         {
-          "heading": "Static and dynamic prompt layout, cache keys, and usage observability",
+          "heading": "Static and dynamic prompt layout, cache keys, breakpoints, and usage observability",
           "level": 1,
           "ordinal": 1,
-          "anchor": "static-and-dynamic-prompt-layout-cache-keys-and-usage-observability"
+          "anchor": "static-and-dynamic-prompt-layout-cache-keys-breakpoints-and-usage-observability"
         }
       ]
     }

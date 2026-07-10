@@ -6,20 +6,21 @@ Source metadata:
 - upstream_url: https://developers.openai.com/api/docs/guides/prompt-caching
 - source_markdown: https://developers.openai.com/api/docs/guides/prompt-caching.md
 - license: OpenAI API docs reuse terms pending snapshot verification
-- pinned_version: openai-api-docs@current-snapshot
+- pinned_version: openai-api-docs@current-snapshot-2026-07-10
+- snapshot_captured: 2026-07-10
 - snapshot_type: normalized documentation digest from OpenAI API documentation page
-- normalization: removed page chrome and image-only explanation while retaining prompt caching purpose, automatic cache behavior, prompt structure requirements, cache routing and retention, cacheable inputs, prompt_cache_key guidance, usage observability, privacy notes, and rate-limit caveats
+- normalization: removed page chrome and image-only explanation while retaining prompt caching purpose, automatic cache behavior, prompt structure requirements, cache routing and retention, explicit breakpoints, cache-write accounting, cacheable inputs, prompt_cache_key guidance, usage observability, privacy notes, and rate-limit caveats
 
 ---
 # Prompt caching mechanics
 
 The OpenAI prompt caching guide explains how repeated prompt prefixes can reduce latency and input-token cost. LLM prompts often contain stable content such as developer instructions, system rules, schemas, tools, examples, or long shared context. OpenAI routes API requests to servers that recently processed the same prompt prefix, allowing matching prefixes to be reused instead of processed from scratch.
 
-Prompt caching works automatically on API requests for supported recent models. The source says no code changes are required to enable the basic behavior and there are no additional fees for using prompt caching. The guide describes prompt caching as available for `gpt-4o` and newer models.
+Prompt caching works automatically on API requests for supported recent models. The source says no code changes are required to enable the basic behavior for eligible prompts, but current models can also expose cache-write accounting and explicit cache breakpoints. The guide describes prompt caching as available for recent model families and documents behavior separately for newer GPT-5.6-era models and older supported models.
 
 The practical benefit is lower latency and lower input-token cost when requests share a long exact prefix. The source states that prompt caching can reduce latency by up to 80 percent and input token costs by up to 90 percent. Those are potential reductions, not a guarantee for every request. Benefits depend on prompt length, prefix stability, routing, request rate, model support, and whether a matching prefix is present on the selected machine.
 
-## Exact prefix matching
+## Exact prefix matching and breakpoints
 
 Cache hits are only possible for exact prefix matches. To increase cache hits, applications should place static or repeated content at the beginning of the prompt and variable content at the end. Static content can include instructions, examples, output schemas, and common context. Dynamic content can include the user's latest question, user-specific data, conversation tail, request-specific retrieved documents, and other per-request values.
 
@@ -27,11 +28,15 @@ This rule applies to text, images, and tools. Images and tool definitions must b
 
 For RAG systems, this means durable instructions and schemas should be kept stable and placed before request-specific retrieved chunks. The prompt should avoid reordering static sections, changing whitespace or generated labels unnecessarily, or inserting dynamic request IDs near the beginning. Even harmless-looking differences can break exact prefix matching.
 
-## Automatic eligibility and token threshold
+The current guide also documents cache breakpoints. In implicit mode, OpenAI places a breakpoint on the latest message and uses any explicit breakpoints supplied by the request. In explicit mode, only explicit breakpoints are used for cache reads and writes. A breakpoint marks the end of a cacheable prefix, including that content and all rendered content before it. Content after the breakpoint can change without invalidating the earlier cached prefix.
+
+For RAG, explicit breakpoints are useful when a prompt has a long stable asset such as a reusable file, tool schema, policy block, or evaluation rubric followed by dynamic question text. They should not be placed after volatile content that changes every request.
+
+## Automatic eligibility, token threshold, and write accounting
 
 Prompt caching is enabled automatically for prompts that are 1024 tokens or longer. Requests below that size still return cache usage details, but `cached_tokens` will be zero.
 
-The source gives the usage field shape used to observe caching:
+The source gives usage fields used to observe caching. For Chat Completions, cached prompt tokens appear under `usage.prompt_tokens_details.cached_tokens`; for Responses, cached input tokens appear under `usage.input_tokens_details`. Current GPT-5.6-era models can also report `cache_write_tokens`, the number of prompt tokens written to cache. Cache-write billing uses this value at a higher uncached-input-token rate according to the guide.
 
 ```json
 {
@@ -40,7 +45,8 @@ The source gives the usage field shape used to observe caching:
     "completion_tokens": 300,
     "total_tokens": 2306,
     "prompt_tokens_details": {
-      "cached_tokens": 1920
+      "cached_tokens": 1920,
+      "cache_write_tokens": 0
     },
     "completion_tokens_details": {
       "reasoning_tokens": 0,
@@ -51,7 +57,7 @@ The source gives the usage field shape used to observe caching:
 }
 ```
 
-The important field is `usage.prompt_tokens_details.cached_tokens`. It reports how many prompt tokens were served from a cache hit. A value of zero means the request did not use cached prompt tokens, either because the prompt was too short, the prefix did not match, the relevant cache was not retained, routing overflow occurred, or no matching cached prefix was available.
+The important read field is `cached_tokens`. It reports how many input tokens were served from a cache hit. A value of zero means the request did not use cached prompt tokens, either because the prompt was too short, the prefix did not match, the relevant cache was not retained, routing overflow occurred, or no matching cached prefix was available. The important write field is `cache_write_tokens`, when present, because it explains cache population cost for newer model families.
 
 ## Cache routing
 
@@ -122,7 +128,7 @@ For Zero Data Retention requests, the guide distinguishes policies. In-memory ca
 
 For Data Residency, in-memory prompt caching does not store data and therefore does not affect residency. Extended caching temporarily stores data on GPU machines and is kept in-region only when using Regional Inference.
 
-# Static and dynamic prompt layout, cache keys, and usage observability
+# Static and dynamic prompt layout, cache keys, breakpoints, and usage observability
 
 The source's optimization guidance can be summarized as prompt layout discipline plus measurement. Prompt caching is automatic, but applications only benefit when repeated requests share exact long prefixes and those prefixes are routed and retained effectively.
 
@@ -183,6 +189,20 @@ Possible RAG key dimensions include:
 
 The key should not include volatile data such as request IDs, timestamps, random UUIDs, or the user's exact latest message. Including those values would defeat reuse.
 
+## Breakpoint design
+
+Explicit breakpoints give the application more control over which prefixes are eligible for cache reads and writes. The guide says each request can create a limited number of new cache writes, and read behavior considers a larger set of recent breakpoints. When several breakpoints match, the service reads from the longest matching prefix.
+
+Practical breakpoint candidates include:
+
+- a stable system or developer instruction block;
+- a long stable file or policy document reused across many requests;
+- a tool definition block or structured-output schema;
+- a fixed evaluation rubric reused across many examples;
+- a tenant-specific knowledge-base prefix when many questions share it.
+
+Poor breakpoint candidates include request IDs, timestamps, one-off retrieved chunks, user-specific secrets, or conversation content that changes on every request. Breakpoints are most useful when they mark a stable prefix boundary before dynamic request material.
+
 ## Cache observability
 
 The guide recommends monitoring cache performance metrics, including cache hit rates, latency, and the proportion of tokens cached. The source says cached token counts can be monitored by logging the API `usage` field or through the OpenAI Usage dashboard.
@@ -191,10 +211,12 @@ At minimum, an application should record:
 
 - total prompt tokens;
 - cached prompt tokens;
+- cache-write tokens when returned;
 - completion tokens;
 - model;
 - prompt template version;
 - `prompt_cache_key`, if used;
+- breakpoint mode or key breakpoint locations when configured;
 - latency for the request;
 - whether the request used in-memory or extended retention when configured.
 
@@ -235,7 +257,8 @@ For this project's RAG quality corpus, the key lessons are:
 
 - keep durable RAG instructions, answer format, and citation rules in a stable prefix;
 - place retrieved chunks and user-specific content later unless they are intentionally reused;
-- track cached tokens in traces when evaluating latency and cost;
+- track cached tokens and cache-write tokens in traces when evaluating latency and cost;
 - do not confuse cached prompt tokens with lower TPM consumption;
 - avoid volatile metadata in the prompt prefix;
+- place explicit breakpoints only after stable reusable content;
 - treat prompt template versioning as part of cache strategy.

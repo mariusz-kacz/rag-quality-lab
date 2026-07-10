@@ -133,8 +133,8 @@ class RuntimeConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    top_k: int = Field(default=6, ge=1)
-    max_context_tokens: int = Field(default=2500, ge=1)
+    top_k: int = Field(default=3, ge=1)
+    max_context_tokens: int = Field(default=1000, ge=1)
     output_token_limit: int = Field(default=500, ge=1)
     router_confidence_threshold: float = Field(default=0.18, ge=0.0, le=1.0)
     router_category_margin: float = Field(default=0.15, ge=0.0, le=1.0)
