@@ -27,8 +27,6 @@ def calculate_evaluation_metrics(
     token_averages = calculate_token_averages(matched_traces)
     return EvaluationMetrics(
         routing_accuracy=calculate_routing_accuracy(questions, traces),
-        fallback_count=calculate_fallback_count(matched_traces),
-        fallback_rate=calculate_fallback_rate(matched_traces),
         average_searched_categories=calculate_average_searched_categories(
             matched_traces,
             retrieval_mode=retrieval_mode,
@@ -63,29 +61,6 @@ def calculate_routing_accuracy(
         if trace.route_decision.selected_category == question.expected_category
     )
     return correct / len(scored_pairs)
-
-
-def calculate_fallback_rate(traces: Sequence[QueryTrace]) -> float | None:
-    """Return the share of traces that fell back to all-category retrieval."""
-
-    if not traces:
-        return None
-    fallback_count = calculate_fallback_count(traces)
-    assert fallback_count is not None
-    return fallback_count / len(traces)
-
-
-def calculate_fallback_count(traces: Sequence[QueryTrace]) -> int | None:
-    """Return the number of routes that triggered global retrieval."""
-
-    if not traces:
-        return None
-    return sum(
-        1
-        for trace in traces
-        if trace.route_decision is not None
-        and trace.route_decision.fallback_all_categories
-    )
 
 
 def calculate_average_searched_categories(

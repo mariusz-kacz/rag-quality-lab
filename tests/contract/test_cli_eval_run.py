@@ -101,8 +101,6 @@ def test_eval_run_json_reports_metrics_and_artifact_paths(
     assert payload["question_count"] == 2
     assert set(payload["metrics"]) == {
         "routing_accuracy",
-        "fallback_count",
-        "fallback_rate",
         "average_searched_categories",
         "hit_rate_at_k",
         "mrr",
@@ -112,7 +110,6 @@ def test_eval_run_json_reports_metrics_and_artifact_paths(
         "average_included_chunks",
     }
     assert payload["metrics"]["routing_accuracy"] == 0.5
-    assert payload["metrics"]["fallback_rate"] == 0.25
     assert payload["metrics"]["hit_rate_at_k"] == 0.75
     assert payload["metrics"]["mrr"] == 0.625
     assert payload["metrics"]["citation_source_match"] == 1.0
@@ -182,7 +179,6 @@ def test_eval_run_human_output_reports_summary_and_artifacts(
     assert "Mode: baseline-vector" in result.stdout
     assert "Questions: 2" in result.stdout
     assert "routing_accuracy: 1/2 questions, 50.0%" in result.stdout
-    assert "fallback_rate: 1/2 questions, 25.0%" in result.stdout
     assert "hit_rate_at_k: 3/4 questions, 75.0%" in result.stdout
     assert "Scope: These results are evidence from a small, manually curated benchmark" in result.stdout
     assert f"JSON: {artifacts_dir / 'eval-baseline-vector.json'}" in result.stdout
@@ -229,7 +225,6 @@ def sample_evaluation_run(
         },
         metrics=EvaluationMetrics(
             routing_accuracy=0.5,
-            fallback_rate=0.25,
             hit_rate_at_k=0.75,
             mrr=0.625,
             citation_source_match=1.0,
@@ -239,7 +234,6 @@ def sample_evaluation_run(
         ),
         metric_counts={
             "routing_accuracy": EvaluationMetricCount(numerator=1, denominator=2),
-            "fallback_rate": EvaluationMetricCount(numerator=1, denominator=2),
             "hit_rate_at_k": EvaluationMetricCount(numerator=3, denominator=4),
             "citation_source_match": EvaluationMetricCount(numerator=4, denominator=4),
             "no_answer_accuracy": EvaluationMetricCount(numerator=2, denominator=2),

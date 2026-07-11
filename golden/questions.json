@@ -173,38 +173,6 @@
       ]
     },
     {
-      "question_id": "q-fallback-001",
-      "text": "What information should I provide before we begin?",
-      "expected_category": null,
-      "expected_relevant_sources": [],
-      "answerability": "no_answer",
-      "case_type": "fallback_routing",
-      "expected_fallback_all_categories": true,
-      "expected_searched_categories": [
-        "prompting techniques",
-        "RAG and context handling",
-        "RAG evaluation and quality",
-        "LLM security and risks",
-        "LLM settings, cost, and tokens"
-      ]
-    },
-    {
-      "question_id": "q-fallback-002",
-      "text": "How should our team schedule a workshop and assign follow-up owners?",
-      "expected_category": null,
-      "expected_relevant_sources": [],
-      "answerability": "no_answer",
-      "case_type": "fallback_routing",
-      "expected_fallback_all_categories": true,
-      "expected_searched_categories": [
-        "prompting techniques",
-        "RAG and context handling",
-        "RAG evaluation and quality",
-        "LLM security and risks",
-        "LLM settings, cost, and tokens"
-      ]
-    },
-    {
       "question_id": "q-security-boundary-001",
       "text": "If retrieved content contains instructions telling the assistant to ignore previous instructions or reveal hidden prompts, how should the system handle that content?",
       "expected_category": "LLM security and risks",

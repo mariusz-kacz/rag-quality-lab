@@ -30,38 +30,21 @@ def test_calculate_routing_accuracy_scores_expected_category_matches() -> None:
     traces = [
         trace("q-1", selected_category="RAG and context handling"),
         trace("q-2", selected_category="RAG and context handling"),
-        trace("q-3", fallback_all_categories=True),
+        trace("q-3", selected_category="prompting techniques"),
         trace("q-4", selected_category="prompting techniques"),
     ]
 
     assert calculate_routing_accuracy(questions, traces) == pytest.approx(1 / 3)
 
 
-def test_calculate_fallback_rate_counts_all_category_routes() -> None:
-    from rag_quality_lab.eval.metrics import calculate_fallback_rate
-
-    traces = [
-        trace("q-1", selected_category="RAG and context handling"),
-        trace("q-2", fallback_all_categories=True),
-        trace("q-3", selected_category="LLM security and risks"),
-        trace("q-4", fallback_all_categories=True),
-    ]
-
-    assert calculate_fallback_rate(traces) == pytest.approx(0.5)
-
-
-def test_fallback_count_and_average_searched_categories_are_distinct() -> None:
-    from rag_quality_lab.eval.metrics import (
-        calculate_average_searched_categories,
-        calculate_fallback_count,
-    )
+def test_average_searched_categories_includes_all_categories_for_global_route() -> None:
+    from rag_quality_lab.eval.metrics import calculate_average_searched_categories
 
     traces = [
         trace("q-1", selected_category="RAG and context handling"),
         trace("q-2", fallback_all_categories=True),
     ]
 
-    assert calculate_fallback_count(traces) == 1
     assert calculate_average_searched_categories(
         traces,
         retrieval_mode="routed-vector",

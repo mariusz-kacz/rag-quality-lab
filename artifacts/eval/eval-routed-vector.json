@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "benchmark_scope": "These results are evidence from a small, manually curated benchmark over the pinned corpus and included golden questions; they should not be generalized to other corpora or query distributions.",
   "run_id": "eval-routed-vector",
-  "created_at": "2026-07-10T11:25:42.019113Z",
+  "created_at": "2026-07-11T08:14:54.388775Z",
   "retrieval_mode": "routed-vector",
   "golden_set_path": "golden\\questions.json",
   "configuration": {
@@ -13,8 +13,6 @@
   },
   "metrics": {
     "routing_accuracy": 0.5833333333333334,
-    "fallback_count": 0,
-    "fallback_rate": 0.0,
     "average_searched_categories": 2.3125,
     "hit_rate_at_k": 0.9285714285714286,
     "mrr": 0.6785714285714286,
@@ -24,24 +22,20 @@
     "average_included_chunks": 2.8125
   },
   "metric_counts": {
-    "no_answer_accuracy": {
-      "numerator": 16,
-      "denominator": 16
+    "routing_accuracy": {
+      "numerator": 7,
+      "denominator": 12
     },
     "hit_rate_at_k": {
       "numerator": 13,
       "denominator": 14
     },
-    "routing_accuracy": {
-      "numerator": 7,
-      "denominator": 12
-    },
     "citation_source_match": {
       "numerator": 13,
       "denominator": 14
     },
-    "fallback_rate": {
-      "numerator": 0,
+    "no_answer_accuracy": {
+      "numerator": 16,
       "denominator": 16
     }
   },
@@ -50,10 +44,9 @@
       "question_id": "q-answerable-001",
       "question_text": "Which prompt components and instruction design practices can make model responses more reliable and easier to control?",
       "case_type": "answerable",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-1ec3130e708a4660a32bf9a80d8f9622.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-36ddf058f940418ba4c597b49fba2ef8.json",
       "metrics": {
         "routing_accuracy": 1.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 0.5,
         "citation_source_match": 1.0,
@@ -66,8 +59,7 @@
       "searched_categories": [
         "prompting techniques"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Define explicit components in the prompt: role/domain, required outcome, workflow rules, constraints on what not to do, and output format expectations; add examples only when behavior is hard to describe.[C1] Making each rule observable (e.g., “use a citation after every sentence that depends on source evidence; do not use background knowledge”) improves reliability and control compared with vague goals like “be accurate.”[C1]\n\n- Treat prompts as living, testable artifacts: iteratively adjust minimal instructions to fix wrong behaviors, and store production prompts in code with typed arguments, tests, fixtures, and code review so changes are visible and controlled.[C1][C3]\n\n- Version prompts and models together for traceability and stability: pin to specific model snapshots, and log each prompt/model change with retrieval mode, template version, deployment, selected context, token budget, answer text, and evaluation results to separate retrieval issues from prompt or model regressions.[C2][C3]",
+      "answer_text": "- Define the model’s role or domain, desired outcome, relevant workflow rules, prohibitions, and output format; use examples only when behavior is difficult to specify directly. [C1]\n- Make instructions explicit and observable—for example, require context-only answers, sentence-level citations, and a precise no-answer response instead of vague directions such as “be accurate.” [C1]\n- Version prompts in code with typed inputs, code review, tests, fixtures, and evaluation cases, rather than relying on invisible prompt settings. [C3]\n- Pin production applications to model snapshots and test prompts after model changes, recording retrieval settings, prompt versions, selected context, outputs, citations, and validation results. [C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "openai-api-prompt-engineering"
@@ -82,10 +74,9 @@
       "question_id": "q-answerable-002",
       "question_text": "How does retrieval augmented generation use retrieved context to ground an answer and reduce unsupported generation?",
       "case_type": "answerable",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-6e845fdaaa5a4ae5b857d52c2372489a.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-25ea5cc90de64080a7eef35f50f92c07.json",
       "metrics": {
         "routing_accuracy": 1.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
@@ -98,8 +89,7 @@
       "searched_categories": [
         "RAG and context handling"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Retrieval-augmented generation first finds and ranks content that is semantically similar to the user’s question, then assembles a bounded context from those top-ranked chunks within a token budget. [C1][C2]  \n- This retrieved content is then passed to the model as grounding data, and the prompt explicitly instructs the model to answer using only that provided evidence, which constrains and reduces unsupported generation. [C1][C2]  \n- Clear boundaries are preserved around each source chunk and explicit “no-answer” behavior is defined for cases where the retrieved context doesn’t contain an answer, further discouraging the model from inventing information. [C1]",
+      "answer_text": "- RAG retrieves semantically relevant chunks for the user’s question, ranks them, and assembles a bounded context while preserving clear source boundaries. [C1]\n- The model is explicitly instructed to answer from that supplied evidence, so the retrieved content grounds the response rather than relying only on the model’s internal knowledge. [C1]\n- Retrieval can combine keyword, vector, and semantic ranking to find relevant material even when the question’s wording differs from the source text. [C2]\n- If the evidence does not contain an answer, the system should define explicit no-answer behavior; inspecting retrieval separately from generation helps identify unsupported responses. [C1]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "azure-ai-search-rag-overview",
@@ -115,10 +105,9 @@
       "question_id": "q-answerable-003",
       "question_text": "Which retrieval metrics can be used to compare ranked search results in a golden-set evaluation?",
       "case_type": "answerable",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-f3a497f788134aca9537a430af38d399.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-5f271e6ada7a415d8c8f788961f16f42.json",
       "metrics": {
         "routing_accuracy": 1.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
@@ -131,8 +120,7 @@
       "searched_categories": [
         "RAG evaluation and quality"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Common retrieval metrics for golden-set evaluations include recall@k, precision@k, MRR or first relevant rank, average precision (AP), mean average precision (MAP), bpref, and geometric mean average precision (GMAP). [C1]  \n- Additional ranked-search metrics from the document retrieval evaluator include Fidelity, NDCG (and ndcg@k variants), XDCG (and xdcg@k), Max Relevance (e.g., top1_relevance, top3_max_relevance), and Holes / holes_ratio. [C2]",
+      "answer_text": "- **Recall@k, precision@k, and MRR** (or first relevant rank) can compare whether relevant results appear and how quickly they appear. [C1]\n- **AP/MAP** can evaluate ranking quality across more of the result list; **bpref** is useful when relevance judgments are incomplete. [C1]\n- **GMAP** and per-question diagnostics can assess robustness across difficult queries. [C1]\n- **NDCG** measures ranking quality against an ideal ordering, while **XDCG** focuses on top-*k* ranking quality. [C2]\n- Other available comparisons include **Fidelity**, **Max Relevance**, and **Holes** for missing relevance judgments. [C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "trec-common-evaluation-measures",
@@ -148,10 +136,9 @@
       "question_id": "q-answerable-004",
       "question_text": "What are prompt injection risks in LLM applications, and which mitigations can reduce their impact?",
       "case_type": "answerable",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-4f1a162876284995919104adb7ab6792.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-f5a44ae3fc974a4f9df99548531052ee.json",
       "metrics": {
         "routing_accuracy": 1.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
@@ -164,8 +151,7 @@
       "searched_categories": [
         "LLM security and risks"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Prompt injection is a vulnerability where user prompts or other model‑parsed inputs alter an LLM’s behavior or output in unintended ways, even if the injected content is not obvious or readable to humans. [C1] Because LLM apps blend system instructions, user input, retrieved content, tool output, and other data into one context, the model may misinterpret untrusted data as instructions. [C1]\n\n- This can lead to guideline violations, harmful content, sensitive data disclosure, unauthorized actions, or manipulated decisions. [C1] Prompt injection is related to but broader than jailbreaking: jailbreaking is a subtype where inputs push the model to broadly ignore safety protocols. [C1]\n\n- RAG and fine‑tuning do not eliminate prompt injection risk: RAG introduces additional untrusted external content into prompts, and fine‑tuning cannot prevent hostile inputs from influencing behavior at inference time. [C1]\n\n- Mitigations include application‑level safeguards that constrain what the LLM can do with untrusted content and reduce the impact of injected instructions, while more durable resistance to jailbreaking and injection also depends on ongoing model training and safety updates. [C1]\n\n- OWASP maps these risks to MITRE ATLAS techniques for direct and indirect prompt injection and jailbreak injection, providing a broader framework and research base for understanding and defending against such attacks. [C2]",
+      "answer_text": "- **Prompt injection** occurs when user input or other model-parsed content changes an LLM’s behavior or output in unintended ways. This is especially risky when applications combine instructions with untrusted user input, retrieved documents, tool outputs, files, or websites in one context. [C1]\n- Potential impacts include bypassing guidelines, generating harmful content, exposing sensitive information, triggering unauthorized actions, or influencing decisions. Indirect injections can be hidden in external content and need not be readable to humans, only interpretable by the model. [C1]\n- **Mitigations** should use application-level safeguards to limit the impact of injected instructions, including controls around untrusted content and authorization of model-triggered actions. RAG and fine-tuning may improve grounding or behavior, but neither eliminates prompt-injection risk. [C1]\n- Durable resistance to jailbreak-style attacks also requires ongoing model training and safety updates; application safeguards reduce impact but do not fully solve the underlying inference-time vulnerability. [C1]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "owasp-llm01-prompt-injection"
@@ -179,10 +165,9 @@
       "question_id": "q-answerable-005",
       "question_text": "How can token counting help estimate prompt size and manage prompt budgets before sending a request to a model?",
       "case_type": "answerable",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-dbc46405eb894c67aa3eb491ef38e212.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-be162d1b63304cf88da79a914adda8e7.json",
       "metrics": {
         "routing_accuracy": 1.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
@@ -196,8 +181,7 @@
         "LLM settings, cost, and tokens",
         "prompting techniques"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Token counting lets you estimate how many tokens a full prompt will use (instructions, user query, retrieved context, tools, schemas, and answer budget) before you send it, so you can stay within a model’s prompt budget. [C1]  \n- In RAG systems, counting tokens during context assembly helps you admit retrieved chunks only until you approach the budget, instead of using a fixed number of chunks, which makes better use of available space and avoids truncation. [C1]  \n- Using a tokenizer that matches the target generation model and recording prompt token estimates alongside API-reported usage lets you track and refine budgeting over time, and distinguish prompt or retrieval regressions from changes in model-side accounting. [C1]",
+      "answer_text": "- Token counting estimates how many tokens a request will use before submission, helping ensure the prompt stays within the model’s budget and leaves room for the expected answer. [C1]\n- Count all major components: system/developer instructions, conversation and user input, retrieved content, delimiters and metadata, tool definitions, output schemas, and the expected completion. Add retrieved chunks until the token budget is nearly reached rather than selecting a fixed number. [C1]\n- Use the tokenizer for the target generation model, since encodings and accounting rules can differ; record the model, encoding assumption, estimate, API-reported usage, and counting-helper version for evaluation. [C1]\n- After sending requests, compare estimates with API usage and log total prompt and completion tokens, model, template version, and related metadata to improve future budgeting and detect changes. [C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "openai-token-counting"
@@ -212,10 +196,9 @@
       "question_id": "q-answerable-006",
       "question_text": "Why does a RAG system usually need chunking and embeddings before vector search can retrieve useful passages?",
       "case_type": "answerable",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-f75b0f167cb9498c905a02a62d5c4c1c.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-dc180d12ce5a4dbcb6a420be6d318d19.json",
       "metrics": {
         "routing_accuracy": 1.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
@@ -229,8 +212,7 @@
         "RAG and context handling",
         "RAG evaluation and quality"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- RAG systems usually deal with documents that are too large or too broad to be treated as a single retrievable unit, so they must first be split into smaller chunks that can be individually retrieved and fit within embedding-model and chat-model token limits. [C1][C2]\n\n- Chunking before embedding lets each vector correspond to a narrower, semantically coherent unit, which improves the chance that vector search retrieves a passage that directly matches the user’s question instead of a broad, mixed-topic document. [C1][C2]\n\n- Because embeddings are computed over chunks, not whole documents, retrieval can return multiple focused passages that collectively fit within the answer model’s context budget and provide enough evidence for grounded responses. [C1][C2]",
+      "answer_text": "- **Chunking** splits large or broad documents into smaller, semantically focused passages. This avoids embedding and chat-model input limits, prevents truncation, and lets retrieval match a question to a specific section rather than an entire document. [C1]\n- **Embeddings** convert those chunks into vectors that represent their semantic meaning; vector search then compares the query vector with chunk vectors to find relevant passages. [C2]\n- Without chunking, a vector may represent too many unrelated topics, reducing retrieval precision; without embeddings, vector search lacks the semantic representations needed for similarity matching. [C1][C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "azure-ai-search-chunk-documents"
@@ -245,10 +227,9 @@
       "question_id": "q-no-answer-001",
       "question_text": "What uptime warranty does this project provide for an enterprise production deployment?",
       "case_type": "no_answer",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-886d5a23eed94750a9e7a63d5c64005b.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-2257f8206c0f4e669b05a796956950a4.json",
       "metrics": {
         "routing_accuracy": null,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": null,
         "mrr": null,
         "citation_source_match": null,
@@ -263,7 +244,6 @@
         "RAG evaluation and quality",
         "LLM security and risks"
       ],
-      "global_fallback_occurred": false,
       "answer_text": "There is not enough evidence in the selected context to answer.",
       "is_no_answer": true,
       "expected_relevant_sources": [],
@@ -277,10 +257,9 @@
       "question_id": "q-no-answer-002",
       "question_text": "Which private customer database records were used to build this corpus?",
       "case_type": "no_answer",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-82942bd02cfe40049bb1d9de24eb2de7.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-3b3754578bd444ada13dc96917168877.json",
       "metrics": {
         "routing_accuracy": null,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": null,
         "mrr": null,
         "citation_source_match": null,
@@ -297,7 +276,6 @@
         "LLM security and risks",
         "LLM settings, cost, and tokens"
       ],
-      "global_fallback_occurred": false,
       "answer_text": "There is not enough evidence in the selected context to answer.",
       "is_no_answer": true,
       "expected_relevant_sources": [],
@@ -312,10 +290,9 @@
       "question_id": "q-cross-category-001",
       "question_text": "When evaluating a RAG answer, how do groundedness checks differ from retrieval quality metrics?",
       "case_type": "ambiguous_boundary",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-114235b6f8bb4a93b481ebe41e6abb17.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-b509c67f21c14422a7e3e21e1dfe9eb8.json",
       "metrics": {
         "routing_accuracy": 1.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
@@ -328,8 +305,7 @@
       "searched_categories": [
         "RAG evaluation and quality"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Groundedness checks whether the **generated answer** stays within and is supported by the retrieved context, i.e., it measures if the model avoids fabricating content beyond that evidence. [C1][C2]\n\n- Retrieval quality metrics evaluate the **retrieval step**, i.e., how well the system finds and ranks relevant documents or chunks for the query (using measures like recall@k, precision@k, MRR, AP/MAP, etc.). They judge evidence selection, not what the model says with that evidence. [C2][C3]\n\n- A grounded answer can still be poor if retrieval was bad (it is faithfully based on the context, but the context lacked the right evidence), and good retrieval can still lead to an ungrounded answer if the model invents content not supported by the retrieved documents. [C1][C2]",
+      "answer_text": "- **Groundedness checks evaluate the generated answer after retrieval**: whether its claims are supported by the supplied context and whether it avoids fabrication. [C2]\n- **Retrieval quality metrics evaluate the retrieval step before generation**: whether relevant chunks or documents were selected and ranked for the query. [C2]\n- Without ground-truth relevance labels, retrieval can be judged with an LLM-based relevance evaluator; with labels or qrels, document-retrieval metrics such as NDCG, XDCG, and Fidelity can be used. [C2]\n- Thus, retrieval metrics ask whether the system found the right evidence, while groundedness asks whether the model stayed within that evidence when answering. Both are needed because good retrieval does not guarantee a grounded answer. [C1]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "microsoft-foundry-rag-evaluators",
@@ -345,10 +321,9 @@
       "question_id": "q-cross-category-002",
       "question_text": "How can limiting retrieved context reduce latency, token usage, and citation noise in a RAG workflow?",
       "case_type": "ambiguous_boundary",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-2b1ca32e85ce415081a9451b8fecd293.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-ad6e507c27c34de4b5c6393428f9360e.json",
       "metrics": {
         "routing_accuracy": 0.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 1.0,
         "citation_source_match": 1.0,
@@ -363,8 +338,7 @@
         "RAG and context handling",
         "LLM settings, cost, and tokens"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Retrieved context often dominates input tokens in RAG; pruning low-scoring or off‑topic chunks and removing boilerplate, duplicates, and HTML artifacts directly reduces input-token count, which lowers both latency and cost. [C1][C3]\n\n- Keeping only the most answer‑relevant passages and needed source identifiers leaves more token budget for the answer and citations, improving efficiency while maintaining necessary evidence. [C1]\n\n- Lowering context budgets (for example via smaller `top_k` and trimmed chunks) addresses token-per-minute bottlenecks common in RAG, which reduces end-to-end latency when tokens are the limiting factor. [C3]\n\n- Removing noisy or irrelevant retrieved passages reduces the chance that the model overreacts to misleading context, improving context precision and lowering noise sensitivity, so fewer incorrect claims are driven by spurious citations. [C1][C2]",
+      "answer_text": "- Limit `top_k` or impose a context budget, then remove low-scoring, off-topic, duplicated, and boilerplate content. This reduces retrieved input tokens and therefore token-related latency and cost, especially when tokens per minute are the bottleneck. [C1] [C3]\n- Keep only passages containing evidence for the user’s specific attribute or question, rather than passages that merely mention the entity. Smaller prompts give the model less context to process and reduce irrelevant evidence that can distort the answer. [C1] [C2]\n- Preserve source identifiers and section labels while trimming everything else unnecessary for citations. This reduces citation noise without removing the metadata needed to produce grounded citations. [C1]\n- Place stable instructions, schemas, and citation rules in a reusable prompt prefix, with the trimmed retrieved context later in the prompt. This supports cache-friendly requests and makes dynamic context easier to reduce. [C1]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "openai-cost-optimization",
@@ -382,10 +356,9 @@
       "question_id": "q-cross-category-003",
       "question_text": "How can I keep repeated RAG evaluation runs cheaper when the prompt prefix and rubric stay mostly the same?",
       "case_type": "ambiguous_boundary",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-b70e614bed3f4a28a356e6a9b6ea69e1.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-ab1bf170f48b443cbb41ac50cca8ba2a.json",
       "metrics": {
         "routing_accuracy": 0.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 0.0,
         "mrr": 0.0,
         "citation_source_match": 0.0,
@@ -399,8 +372,7 @@
         "RAG evaluation and quality",
         "prompting techniques"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Structure the prompt so that stable instructions, schemas, and examples come first, and dynamic user input plus retrieved chunks come later; this layout is more cache-friendly and lets provider-side prompt caching reuse the shared prefix across runs. [C2]\n\n- Keep developer instructions and the prompt prefix as stable as possible across evaluations, and avoid including volatile data like IDs or timestamps near the prefix, so cache hits are more likely and repeated runs become cheaper. [C2]\n\n- Place retrieved RAG chunks after the stable rubric and schemas so only the variable tail changes between test cases, improving cacheability while still letting you trim context when token budgets are tight. [C2]\n\n- Track prompt-token and cached-token usage metrics to see whether your layout is actually benefiting from caching and reducing cost, and adjust the prompt structure accordingly. [C2]\n\n- When you do need to change the prompt, make the smallest edits and re-use the same evaluation setup so you preserve as much of the cached, stable prefix as possible while still iterating on RAG quality. [C1][C3]",
+      "answer_text": "- Put the stable prompt prefix first: reusable instructions, schemas, and rubric/examples; place dynamic user queries and retrieved chunks afterward. This improves provider-side prompt-cache reuse and makes context easier to trim. [C2]\n- Keep the prefix truly stable by avoiding volatile IDs, timestamps, or other changing content near its beginning. [C2]\n- Record prompt-token and cached-token usage when available so you can verify that repeated evaluations are benefiting from caching. [C2]\n- Version the stable prompt and rubric, then rerun the same representative and edge-case evaluations after changes rather than judging individual successful answers. [C1] [C3]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "openai-prompt-caching",
@@ -417,10 +389,9 @@
       "question_id": "q-cross-category-004",
       "question_text": "If retrieved context tells the model to ignore developer instructions and reveal hidden prompts, what kind of problem is that and how should it be mitigated?",
       "case_type": "ambiguous_boundary",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-7fa95e48f0d14a3ea565dc95caa87412.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-fda5c91c7ca347d89cd58f0d13ab7ec7.json",
       "metrics": {
         "routing_accuracy": 0.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 0.3333333333333333,
         "citation_source_match": 1.0,
@@ -435,8 +406,7 @@
         "RAG and context handling",
         "LLM security and risks"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- This is a prompt injection / instruction-hijacking problem in a retrieval-augmented generation (RAG) system, where untrusted retrieved content attempts to override core instructions and expose system prompts or configuration details. [C1][C3]\n\n- It should be mitigated by:\n  - Treating retrieved content strictly as untrusted evidence, not as instructions, and explicitly telling the model to ignore attempts to modify core behavior. [C3]\n  - Using a strong system prompt that enforces context adherence, limits responses to approved tasks, and forbids disclosing system prompts or configuration details. [C1][C3]\n  - Keeping secrets and sensitive configuration out of prompts entirely and instead in secure infrastructure, so that even if injection succeeds, no secrets are exposed. [C1]",
+      "answer_text": "- This is a **prompt-injection attack**, specifically indirect injection through retrieved content, where untrusted text attempts to override higher-priority instructions and extract hidden prompts or configuration. [C3]\n- Mitigate it by treating retrieved content as **untrusted evidence, not instructions**; explicitly require adherence to system instructions, restrict responses to approved tasks and selected context, and refuse or abstain when evidence is insufficient. [C3]\n- Do not place secrets in prompts or model context; keep them in secure infrastructure and access them through deterministic application code. [C1]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "owasp-llm01-prompt-injection",
@@ -453,10 +423,9 @@
       "question_id": "q-cross-category-005",
       "question_text": "Which checks tell me whether retrieved chunks contain enough relevant evidence for the generated answer, rather than just explaining how to retrieve chunks?",
       "case_type": "ambiguous_boundary",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-441b25eea24343339b95a5563fba5ce9.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-0ae2eae95de64d3bb3ef912c8adacdba.json",
       "metrics": {
         "routing_accuracy": 0.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 0.5,
         "citation_source_match": 1.0,
@@ -470,8 +439,7 @@
         "RAG and context handling",
         "RAG evaluation and quality"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Use a groundedness check to see whether each key claim in the answer is directly supported by specific retrieved snippets; if important answer statements lack clear backing in the context, the chunks do not contain enough relevant evidence. [C2]\n\n- Use a response completeness check (when you have ground truth) to verify that critical expected information from the source material appears in the answer; missing critical facts indicate that the retrieved chunks did not bring the right evidence into context. [C2]\n\n- Separately evaluate retrieval quality itself (e.g., whether the “right” documents or passages were retrieved) so you can distinguish “answering badly from good evidence” from “answering with the wrong or insufficient evidence.” [C1][C2]",
+      "answer_text": "- **Groundedness:** Check whether the generated answer is supported by the retrieved context rather than inventing claims. [C2]\n- **Relevance:** Check whether the answer directly addresses the user’s question; groundedness alone does not ensure this. [C2]\n- **Completeness:** When ground truth or expected information is available, check whether the answer contains all critical expected points. [C2]\n- **Retrieval quality:** Evaluate whether the retrieved chunks contain the right evidence in the first place, separately from answer-generation quality. [C1][C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "ragas-rag-metrics",
@@ -488,10 +456,9 @@
       "question_id": "q-multi-category-001",
       "question_text": "How do prompt structure, retrieved context, evaluation metrics, and token budgets interact during a RAG quality review?",
       "case_type": "multi_category_routing",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-900b3638e98b4bfe94887d1a11d992c2.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-a526e40f76334a569e889dfe93bf208c.json",
       "metrics": {
         "routing_accuracy": null,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 0.3333333333333333,
         "citation_source_match": 1.0,
@@ -505,8 +472,7 @@
         "RAG evaluation and quality",
         "LLM settings, cost, and tokens"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Prompt structure defines where stable instructions, schemas, and examples sit relative to the user question and retrieved context, enabling a “shared prefix” that stays constant while only the dynamic context section changes. This makes it easier to trim or swap retrieved chunks without rewriting the whole prompt, and supports cache-friendly, traceable RAG layouts. [C1]\n\n- Retrieved context must be filtered and pruned so that only the most answer-relevant, non-duplicative, and non-boilerplate chunks are included, while preserving source identifiers for citations and leaving enough room for the model’s answer. This trimming directly affects both context precision/recall and the faithfulness of downstream answers. [C1][C2]\n\n- Evaluation metrics like context precision/recall, faithfulness, and response relevancy use the triplet of `user_input`, `retrieved_contexts`, and `response` (plus optional `reference` data) to diagnose whether failures stem from retrieval (bad or missing context), generation (unfaithful use of context), or prompt design (answer not addressing the question). This separation lets you tie observed issues back to specific parts of the prompt and context-building pipeline. [C2]\n\n- Token budgets are enforced in the context assembly path: you must reserve space for instructions, user input, tools/schemas, and an explicit answer budget, then admit retrieved chunks only until the remaining budget is filled. This forces tradeoffs between including more context versus preserving answer-length capacity, and it interacts with trimming strategies and evaluation metrics that reveal when over-trimming harms recall or under-trimming bloats context with noise. [C1][C3]\n\n- For reliable RAG quality review over time, traces should store model names, token counts, and budgeting assumptions so that changes in token accounting can be distinguished from real regressions in retrieval, prompt structure, or answer quality as seen in the metrics. [C3]",
+      "answer_text": "- A RAG quality review should examine prompt structure first: keep stable instructions, schemas, citation rules, and examples in a reusable prefix, followed by the question and selectively trimmed retrieved context [C1]. This makes context easier to reduce while preserving citation metadata and answer space [C1].\n- Retrieved context should be judged separately from generation: context precision and recall assess whether useful evidence was retrieved, while faithfulness and response relevancy assess whether the answer is supported and addresses the question [C2].\n- Token budgets connect these concerns: admit chunks based on available prompt capacity—not a fixed chunk count—while reserving tokens for instructions, the question, metadata, and the expected answer [C3]. Trimming noisy, duplicated, or low-scoring passages can reduce cost and improve signal, but excessive trimming may lower context recall [C1][C2].\n- The review should record `user_input`, retrieved contexts, response, references where needed, token estimates, model/encoding assumptions, and actual usage so metric changes can be distinguished from prompt or token-accounting changes [C2][C3].",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "openai-api-prompt-engineering",
@@ -525,10 +491,9 @@
       "question_id": "q-multi-category-002",
       "question_text": "What tradeoffs connect vector embedding weaknesses, retrieval filtering, prompt instructions, and evaluation diagnostics?",
       "case_type": "multi_category_routing",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-8b9aa6468aba4d0385d8f971502580e5.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-bfb892eb1ac74e5e82684e0031f6abf9.json",
       "metrics": {
         "routing_accuracy": null,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 0.3333333333333333,
         "citation_source_match": 1.0,
@@ -544,8 +509,7 @@
         "RAG evaluation and quality",
         "LLM settings, cost, and tokens"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Vector embedding weaknesses (e.g., imperfect similarity or recall) require compensating levers like chunk-size tuning, `k` adjustment, and HNSW parameter tuning to balance recall, latency, and resource use, explicitly treating retrieval as an approximate, tunable process rather than assuming embeddings are always accurate.[C3]\n\n- Retrieval filtering—pruning to “high-signal” chunks, trimming boilerplate, and respecting token budgets—mitigates embedding noise and reduces the chance that the model attends to distracting or marginally relevant context, but at the cost of potentially missing useful evidence if filters are too aggressive.[C1][C3]\n\n- Prompt instructions must be designed to work with this filtered context: shorter, stable instructions reduce input length and latency, leave room for evidence, and can be moved to smaller or fine-tuned models, but over-aggressive prompt shortening or splitting risks losing guidance that helps the model interpret imperfect retrieval results.[C1][C2]\n\n- Evaluation diagnostics—manual inspection of top results, checking vector field setup, similarity metrics, and approximate vs exact KNN—are the feedback loop that reveals whether embedding, retrieval, and prompt changes improved answer grounding or just traded off recall for speed or cost; they guide which bottleneck (generation, retrieval, context size, or routing) to optimize next.[C2][C3]\n\n- Overall, the tradeoff is a coordinated one: embedding and retrieval tuning aim for enough recall and precision; context filtering and prompt compression aim for lower latency and cost; and diagnostics ensure these levers are adjusted based on measured quality rather than assumptions.[C1][C2]",
+      "answer_text": "- **Vector embeddings are useful but imperfect:** retrieval quality depends on compatible embedding models, the right similarity metric, chunk size/overlap, and approximate-search settings; hybrid or semantic ranking may be needed when pure vector ranking is insufficient. [C3]\n- **Filtering improves the tradeoff between relevance, cost, and latency:** selecting only high-signal, nonduplicate passages preserves token budget and reduces distracting context, but overly narrow filtering can remove needed evidence; increasing `k` may help when the model needs more candidates. [C1][C3]\n- **Prompt instructions should complement retrieval rather than compensate for poor retrieval:** durable instructions, schemas, and examples can be kept stable and placed before dynamic retrieved content, supporting caching while leaving context focused on relevant evidence. [C1]\n- **Evaluation diagnostics reveal which tradeoff to adjust:** inspect top results and scores, verify embedding compatibility, compare approximate retrieval with exhaustive KNN, and retest after tuning; the measured bottleneck may be recall, context size, retrieval latency, serial routing, or answer generation. [C2][C3]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "owasp-llm08-vector-embedding-weaknesses",
@@ -563,10 +527,9 @@
       "question_id": "q-security-boundary-001",
       "question_text": "If retrieved content contains instructions telling the assistant to ignore previous instructions or reveal hidden prompts, how should the system handle that content?",
       "case_type": "answerable",
-      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-d824b0959ada48018ba665cc100eacf5.json",
+      "trace_path": "artifacts\\eval\\traces\\routed-vector\\trace-1c6d8ed5573b421597c8929fbc47e408.json",
       "metrics": {
         "routing_accuracy": 0.0,
-        "fallback_rate": 0.0,
         "hit_rate_at_k": 1.0,
         "mrr": 0.5,
         "citation_source_match": 1.0,
@@ -582,8 +545,7 @@
         "RAG evaluation and quality",
         "LLM security and risks"
       ],
-      "global_fallback_occurred": false,
-      "answer_text": "- Treat retrieved content as untrusted evidence, not as new instructions; do not let it override or modify system or developer messages.[C2]  \n\n- Explicitly ignore any retrieved instructions that try to change core behavior (e.g., “ignore previous instructions” or “reveal hidden prompts”) and instead follow the system prompt’s constraints and citation rules.[C2][C3]  \n\n- Continue to answer only from the selected context, preserve required formatting and citations, and abstain if the context is insufficient, regardless of what the retrieved content requests.[C2][C3]",
+      "answer_text": "- Treat retrieved content as untrusted evidence, not as instructions. Ignore any embedded request to override system instructions or reveal hidden prompts. [C2]\n- Continue following the system’s role, constraints, citation requirements, and approved-task limits; answer only from the selected context. [C2]\n- If the content does not provide sufficient evidence, abstain using the configured no-answer response rather than relying on outside knowledge. [C2]",
       "is_no_answer": false,
       "expected_relevant_sources": [
         "owasp-llm01-prompt-injection"
@@ -596,22 +558,22 @@
     }
   ],
   "trace_paths": [
-    "artifacts\\eval\\traces\\routed-vector\\trace-1ec3130e708a4660a32bf9a80d8f9622.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-6e845fdaaa5a4ae5b857d52c2372489a.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-f3a497f788134aca9537a430af38d399.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-4f1a162876284995919104adb7ab6792.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-dbc46405eb894c67aa3eb491ef38e212.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-f75b0f167cb9498c905a02a62d5c4c1c.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-886d5a23eed94750a9e7a63d5c64005b.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-82942bd02cfe40049bb1d9de24eb2de7.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-114235b6f8bb4a93b481ebe41e6abb17.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-2b1ca32e85ce415081a9451b8fecd293.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-b70e614bed3f4a28a356e6a9b6ea69e1.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-7fa95e48f0d14a3ea565dc95caa87412.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-441b25eea24343339b95a5563fba5ce9.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-900b3638e98b4bfe94887d1a11d992c2.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-8b9aa6468aba4d0385d8f971502580e5.json",
-    "artifacts\\eval\\traces\\routed-vector\\trace-d824b0959ada48018ba665cc100eacf5.json"
+    "artifacts\\eval\\traces\\routed-vector\\trace-36ddf058f940418ba4c597b49fba2ef8.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-25ea5cc90de64080a7eef35f50f92c07.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-5f271e6ada7a415d8c8f788961f16f42.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-f5a44ae3fc974a4f9df99548531052ee.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-be162d1b63304cf88da79a914adda8e7.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-dc180d12ce5a4dbcb6a420be6d318d19.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-2257f8206c0f4e669b05a796956950a4.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-3b3754578bd444ada13dc96917168877.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-b509c67f21c14422a7e3e21e1dfe9eb8.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-ad6e507c27c34de4b5c6393428f9360e.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-ab1bf170f48b443cbb41ac50cca8ba2a.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-fda5c91c7ca347d89cd58f0d13ab7ec7.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-0ae2eae95de64d3bb3ef912c8adacdba.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-a526e40f76334a569e889dfe93bf208c.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-bfb892eb1ac74e5e82684e0031f6abf9.json",
+    "artifacts\\eval\\traces\\routed-vector\\trace-1c6d8ed5573b421597c8929fbc47e408.json"
   ],
   "artifact_paths": {
     "json_path": "artifacts\\eval\\eval-routed-vector.json",

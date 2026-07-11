@@ -148,23 +148,14 @@ def _assert_evaluation_artifacts(
         "no_answer",
         "ambiguous_boundary",
         "multi_category_routing",
-        "fallback_routing",
     }
     assert all("answer_text" in question for question in payload["questions"])
     assert all("is_no_answer" in question for question in payload["questions"])
-    fallback_results = [
-        question
+    assert all(
+        "global_fallback_occurred" not in question
         for question in payload["questions"]
-        if question["case_type"] == "fallback_routing"
-    ]
-    assert all(
-        question["global_fallback_occurred"] is (mode == "routed-vector")
-        for question in fallback_results
     )
-    assert all(
-        set(question["searched_categories"]) == set(REQUIRED_KNOWLEDGE_CATEGORIES)
-        for question in fallback_results
-    )
+    assert all("fallback" not in metric for metric in payload["metrics"])
 
     trace_paths = [Path(path) for path in payload["trace_paths"]]
     assert all(path.exists() for path in trace_paths)
@@ -181,6 +172,7 @@ def _assert_evaluation_artifacts(
 
     markdown = markdown_path.read_text(encoding="utf-8")
     normalized_markdown = markdown.lower()
+    assert "fallback" not in normalized_markdown
     for section in REQUIRED_MARKDOWN_SECTIONS:
         assert section.lower() in normalized_markdown
     assert mode in markdown

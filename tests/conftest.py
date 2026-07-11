@@ -147,18 +147,9 @@ def golden_questions() -> GoldenSet:
                 "LLM settings, cost, and tokens",
             ],
         ),
-        Question(
-            question_id="q-fallback-01",
-            text="What information should I provide before we begin?",
-            expected_relevant_sources=[],
-            answerability="no_answer",
-            case_type="fallback_routing",
-            expected_fallback_all_categories=True,
-            expected_searched_categories=list(REQUIRED_KNOWLEDGE_CATEGORIES),
-        ),
     ]
 
-    for index in range(7):
+    for index in range(8):
         questions.append(
             Question(
                 question_id=f"q-answerable-{index + 2:02d}",

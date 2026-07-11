@@ -55,8 +55,6 @@ class EvaluationQueryRunner(Protocol):
 
 QUALITY_METRICS: tuple[MetricName, ...] = (
     "routing_accuracy",
-    "fallback_count",
-    "fallback_rate",
     "average_searched_categories",
     "hit_rate_at_k",
     "mrr",
@@ -69,8 +67,6 @@ TOKEN_BUDGET_METRICS: tuple[MetricName, ...] = (
 )
 LOWER_IS_BETTER_METRICS: frozenset[MetricName] = frozenset(
     (
-        "fallback_count",
-        "fallback_rate",
         "average_searched_categories",
         "average_context_tokens",
         "average_included_chunks",
@@ -79,7 +75,6 @@ LOWER_IS_BETTER_METRICS: frozenset[MetricName] = frozenset(
 
 RATE_METRICS: tuple[MetricName, ...] = (
     "routing_accuracy",
-    "fallback_rate",
     "hit_rate_at_k",
     "citation_source_match",
     "no_answer_accuracy",
@@ -428,7 +423,7 @@ def _render_comparison_notes(comparison: Mapping[str, Any]) -> str:
         BENCHMARK_SCOPE_STATEMENT,
         "With 14 retrieval-scored questions, a one-question change moves hit rate by 7.1 percentage points.",
         "Top-category routing accuracy and retrieval hit rate measure different behavior: soft multi-category routing can retain the expected category and recover a hit even when the top category is incorrect.",
-        "Fallback thresholds and category margins are heuristic, and configuration was adjusted while inspecting this same small benchmark.",
+        "Category margins are heuristic, and configuration was adjusted while inspecting this same small benchmark.",
     ] + [
         row.get("reason")
         for row in comparison.get("metrics", [])
@@ -525,11 +520,6 @@ def _question_result(
             retrieval_mode=retrieval_mode,
             category_margin=router_category_margin,
         ),
-        global_fallback_occurred=(
-            trace.route_decision.fallback_all_categories
-            if trace.route_decision is not None
-            else False
-        ),
         answer_text=trace.answer_result.answer_text,
         is_no_answer=trace.answer_result.is_no_answer,
         expected_relevant_sources=list(question.expected_relevant_sources),
@@ -549,12 +539,6 @@ def _per_question_metrics(
             None
             if retrieval_mode == "baseline-vector"
             else _routing_match(question, trace)
-        ),
-        "fallback_rate": (
-            1.0
-            if trace.route_decision is not None
-            and trace.route_decision.fallback_all_categories
-            else 0.0
         ),
         "hit_rate_at_k": _retrieval_hit(question, trace),
         "mrr": _reciprocal_rank(question, trace),
@@ -678,8 +662,8 @@ def _render_question_table(
     retrieval_mode: RetrievalMode,
 ) -> str:
     lines = [
-        "| Question | Case type | Status | Top category | Searched categories | Global fallback | Trace | Expected sources | Retrieved sources | Errors |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| Question | Case type | Status | Top category | Searched categories | Trace | Expected sources | Retrieved sources | Errors |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for result in questions:
         lines.append(
@@ -689,7 +673,6 @@ def _render_question_table(
             f"{_escape_table(_question_status(result, retrieval_mode=retrieval_mode))} | "
             f"{_escape_table(result.selected_category or 'none')} | "
             f"{_escape_table(_format_list(result.searched_categories))} | "
-            f"{_escape_table('yes' if result.global_fallback_occurred else 'no')} | "
             f"{_escape_table(result.trace_path)} | "
             f"{_escape_table(_format_list(result.expected_relevant_sources))} | "
             f"{_escape_table(_format_list(result.retrieved_sources))} | "
@@ -842,7 +825,7 @@ def _render_limitations() -> str:
             f"- {BENCHMARK_SCOPE_STATEMENT}",
             "- The benchmark is small enough that a difference between modes may represent only one changed question; the current hit-rate difference is exactly one of 14 retrieval-scored questions.",
             "- Top-category routing accuracy can be lower than retrieval hit rate because soft multi-category routing may search the expected category even when it is not ranked first.",
-            "- Global fallback thresholds and category margins are heuristic rather than calibrated probabilities.",
+            "- Category margins are heuristic rather than calibrated probabilities.",
             "- Retrieval and routing configuration was adjusted while inspecting this same small benchmark, so these results are useful engineering evidence, not holdout validation.",
             "- Citation validation checks whether cited chunk IDs were included in the selected context; it does not prove claim-level factual correctness.",
             "- No-answer accuracy depends on the selected context and generation behavior for this run.",
@@ -856,15 +839,6 @@ def _metric_counts(
 ) -> dict[MetricName, EvaluationMetricCount]:
     counts: dict[MetricName, EvaluationMetricCount] = {}
     for metric in RATE_METRICS:
-        if metric == "fallback_rate":
-            if questions:
-                counts[metric] = EvaluationMetricCount(
-                    numerator=sum(
-                        1 for question in questions if question.global_fallback_occurred
-                    ),
-                    denominator=len(questions),
-                )
-            continue
         values = [
             question.metrics.get(metric)
             for question in questions

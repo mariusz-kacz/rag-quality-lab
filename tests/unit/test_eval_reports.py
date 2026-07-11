@@ -25,7 +25,6 @@ def test_compare_evaluation_artifacts_builds_metric_and_token_budget_tables(
         mode="baseline-vector",
         metrics=EvaluationMetrics(
             routing_accuracy=None,
-            fallback_rate=0.2,
             hit_rate_at_k=0.5,
             mrr=0.4,
             citation_source_match=0.75,
@@ -39,7 +38,6 @@ def test_compare_evaluation_artifacts_builds_metric_and_token_budget_tables(
         mode="routed-vector",
         metrics=EvaluationMetrics(
             routing_accuracy=0.8,
-            fallback_rate=0.1,
             hit_rate_at_k=0.75,
             mrr=0.6,
             citation_source_match=0.75,
@@ -74,7 +72,6 @@ def test_compare_evaluation_artifacts_builds_metric_and_token_budget_tables(
             "retrieval does not use route filtering."
         ),
     }
-    assert _row(comparison, "fallback_rate")["included_benchmark_mode"] == "routed-vector"
     assert _row(comparison, "citation_source_match")["included_benchmark_mode"] == "tie"
     assert comparison["token_budget"]["average_context_tokens"] == {
         "metric": "average_context_tokens",
@@ -94,7 +91,6 @@ def test_compare_evaluation_artifacts_writes_markdown_report(tmp_path: Path) -> 
         mode="baseline-vector",
         metrics=EvaluationMetrics(
             routing_accuracy=None,
-            fallback_rate=0.0,
             hit_rate_at_k=1.0,
             mrr=1.0,
             citation_source_match=1.0,
@@ -221,7 +217,7 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
 
     markdown = render_markdown_report(run)
 
-    assert "| Question | Case type | Status | Top category | Searched categories | Global fallback |" in markdown
+    assert "| Question | Case type | Status | Top category | Searched categories | Trace |" in markdown
     assert "| q-pass | answerable | pass |" in markdown
     assert "## Request-response pairs" in markdown
     assert "### q-pass" in markdown
@@ -231,7 +227,6 @@ def test_render_markdown_report_includes_per_question_statuses() -> None:
     assert "| q-route-citation | answerable | route filter miss |" in markdown
     assert "Top category" in markdown
     assert "Searched categories" in markdown
-    assert "Global fallback" in markdown
 
 
 def _write_run(path: Path, *, mode: str, metrics: EvaluationMetrics) -> Path:

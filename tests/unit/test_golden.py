@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from rag_quality_lab.schemas import REQUIRED_KNOWLEDGE_CATEGORIES, GoldenSet, Question
+from rag_quality_lab.schemas import GoldenSet, Question
 
 
 pytestmark = pytest.mark.unit
@@ -98,7 +98,7 @@ def test_golden_set_rejects_duplicate_question_id() -> None:
         GoldenSet.model_validate({"questions": payloads})
 
 
-def test_checked_in_routing_cases_distinguish_multi_category_and_fallback() -> None:
+def test_checked_in_benchmark_has_multi_category_but_no_fallback_cases() -> None:
     from rag_quality_lab.eval.golden import load_golden_set
 
     golden_set = load_golden_set(Path("golden/questions.json"))
@@ -107,24 +107,15 @@ def test_checked_in_routing_cases_distinguish_multi_category_and_fallback() -> N
         for question in golden_set.questions
         if question.case_type == "multi_category_routing"
     ]
-    fallback = [
-        question
-        for question in golden_set.questions
-        if question.case_type == "fallback_routing"
-    ]
-
     assert len(multi_category) == 2
     assert all(
         question.expected_fallback_all_categories is False
         and len(question.expected_searched_categories) > 1
         for question in multi_category
     )
-    assert len(fallback) == 2
     assert all(
-        question.expected_fallback_all_categories is True
-        and set(question.expected_searched_categories)
-        == set(REQUIRED_KNOWLEDGE_CATEGORIES)
-        for question in fallback
+        question.case_type != "fallback_routing"
+        for question in golden_set.questions
     )
 
 
@@ -158,13 +149,6 @@ def valid_question_payloads() -> list[dict[str, object]]:
             expected_category=None,
             expected_relevant_sources=["rag-overview"],
         ),
-        question_payload(
-            "q-fallback-001",
-            case_type="fallback_routing",
-            answerability="answerable",
-            expected_category=None,
-            expected_relevant_sources=["openai-token-counting"],
-        ),
     ]
     questions.extend(
         question_payload(
@@ -174,7 +158,7 @@ def valid_question_payloads() -> list[dict[str, object]]:
             expected_category="RAG and context handling",
             expected_relevant_sources=["rag-overview"],
         )
-        for index in range(2, 9)
+        for index in range(2, 10)
     )
     return questions
 
