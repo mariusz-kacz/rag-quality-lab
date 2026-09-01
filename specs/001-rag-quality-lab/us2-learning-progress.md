@@ -1,6 +1,6 @@
-# User Story 2 Learning Progress
+# User Story 2 Implementation Progress
 
-Goal: implement User Story 2 in a learning-first way, using AI as a reviewer/tutor rather than the primary coder.
+Goal: implement User Story 2 incrementally, using AI for explanation and review rather than as the primary coder.
 
 ## Progress
 
@@ -40,8 +40,8 @@ Avoid asking AI to generate whole files before you have attempted the first pass
 
 | Mode | Estimate |
 |---|---:|
-| Learning-first with AI as coach/reviewer | 3-4 days |
-| Balanced learning and delivery | 2-3 days |
+| Review-first implementation | 3-4 days |
+| Balanced review and delivery | 2-3 days |
 | AI-heavy implementation | 1-2 days |
 
 ## Python Concepts To Watch

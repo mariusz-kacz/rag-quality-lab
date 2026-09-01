@@ -126,7 +126,7 @@ Expected outcome:
 
 ## Future Extension: Hybrid Retrieval
 
-Hybrid lexical/vector retrieval is intentionally outside the MVP workflow. It may be added later if exact-term matching, BM25, or rank fusion becomes worth demonstrating, but the current portfolio comparison is limited to `baseline-vector` and `routed-vector`.
+Hybrid lexical/vector retrieval is intentionally outside the MVP workflow. It may be added later if exact-term matching, BM25, or rank fusion becomes relevant to retrieval-quality experiments, but the current lab scope is limited to comparing `baseline-vector` and `routed-vector`.
 
 ## Validation References
 

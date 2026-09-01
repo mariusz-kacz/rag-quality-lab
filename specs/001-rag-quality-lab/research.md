@@ -4,7 +4,7 @@
 
 **Rationale**: The feature asks for one small, pinned, openly licensed LLM-engineering source and names DAIR.AI Prompt Engineering Guide as the preferred example. The repository is public and its GitHub page identifies an MIT license. Implementation must pin an exact commit and store local snapshots of only the selected 15-30 pages.
 
-**Alternatives considered**: Multiple sources were rejected because the MVP requires one corpus source. Live website crawling was rejected because reproducibility requires pinned local references. A synthetic corpus was rejected because reviewer value depends on real source provenance.
+**Alternatives considered**: Multiple sources were rejected because the MVP requires one corpus source. Live website crawling was rejected because reproducibility requires pinned local references. A synthetic corpus was rejected because corpus credibility depends on real source provenance.
 
 ### Corpus sufficiency assessment
 
@@ -18,13 +18,13 @@ To keep the existing category names, the corpus should become a curated multi-so
 - `LLM security and risks`: OWASP Top 10 for LLM Applications plus DAIR.AI adversarial prompting pages.
 - `LLM settings, cost, and tokens`: Google Gemini API token counting, billing, rate limit, context caching, and optimization documentation plus OpenAI Cookbook token/cost examples.
 
-Quality judgment: DAIR.AI remains useful but should not be presented as fully covering the selected categories. A better portfolio corpus is 20-30 pinned local snapshots from 3-4 openly licensed/documented sources: DAIR.AI Prompt Engineering Guide, OpenAI Cookbook, OWASP Top 10 for LLM Applications, and either Google Gemini API docs or Microsoft Generative AI for Beginners. The manifest should prefer substantive explanatory pages and avoid thin navigation, course-marketing, translation duplicates, and model-specific news pages unless they directly support a golden question.
+Quality judgment: DAIR.AI remains useful but should not be presented as fully covering the selected categories. A better retrieval-quality corpus is 20-30 pinned local snapshots from 3-4 openly licensed/documented sources: DAIR.AI Prompt Engineering Guide, OpenAI Cookbook, OWASP Top 10 for LLM Applications, and either Google Gemini API docs or Microsoft Generative AI for Beginners. The manifest should prefer substantive explanatory pages and avoid thin navigation, course-marketing, translation duplicates, and model-specific news pages unless they directly support a golden question.
 
 ## Decision: Represent corpus provenance with a manifest plus local snapshots
 
 **Rationale**: A manifest makes license, URL, source slug, category, pinned commit, and local reference auditable before ingestion. Local snapshots make repeated runs reproducible even if the upstream website changes.
 
-**Alternatives considered**: Pulling pages at ingestion time was rejected because it weakens reproducibility. Embedding provenance only in vector metadata was rejected because reviewers need to inspect the corpus before ingestion.
+**Alternatives considered**: Pulling pages at ingestion time was rejected because it weakens reproducibility. Embedding provenance only in vector metadata was rejected because the corpus must be inspectable before ingestion.
 
 ## Decision: Use deterministic content-derived chunk identifiers
 
@@ -54,7 +54,7 @@ Quality judgment: DAIR.AI remains useful but should not be presented as fully co
 
 **Rationale**: The spec mandates Azure OpenAI and environment-based configuration. Embeddings use a narrow local provider boundary because retrieval needs vectors directly. Answer generation uses LangChain's chat model and prompt-template boundary so the application avoids raw chat completion calls while core routing, context budgeting, trace, and evaluation logic remains plain Python.
 
-**Alternatives considered**: Multiple providers and local models were rejected by MVP scope. Hard-coded configuration was rejected because reviewers need portable local setup.
+**Alternatives considered**: Multiple providers and local models were rejected by MVP scope. Hard-coded configuration was rejected because the lab requires a portable local setup.
 
 ## Decision: Keep context budgeting deterministic and estimate-first
 
@@ -70,12 +70,12 @@ Quality judgment: DAIR.AI remains useful but should not be presented as fully co
 
 ## Decision: Use a custom lightweight evaluation harness
 
-**Rationale**: Required metrics are straightforward and domain-specific: routing accuracy, fallback count and rate, average searched categories, hit rate at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A custom harness makes the formulas inspectable for a portfolio reviewer.
+**Rationale**: Required metrics are straightforward and domain-specific: routing accuracy, fallback count and rate, average searched categories, hit rate at k, MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A custom harness makes the formulas directly inspectable.
 
 **Alternatives considered**: RAGAS or similar large frameworks were rejected by scope. Manual notebook evaluation was rejected because the CLI must write reproducible artifacts.
 
 ## Decision: Define CLI and artifact contracts as the public interface
 
-**Rationale**: The product is CLI-first. Reviewers need stable commands, exit behavior, JSON outputs, trace files, and Markdown reports. Contracts should cover commands and file schemas rather than HTTP APIs.
+**Rationale**: The lab is CLI-first. Stable commands, exit behavior, JSON outputs, trace files, and Markdown reports make its behavior reproducible and inspectable. Contracts should cover commands and file schemas rather than HTTP APIs.
 
 **Alternatives considered**: REST or web UI contracts were rejected because the MVP explicitly excludes production deployment, authentication, web UI, and chatbot experiences.

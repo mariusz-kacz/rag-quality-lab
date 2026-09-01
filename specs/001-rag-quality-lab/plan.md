@@ -109,7 +109,7 @@ tests/
 `-- unit/
 ```
 
-**Structure Decision**: Use a single Python package with CLI entrypoint and plain-Python domain modules. Keep durable portfolio inputs (`corpus/`, `golden/`) and generated outputs (`artifacts/`) outside package code so reviewers can inspect provenance, traces, and evaluation results directly.
+**Structure Decision**: Use a single Python package with CLI entrypoint and plain-Python domain modules. Keep durable evaluation inputs (`corpus/`, `golden/`) and generated outputs (`artifacts/`) outside package code so reviewers can inspect provenance, traces, and evaluation results directly.
 
 ## Complexity Tracking
 

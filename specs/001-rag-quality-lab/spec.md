@@ -6,13 +6,13 @@
 
 **Status**: Draft
 
-**Input**: User description: "Build a focused Python portfolio project called RAG Quality Lab that demonstrates practical RAG engineering quality over a small, pinned, openly licensed LLM-engineering corpus. The project is CLI-first and must make retrieval, routing, context budgeting, citations, no-answer behavior, traces, and evaluation explicit, measurable, and reproducible."
+**Input**: User description: "Build a focused Python retrieval-quality engineering lab called RAG Quality Lab over a small, pinned, openly licensed LLM-engineering corpus. The lab is CLI-first and must make retrieval, routing, context budgeting, citations, no-answer behavior, traces, and evaluation explicit, measurable, and reproducible."
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Inspect and Ingest a Curated Corpus (Priority: P1)
 
-As a portfolio reviewer, I want to inspect the pinned source corpus and ingest it into the required retrieval store so that I can verify the project starts from a controlled, reproducible knowledge base rather than arbitrary document ingestion.
+As an engineer, I want to inspect the pinned source corpus and ingest it into the required retrieval store so that I can verify the lab starts from a controlled, reproducible knowledge base rather than arbitrary document ingestion.
 
 **Why this priority**: A reproducible corpus with documented provenance is the foundation for all later retrieval, citation, and evaluation claims.
 
@@ -30,7 +30,7 @@ As a portfolio reviewer, I want to inspect the pinned source corpus and ingest i
 
 As a reviewer, I want to run an individual question through a deterministic RAG workflow so that I can inspect routing, retrieval, context-budget decisions, citations, no-answer behavior, and persisted traces for a single case.
 
-**Why this priority**: The core portfolio value is showing that the RAG pipeline is controlled and inspectable rather than a black-box Q&A demo.
+**Why this priority**: A controlled and inspectable RAG pipeline is the core of the lab rather than an opaque Q&A workflow.
 
 **Independent Test**: Can be tested by running one answerable query and one insufficient-evidence query, then verifying the answer or no-answer result, citations, citation validation outcome, and trace contents.
 
@@ -47,7 +47,7 @@ As a reviewer, I want to run an individual question through a deterministic RAG 
 
 As a reviewer, I want to run a lightweight evaluation over a golden question set so that I can compare retrieval modes using clear quality and cost-related diagnostics.
 
-**Why this priority**: Comparison across strategies demonstrates practical RAG engineering judgment and makes improvements measurable.
+**Why this priority**: Comparison across strategies exposes retrieval behavior and makes tradeoffs measurable.
 
 **Independent Test**: Can be tested by running evaluation for each supported retrieval mode and checking that machine-readable and Markdown artifacts contain the required metrics and per-question diagnostics.
 
@@ -61,9 +61,9 @@ As a reviewer, I want to run a lightweight evaluation over a golden question set
 
 ### User Story 4 - Understand Project Scope and Limitations (Priority: P3)
 
-As a reviewer, I want clear documentation of the architecture, corpus choices, category design, evaluation method, limitations, and exclusions so that I can judge the project as a focused RAG quality engineering lab.
+As an engineer, I want clear documentation of the architecture, corpus choices, category design, evaluation method, limitations, and exclusions so that I can understand the system as a focused RAG quality engineering lab.
 
-**Why this priority**: Strong documentation turns the implementation into a portfolio artifact that explains tradeoffs and avoids misrepresenting validation as full factual correctness.
+**Why this priority**: Strong documentation makes implementation tradeoffs and validation boundaries inspectable and avoids misrepresenting citation validation as full factual correctness.
 
 **Independent Test**: Can be tested by reading the README and verifying that it explains the intended workflow, metrics, limitations, and future extensions without presenting the project as a chatbot, generic ingestion platform, or production system.
 
@@ -153,11 +153,11 @@ As a reviewer, I want clear documentation of the architecture, corpus choices, c
 
 ## Assumptions
 
-- The primary user is a technical portfolio reviewer or interviewer evaluating practical RAG engineering quality.
+- The primary user is an engineer evaluating retrieval quality, reproducibility, and implementation tradeoffs.
 - The MVP prioritizes local reproducibility and traceability over production deployment concerns.
 - The corpus source will be pinned before ingestion and will remain small enough for local inspection and evaluation.
 - The default curated source is DAIR.AI Prompt Engineering Guide if its selected pages and license metadata satisfy the provenance requirements during planning.
 - Required external service credentials and endpoints are provided by the reviewer through environment variables.
-- Hybrid lexical/vector retrieval is not part of the core MVP; it remains a future extension if exact-term retrieval becomes worth demonstrating.
+- Hybrid lexical/vector retrieval is not part of the core MVP; it remains a future extension if exact-term retrieval becomes relevant to the evaluation scope.
 - Exact token counts may be estimated for budgeting, while actual model usage is recorded when available from the model provider.
 - Stable outputs are expected for identifiers, traces, and evaluation schemas; natural-language answer wording may vary across model calls.

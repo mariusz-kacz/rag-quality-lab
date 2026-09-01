@@ -179,7 +179,7 @@
 - [X] T062 [US4] Document citation validation limitations, no-answer behavior, MVP exclusions, and future extensions in README.md
 - [X] T063 [US4] Add sample command outputs and sample artifact paths from quickstart validation in README.md
 
-**Checkpoint**: Documentation frames the project accurately as a focused portfolio artifact.
+**Checkpoint**: Documentation frames the system accurately as a focused retrieval-quality engineering lab.
 
 ---
 
@@ -281,12 +281,12 @@ Task: "T060 [US4] Document corpus source, license rationale, pinned provenance, 
 2. Complete Phase 2: Foundational.
 3. Complete Phase 3: User Story 1.
 4. Stop and validate corpus inspection and ingestion independently.
-5. Demo reproducible corpus provenance and Qdrant ingestion.
+5. Validate reproducible corpus provenance and Qdrant ingestion.
 
-### Core Portfolio Flow
+### Core Lab Flow
 
 1. Complete MVP first: Setup -> Foundational -> US1.
-2. Add US2 to demonstrate deterministic traced single-query RAG.
+2. Add US2 for a deterministic traced single-query RAG workflow.
 3. Add US3 to make retrieval strategy comparison measurable.
 4. Add US4 documentation to explain tradeoffs, limits, and reproducibility.
 5. Complete Phase 7 quickstart validation and sample artifacts.

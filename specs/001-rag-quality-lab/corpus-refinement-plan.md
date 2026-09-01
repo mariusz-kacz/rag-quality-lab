@@ -74,7 +74,7 @@ A refined source is complete only when all checks pass:
 
 - Metadata matches the manifest.
 - The upstream review link is present in this plan or a linked proposal artifact.
-- License/reuse terms are recorded clearly enough for portfolio review.
+- License/reuse terms are recorded clearly enough for independent review.
 - Pinned version, source commit, or snapshot capture date is recorded.
 - Top-level content headings match the manifest exactly.
 - The local text remains close enough to the source to be credible and attributable.

@@ -1,6 +1,6 @@
 # RAG Quality Lab
 
-RAG Quality Lab is a CLI-first Python project for inspecting retrieval-augmented generation quality over a pinned corpus and a small curated benchmark. It keeps the corpus, golden questions, retrieval decisions, context budgets, citations, traces, and evaluation reports reviewable and reproducible.
+RAG Quality Lab is a CLI-first Python retrieval-quality engineering lab for inspectable and reproducible experiments over a pinned corpus and a small curated benchmark. It keeps the corpus, golden questions, retrieval decisions, context budgets, citations, traces, and evaluation reports reviewable and reproducible.
 
 The lab uses a curated local corpus, Azure AI Foundry models through an OpenAI-compatible project endpoint, and Qdrant for vector storage. It supports two retrieval modes:
 
@@ -255,4 +255,4 @@ The unit and integration tests use local fakes at external-service boundaries, s
 
 ## Scope
 
-This is a portfolio-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate providers, alternate vector stores, reranking, production authentication, and claim-level answer grading. The narrow scope keeps retrieval behavior, evidence selection, token budgets, citations, and evaluation artifacts easy to inspect.
+This is a bounded retrieval-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate providers, alternate vector stores, reranking, production authentication, and claim-level answer grading. The narrow scope keeps retrieval behavior, evidence selection, token budgets, citations, and evaluation artifacts easy to inspect.

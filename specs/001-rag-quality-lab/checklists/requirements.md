@@ -32,5 +32,5 @@
 ## Notes
 
 - Validation pass 1 completed on 2026-07-02.
-- Technology names and runtime constraints in the requirements are treated as stakeholder-specified portfolio scope constraints, not incidental implementation choices.
+- Technology names and runtime constraints in the requirements are treated as stakeholder-specified lab scope constraints, not incidental implementation choices.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.
