@@ -122,17 +122,7 @@ def _extract_message_text(message: BaseMessage) -> str:
 
 def _is_no_answer(answer_text: str) -> bool:
     normalized = " ".join(answer_text.lower().split())
-    return normalized.rstrip(".") in {
-        NO_ANSWER_TEXT.lower().rstrip("."),
-        "i do not have enough evidence in the selected context to answer",
-        "the selected context is insufficient to answer",
-    } or normalized.startswith(
-        (
-            "there is not enough evidence in the selected context to answer.",
-            "i do not have enough evidence in the selected context to answer.",
-            "the selected context is insufficient to answer.",
-        )
-    )
+    return normalized.rstrip(".") == NO_ANSWER_TEXT.lower().rstrip(".")
 
 
 def _no_answer_result(answer_text: str) -> AnswerResult:

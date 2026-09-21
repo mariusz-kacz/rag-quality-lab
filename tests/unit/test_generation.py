@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage, BaseMessage
 import pytest
 
 from rag_quality_lab.providers import ProviderError
-from rag_quality_lab.rag.generation import generate_answer
+from rag_quality_lab.rag.generation import NO_ANSWER_TEXT, generate_answer
 from rag_quality_lab.schemas import SelectedContext, ContextChunk, Question
 
 
@@ -77,10 +77,61 @@ def test_generate_answer_returns_no_answer_without_provider_when_context_is_empt
     assert "not enough evidence" in result.answer.answer_text.lower()
 
 
-def test_generate_answer_marks_explicit_no_answer_response_not_applicable() -> None:
-    chat_model = FakeChatModel(
-        "I do not have enough evidence in the selected context to answer."
-    )
+@pytest.mark.parametrize(
+    ("response", "status", "citations", "error"),
+    [
+        (NO_ANSWER_TEXT, "not_applicable", [], None),
+        (
+            "  THERE is not enough evidence in the selected\ncontext to answer.  ",
+            "not_applicable",
+            [],
+            None,
+        ),
+        (NO_ANSWER_TEXT.rstrip("."), "not_applicable", [], None),
+        (
+            "I do not have enough evidence in the selected context to answer.",
+            "invalid",
+            [],
+            "Citations missing in answer text",
+        ),
+        (
+            "The selected context is insufficient to answer.",
+            "invalid",
+            [],
+            "Citations missing in answer text",
+        ),
+        (
+            NO_ANSWER_TEXT + " However, the warranty is ten years. [C999]",
+            "invalid",
+            ["C999"],
+            "Citation C999 from answer text not found in selected context",
+        ),
+        (
+            NO_ANSWER_TEXT + " However, the warranty is ten years. [C1]",
+            "valid",
+            ["chunk-scope-1"],
+            None,
+        ),
+        (
+            NO_ANSWER_TEXT + " However, the warranty is ten years.",
+            "invalid",
+            [],
+            "Citations missing in answer text",
+        ),
+    ],
+    ids=[
+        "prompt-refusal", "normalized-refusal", "no-period",
+        "alternate-no-evidence", "alternate-insufficient-context",
+        "unknown-citation", "known-citation", "missing-citation",
+    ],
+)
+def test_generate_answer_only_exempts_the_prompt_refusal_from_citation_validation(
+    response: str,
+    status: str,
+    citations: list[str],
+    error: str | None,
+) -> None:
+    chat_model = FakeChatModel(response)
     selected_context = context_with_chunks(
         [
             context_chunk(
@@ -98,9 +149,11 @@ def test_generate_answer_marks_explicit_no_answer_response_not_applicable() -> N
         chat_model=chat_model,
     )
 
-    assert result.answer.is_no_answer is True
-    assert result.answer.citations == []
-    assert result.answer.validation_status == "not_applicable"
+    assert result.answer.answer_text == response.strip()
+    assert result.answer.is_no_answer is (status == "not_applicable")
+    assert result.answer.citations == citations
+    assert result.answer.validation_status == status
+    assert result.answer.validation_errors == ([] if error is None else [error])
     assert result.model_usage is not None
 
 

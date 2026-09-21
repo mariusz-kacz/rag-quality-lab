@@ -151,9 +151,13 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
     assert chat_model.calls[0]["max_tokens"] == 100
 
 
-def test_no_answer_query_workflow_persists_not_applicable_citation_trace(
+@pytest.mark.parametrize("refusal_only", [True, False])
+def test_no_answer_query_workflow_persists_validation_and_scores_the_response(
     tmp_path: Path,
+    refusal_only: bool,
 ) -> None:
+    from rag_quality_lab.eval.metrics import calculate_no_answer_accuracy
+
     run_query, load_trace = _query_workflow_api()
     trace_dir = tmp_path / "traces"
     router = FakeRouter(fallback_route())
@@ -167,12 +171,19 @@ def test_no_answer_query_workflow_persists_not_applicable_citation_trace(
             )
         ]
     )
-    chat_model = FakeChatModel(
-        "I do not have enough evidence in the selected context to answer."
+    response = "There is not enough evidence in the selected context to answer."
+    if not refusal_only:
+        response += " However, the warranty is ten years. [C999]"
+    chat_model = FakeChatModel(response)
+    question = Question(
+        question_id="q-warranty",
+        text="What warranty does the project provide for enterprise production deployment?",
+        answerability="no_answer",
+        case_type="no_answer",
     )
 
     result = run_query(
-        "What warranty does the project provide for enterprise production deployment?",
+        question,
         mode="routed-vector",
         top_k=3,
         max_context_tokens=100,
@@ -190,19 +201,29 @@ def test_no_answer_query_workflow_persists_not_applicable_citation_trace(
     assert trace_path.exists()
     assert loaded_trace.trace_id == trace.trace_id
     assert loaded_trace.answer_result == trace.answer_result
-    assert trace.question.answerability == "answerable"
+    assert trace.question == question
     assert trace.route_decision.fallback_all_categories is True
     assert trace.route_decision.selected_category is None
     assert [result.chunk_id for result in trace.retrieval_results] == ["chunk-scope-1"]
     assert [chunk.chunk_id for chunk in trace.context_build.included_chunks] == [
         "chunk-scope-1"
     ]
-    assert trace.answer_result.is_no_answer is True
-    assert trace.answer_result.citations == []
-    assert trace.answer_result.validation_status == "not_applicable"
-    assert trace.citation_validation.status == "not_applicable"
-    assert trace.citation_validation.cited_chunk_ids == []
-    assert trace.citation_validation.invalid_citations == []
+    assert loaded_trace.answer_result.answer_text == response
+    assert loaded_trace.answer_result.is_no_answer is refusal_only
+    citations = [] if refusal_only else ["C999"]
+    assert loaded_trace.answer_result.citations == citations
+    status = "not_applicable" if refusal_only else "invalid"
+    assert loaded_trace.answer_result.validation_status == status
+    assert loaded_trace.citation_validation.status == status
+    assert loaded_trace.citation_validation.cited_chunk_ids == citations
+    assert loaded_trace.citation_validation.invalid_citations == citations
+    errors = (
+        [] if refusal_only
+        else ["Citation C999 from answer text not found in selected context"]
+    )
+    assert loaded_trace.answer_result.validation_errors == errors
+    assert loaded_trace.citation_validation.validation_errors == errors
+    assert calculate_no_answer_accuracy([question], [loaded_trace]) == float(refusal_only)
     assert trace.model_usage is not None
     assert trace.model_usage.input_tokens == 20
     assert trace.model_usage.output_tokens == 9

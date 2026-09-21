@@ -220,6 +220,8 @@ The router uses heuristic embedding-similarity thresholds. Similarity scores are
 
 Evaluation resolves environment configuration once per run and passes it, including any explicit category-margin override, into each query. Query traces record `searched_categories` from the retrieval scope, even when no chunks are returned; reports and category-count metrics use that recorded scope. Older traces without this field remain readable, but their scope is unknown and an aggregate category count involving them is unavailable. Injected retrievers return `QueryRetrievalResult` with both retrieved chunks and searched categories. Custom evaluation runners must likewise record scope in their traces.
 
+Only the complete refusal sentence required by the prompt (`NO_ANSWER_TEXT`) is classified as no-answer, after normalizing case, whitespace, and trailing periods. Alternative refusal wording or a refusal prefix followed by additional text goes through normal answer and citation validation.
+
 ## Results and limitations
 
 The checked-in reports capture one run over the 26 pinned corpus snapshots and 16 manually curated golden questions. Fourteen questions are eligible for retrieval scoring; the other two are no-answer cases. The results are useful as inspectable evidence about this configuration, not as proof that routed retrieval is generally superior.
