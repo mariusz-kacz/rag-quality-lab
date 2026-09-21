@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Sequence
 
-from rag_quality_lab.schemas import EvaluationMetrics, QueryTrace, Question, RetrievalMode
-from rag_quality_lab.schemas.categories import REQUIRED_KNOWLEDGE_CATEGORIES
+from rag_quality_lab.schemas import EvaluationMetrics, QueryTrace, Question
 
 
 class EvaluationResultSetError(ValueError):
@@ -16,9 +15,6 @@ class EvaluationResultSetError(ValueError):
 def calculate_evaluation_metrics(
     questions: Sequence[Question],
     traces: Sequence[QueryTrace],
-    *,
-    retrieval_mode: RetrievalMode = "routed-vector",
-    category_margin: float = 0.0,
 ) -> EvaluationMetrics:
     """Calculate every aggregate metric required for an evaluation artifact."""
 
@@ -29,8 +25,6 @@ def calculate_evaluation_metrics(
         routing_accuracy=calculate_routing_accuracy(questions, traces),
         average_searched_categories=calculate_average_searched_categories(
             matched_traces,
-            retrieval_mode=retrieval_mode,
-            category_margin=category_margin,
         ),
         hit_rate_at_k=calculate_hit_rate_at_k(questions, traces),
         mrr=calculate_mrr(questions, traces),
@@ -65,52 +59,25 @@ def calculate_routing_accuracy(
 
 def calculate_average_searched_categories(
     traces: Sequence[QueryTrace],
-    *,
-    retrieval_mode: RetrievalMode,
-    category_margin: float,
 ) -> float | None:
-    """Return the mean number of categories searched by retrieval."""
+    """Return the mean recorded scope, or None if any scope is unknown."""
 
     if not traces:
         return None
-    counts = [
-        len(
-            searched_categories(
-                trace,
-                retrieval_mode=retrieval_mode,
-                category_margin=category_margin,
-            )
-        )
-        for trace in traces
-    ]
+    counts = []
+    for trace in traces:
+        if trace.searched_categories is None:
+            return None
+        counts.append(len(trace.searched_categories))
     return sum(counts) / len(counts)
 
 
 def searched_categories(
     trace: QueryTrace,
-    *,
-    retrieval_mode: RetrievalMode,
-    category_margin: float,
-) -> list[str]:
-    """Return the effective category scope used for retrieval."""
+) -> list[str] | None:
+    """Return recorded execution facts; legacy traces have unknown scope."""
 
-    if retrieval_mode == "baseline-vector":
-        return list(REQUIRED_KNOWLEDGE_CATEGORIES)
-    route = trace.route_decision
-    if route is None:
-        return []
-    if route.fallback_all_categories:
-        return list(route.category_scores)
-    if route.selected_category is None:
-        return []
-    cutoff = max(0.0, route.confidence - category_margin)
-    within_margin = [
-        category for category, score in route.category_scores.items() if score >= cutoff
-    ]
-    return [
-        route.selected_category,
-        *(category for category in within_margin if category != route.selected_category),
-    ]
+    return trace.searched_categories
 
 
 def calculate_hit_rate_at_k(

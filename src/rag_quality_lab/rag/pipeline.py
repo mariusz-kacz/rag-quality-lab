@@ -9,7 +9,7 @@ from typing import Protocol, TypedDict
 from rag_quality_lab.chat_models import (
     create_foundry_chat_model,
 )
-from rag_quality_lab.config import load_app_config
+from rag_quality_lab.config import AppConfig, load_app_config
 from rag_quality_lab.providers import (
     FoundryOpenAIEmbeddingProvider,
 )
@@ -27,7 +27,9 @@ from rag_quality_lab.schemas import (
     Question,
     RetrievalResult,
     RouteDecision,
+    REQUIRED_KNOWLEDGE_CATEGORIES,
 )
+from rag_quality_lab.schemas.categories import KnowledgeCategoryName
 
 
 DEFAULT_PROMPT_OVERHEAD_TOKENS = 0
@@ -42,6 +44,14 @@ class QueryRouter(Protocol):
     def route(self, question: str) -> RouteDecision: ...
 
 
+@dataclass(frozen=True)
+class QueryRetrievalResult:
+    """Retrieved chunks and the category scope actually passed to search."""
+
+    results: list[RetrievalResult]
+    searched_categories: list[KnowledgeCategoryName]
+
+
 class QueryRetriever(Protocol):
     def retrieve(
         self,
@@ -50,7 +60,7 @@ class QueryRetriever(Protocol):
         mode: str,
         top_k: int,
         route_decision: RouteDecision | None,
-    ) -> list[RetrievalResult]: ...
+    ) -> QueryRetrievalResult: ...
 
 
 class QueryEmbeddingProvider(Protocol):
@@ -65,6 +75,7 @@ def run_query(
     max_context_tokens: int,
     output_token_limit: int,
     trace_dir: str | Path,
+    config: AppConfig | None = None,
     router: QueryRouter | None = None,
     retriever: QueryRetriever | None = None,
     chat_model: ChatModel | None = None,
@@ -84,6 +95,7 @@ def run_query(
 
     components = _resolve_components(
         retrieval_mode=retrieval_mode,
+        config=config,
         router=router,
         retriever=retriever,
         chat_model=chat_model,
@@ -98,14 +110,14 @@ def run_query(
         if retrieval_mode == "routed-vector" and components.router is not None
         else None
     )
-    retrieval_results = components.retriever.retrieve(
+    retrieval = components.retriever.retrieve(
         question=clean_question,
         mode=retrieval_mode,
         top_k=top_k,
         route_decision=route_decision,
     )
     selected_context = build_context(
-        _context_chunks_from_results(retrieval_results),
+        _context_chunks_from_results(retrieval.results),
         max_context_tokens=max_context_tokens,
         output_token_limit=output_token_limit,
         prompt_overhead_tokens=prompt_overhead_tokens,
@@ -125,7 +137,8 @@ def run_query(
         question=question_record,
         retrieval_mode=retrieval_mode,
         route_decision=route_decision,
-        retrieval_results=retrieval_results,
+        retrieval_results=retrieval.results,
+        searched_categories=retrieval.searched_categories,
         context_build=selected_context,
         answer_result=generation.answer,
         citation_validation=citation_validation,
@@ -165,7 +178,7 @@ class QdrantQueryRetriever:
         mode: str,
         top_k: int,
         route_decision: RouteDecision | None,
-    ) -> list[RetrievalResult]:
+    ) -> QueryRetrievalResult:
         selected_category = None
         selected_categories = None
         fallback_all_categories = False
@@ -178,7 +191,7 @@ class QdrantQueryRetriever:
                 margin=self.category_score_margin,
             )
             fallback_all_categories = route_decision.fallback_all_categories
-        return self.store.search_chunks(
+        results = self.store.search_chunks(
             collection=self.collection,
             query_vector=self.embedding_provider.embed_text(question),
             mode=mode,
@@ -187,11 +200,20 @@ class QdrantQueryRetriever:
             selected_categories=selected_categories,
             fallback_all_categories=fallback_all_categories,
         )
+        return QueryRetrievalResult(
+            results=results,
+            searched_categories=(
+                list(selected_categories)
+                if selected_categories is not None
+                else list(REQUIRED_KNOWLEDGE_CATEGORIES)
+            ),
+        )
 
 
 def _resolve_components(
     *,
     retrieval_mode: str,
+    config: AppConfig | None,
     router: QueryRouter | None,
     retriever: QueryRetriever | None,
     chat_model: ChatModel | None,
@@ -207,7 +229,7 @@ def _resolve_components(
             chat_model=chat_model,
         )
 
-    config = load_app_config()
+    config = config or load_app_config()
     embedding_provider = FoundryOpenAIEmbeddingProvider(config.foundry_openai)
     chat_model = chat_model or create_foundry_chat_model(config.foundry_openai)
 
@@ -236,7 +258,7 @@ def _selected_routed_categories(
     route_decision: RouteDecision,
     *,
     margin: float,
-) -> list[str] | None:
+) -> list[KnowledgeCategoryName] | None:
     if route_decision.fallback_all_categories or route_decision.selected_category is None:
         return None
     cutoff = max(0.0, route_decision.confidence - margin)

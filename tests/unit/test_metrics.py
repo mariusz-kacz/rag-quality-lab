@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from rag_quality_lab.schemas import (
+    REQUIRED_KNOWLEDGE_CATEGORIES,
     AnswerResult,
     CitationValidation,
     ContextChunk,
@@ -47,9 +48,28 @@ def test_average_searched_categories_includes_all_categories_for_global_route() 
 
     assert calculate_average_searched_categories(
         traces,
-        retrieval_mode="routed-vector",
-        category_margin=0.0,
     ) == pytest.approx(3.0)
+
+
+def test_category_metrics_use_recorded_scope_instead_of_router_scores() -> None:
+    from rag_quality_lab.eval.metrics import calculate_average_searched_categories, searched_categories
+
+    recorded = trace("q-1").model_copy(
+        update={"searched_categories": ["prompting techniques", "LLM security and risks"]}
+    )
+    assert searched_categories(recorded) == ["prompting techniques", "LLM security and risks"]
+    assert calculate_average_searched_categories([recorded]) == 2.0
+
+
+def test_legacy_trace_scope_is_unknown_and_not_counted_as_zero() -> None:
+    from rag_quality_lab.eval.metrics import calculate_average_searched_categories, searched_categories
+
+    payload = trace("q-1").model_dump()
+    payload.pop("searched_categories")
+    legacy = QueryTrace.model_validate(payload)
+
+    assert searched_categories(legacy) is None
+    assert calculate_average_searched_categories([legacy, trace("q-2")]) is None
 
 
 def test_calculate_hit_rate_at_k_returns_zero_when_no_expected_result_is_retrieved() -> None:
@@ -337,6 +357,11 @@ def trace(
         trace_id=f"trace-{trace_id}",
         question=Question(question_id=trace_id, text=f"Question {trace_id}?"),
         retrieval_mode="routed-vector",
+        searched_categories=(
+            list(REQUIRED_KNOWLEDGE_CATEGORIES)
+            if fallback_all_categories
+            else [selected_category]
+        ),
         route_decision=RouteDecision(
             selected_category=None if fallback_all_categories else selected_category,
             fallback_all_categories=fallback_all_categories,

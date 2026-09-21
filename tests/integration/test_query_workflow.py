@@ -7,6 +7,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, BaseMessage
 import pytest
 
+from rag_quality_lab.rag.pipeline import QueryRetrievalResult
 from rag_quality_lab.routing.categories import REQUIRED_CATEGORIES
 from rag_quality_lab.schemas import Question, RetrievalResult, RouteDecision
 
@@ -229,7 +230,7 @@ class FakeRetriever:
         mode: str,
         top_k: int,
         route_decision: RouteDecision | None,
-    ) -> list[RetrievalResult]:
+    ) -> QueryRetrievalResult:
         self.calls.append(
             {
                 "question": question,
@@ -238,7 +239,12 @@ class FakeRetriever:
                 "route_decision": route_decision,
             }
         )
-        return self.results[:top_k]
+        categories = (
+            [route_decision.selected_category]
+            if route_decision is not None and not route_decision.fallback_all_categories
+            else [category.name for category in REQUIRED_CATEGORIES]
+        )
+        return QueryRetrievalResult(self.results[:top_k], categories)
 
 
 class FakeChatModel:

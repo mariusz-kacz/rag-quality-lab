@@ -237,6 +237,42 @@ def test_incomplete_evaluation_run_reports_missing_question_ids(
         )
 
 
+@pytest.mark.parametrize("scope", [["LLM security and risks"], None])
+def test_reports_use_recorded_scope_even_when_it_disagrees_with_route_scores(
+    tmp_path: Path,
+    temporary_golden_file: Path,
+    scope: list[str] | None,
+) -> None:
+    from rag_quality_lab.eval.reports import run_evaluation
+
+    fake_runner = FakeEvaluationQueryRunner(tmp_path / "traces")
+
+    def runner(question, **kwargs):
+        result = fake_runner(question, **kwargs)
+        result["trace"] = result["trace"].model_copy(update={"searched_categories": scope})
+        result["trace_path"].write_text(result["trace"].model_dump_json(), encoding="utf-8")
+        return result
+
+    run = run_evaluation(
+        mode="routed-vector",
+        golden_path=temporary_golden_file,
+        artifacts_dir=tmp_path / "eval",
+        top_k=3,
+        max_context_tokens=500,
+        output_token_limit=120,
+        query_runner=runner,
+    )
+
+    assert all(result.searched_categories == scope for result in run.questions)
+    assert run.metrics.average_searched_categories == (None if scope is None else 1.0)
+    markdown = run.artifact_paths.markdown_path.read_text(encoding="utf-8")
+    if scope is None:
+        assert "unknown (not recorded)" in markdown
+        assert "route filter miss" not in markdown
+    else:
+        assert "route filter miss" in markdown
+
+
 class FakeEvaluationQueryRunner:
     def __init__(self, trace_dir: Path) -> None:
         self.trace_dir = trace_dir
@@ -347,6 +383,11 @@ def _trace_for_question(
         question=question,
         retrieval_mode=mode,
         route_decision=route_decision,
+        searched_categories=(
+            list(REQUIRED_KNOWLEDGE_CATEGORIES)
+            if route_decision is None or route_decision.fallback_all_categories
+            else question.expected_searched_categories or [route_decision.selected_category]
+        ),
         retrieval_results=retrieval_results,
         context_build=SelectedContext(
             max_context_tokens=max_context_tokens,

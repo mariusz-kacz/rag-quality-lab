@@ -6,7 +6,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Protocol, TypedDict
 
-from rag_quality_lab.config import RuntimeConfig
+from rag_quality_lab.config import (
+    AppConfig,
+    RuntimeConfig,
+    load_app_config,
+    load_runtime_config,
+)
 from rag_quality_lab.eval.golden import load_golden_set
 from rag_quality_lab.eval.metrics import (
     EvaluationResultSetError,
@@ -95,11 +100,23 @@ def run_evaluation(
     """Run one retrieval mode over the golden set and return an evaluation model."""
 
     retrieval_mode = validate_retrieval_mode(mode)
-    effective_router_category_margin = (
-        RuntimeConfig().router_category_margin
-        if router_category_margin is None
-        else router_category_margin
+    config = load_app_config() if query_runner is None else None
+    runtime = config.runtime if config is not None else load_runtime_config()
+    runtime = RuntimeConfig(
+        **{
+            **runtime.model_dump(),
+            "top_k": top_k,
+            "max_context_tokens": max_context_tokens,
+            "output_token_limit": output_token_limit,
+            "router_category_margin": (
+                runtime.router_category_margin
+                if router_category_margin is None
+                else router_category_margin
+            ),
+        }
     )
+    if config is not None:
+        config = config.model_copy(update={"runtime": runtime})
     golden_file = Path(golden_path)
     artifact_directory = Path(artifacts_dir)
     trace_directory = (
@@ -121,6 +138,7 @@ def run_evaluation(
             max_context_tokens=max_context_tokens,
             output_token_limit=output_token_limit,
             trace_dir=trace_directory,
+            config=config,
         )
         trace = result["trace"]
         trace_path = result["trace_path"]
@@ -146,7 +164,6 @@ def run_evaluation(
             trace,
             trace_path=trace_path_by_question_id[question.question_id],
             retrieval_mode=retrieval_mode,
-            router_category_margin=effective_router_category_margin,
         )
         for question, trace in matched_pairs
     ]
@@ -154,8 +171,6 @@ def run_evaluation(
     metrics = calculate_evaluation_metrics(
         golden_set.questions,
         traces,
-        retrieval_mode=retrieval_mode,
-        category_margin=effective_router_category_margin,
     )
     if retrieval_mode == "baseline-vector":
         metrics = metrics.model_copy(update={"routing_accuracy": None})
@@ -168,7 +183,7 @@ def run_evaluation(
             "top_k": top_k,
             "max_context_tokens": max_context_tokens,
             "output_token_limit": output_token_limit,
-            "router_category_margin": effective_router_category_margin,
+            "router_category_margin": runtime.router_category_margin,
         },
         metrics=metrics,
         metric_counts=_metric_counts(question_results),
@@ -442,6 +457,7 @@ def _run_query_for_evaluation(
     top_k: int,
     max_context_tokens: int,
     output_token_limit: int,
+    config: AppConfig,
     trace_dir: Path | None = None,
     **_: Any,
 ) -> Mapping[str, object]:
@@ -453,6 +469,7 @@ def _run_query_for_evaluation(
         top_k=top_k,
         max_context_tokens=max_context_tokens,
         output_token_limit=output_token_limit,
+        config=config,
         trace_dir=trace_dir or Path("artifacts/traces") / mode,
     )
 
@@ -466,6 +483,7 @@ def _execute_golden_question(
     max_context_tokens: int,
     output_token_limit: int,
     trace_dir: Path,
+    config: AppConfig | None,
 ) -> EvaluationQueryResult:
     try:
         raw_result = runner(
@@ -475,6 +493,7 @@ def _execute_golden_question(
             max_context_tokens=max_context_tokens,
             output_token_limit=output_token_limit,
             trace_dir=trace_dir,
+            config=config,
         )
     except Exception as exc:
         question_id = question.question_id or question.text
@@ -495,7 +514,6 @@ def _question_result(
     *,
     trace_path: Path,
     retrieval_mode: RetrievalMode,
-    router_category_margin: float,
 ) -> EvaluationQuestionResult:
     if question.question_id is None:
         raise EvaluationRunError("Cannot build evaluation result without question_id")
@@ -515,11 +533,7 @@ def _question_result(
             if trace.route_decision is not None
             else None
         ),
-        searched_categories=searched_categories(
-            trace,
-            retrieval_mode=retrieval_mode,
-            category_margin=router_category_margin,
-        ),
+        searched_categories=searched_categories(trace),
         answer_text=trace.answer_result.answer_text,
         is_no_answer=trace.answer_result.is_no_answer,
         expected_relevant_sources=list(question.expected_relevant_sources),
@@ -715,8 +729,8 @@ def _route_filter_missed(
         return False
     if result.expected_category is None:
         return False
-    if not result.searched_categories:
-        return result.selected_category != result.expected_category
+    if result.searched_categories is None:
+        return False
     return result.expected_category not in result.searched_categories
 
 
@@ -892,7 +906,9 @@ def _format_mapping(mapping: Mapping[str, int]) -> str:
     return ", ".join(f"{key}: {value}" for key, value in sorted(mapping.items()))
 
 
-def _format_list(values: list[str]) -> str:
+def _format_list(values: list[str] | None) -> str:
+    if values is None:
+        return "unknown (not recorded)"
     if not values:
         return "none"
     return ", ".join(values)

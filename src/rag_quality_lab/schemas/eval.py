@@ -133,7 +133,7 @@ class EvaluationQuestionResult(SchemaModel):
     metrics: dict[MetricName, float | None] = Field(default_factory=dict)
     expected_category: KnowledgeCategoryName | None = None
     selected_category: KnowledgeCategoryName | None = None
-    searched_categories: list[KnowledgeCategoryName] = Field(default_factory=list)
+    searched_categories: list[KnowledgeCategoryName] | None = None
     answer_text: str | None = None
     is_no_answer: bool | None = None
     expected_relevant_sources: list[str] = Field(default_factory=list)

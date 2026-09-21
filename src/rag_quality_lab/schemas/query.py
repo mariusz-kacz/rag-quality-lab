@@ -186,6 +186,8 @@ class QueryTrace(SchemaModel):
     question: Question
     retrieval_mode: RetrievalMode
     route_decision: RouteDecision | None = None
+    # None denotes a legacy trace without recorded retrieval scope.
+    searched_categories: list[KnowledgeCategoryName] | None = None
     retrieval_results: list[RetrievalResult] = Field(default_factory=list)
     context_build: SelectedContext
     answer_result: AnswerResult
