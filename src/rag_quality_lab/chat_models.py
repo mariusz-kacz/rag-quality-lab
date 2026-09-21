@@ -73,17 +73,15 @@ class FoundryResponsesChatModel:
             raise ProviderError(
                 f"Responses request failed for Foundry model {self.model_name!r}: {exc}"
             ) from exc
-        content = _response_text(response)
-        if not content.strip():
-            incomplete_reason = _response_incomplete_reason(response)
-            if incomplete_reason is not None:
-                raise ProviderError(
-                    "Responses request returned no assistant text "
-                    f"(status=incomplete, reason={incomplete_reason}). "
-                    "Increase --output-token-limit or use a non-reasoning chat model."
-                )
+        incomplete_reason = _response_incomplete_reason(response)
+        if incomplete_reason is not None:
+            raise ProviderError(
+                "Responses request returned incomplete output "
+                f"(status=incomplete, reason={incomplete_reason}). "
+                "Increase --output-token-limit or use a non-reasoning chat model."
+            )
         return AIMessage(
-            content=content,
+            content=_response_text(response),
             response_metadata={
                 "model_name": _response_model(response) or self.model_name
             },

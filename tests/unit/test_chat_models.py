@@ -133,10 +133,17 @@ def test_foundry_responses_chat_model_extracts_dict_shaped_output() -> None:
     }
 
 
-def test_foundry_responses_chat_model_reports_incomplete_empty_response() -> None:
+@pytest.mark.parametrize(
+    "output_text",
+    ["", "RAG uses retrieved context. [C1] It also requires"],
+    ids=["empty", "truncated-with-citation"],
+)
+def test_foundry_responses_chat_model_rejects_incomplete_response(
+    output_text: str,
+) -> None:
     client = FakeFoundryClient(
         response=SimpleNamespace(
-            output_text="",
+            output_text=output_text,
             model="gpt-4o-mini",
             status="incomplete",
             incomplete_details=SimpleNamespace(reason="max_output_tokens"),
@@ -150,7 +157,7 @@ def test_foundry_responses_chat_model_reports_incomplete_empty_response() -> Non
     )
     chat_model = FoundryResponsesChatModel(model="gpt-4o-mini", client=client)
 
-    with pytest.raises(ProviderError, match="max_output_tokens"):
+    with pytest.raises(ProviderError, match="status=incomplete, reason=max_output_tokens"):
         chat_model.invoke([HumanMessage(content="What is RAG?")])
 
 
@@ -181,6 +188,7 @@ class FakeResponsesResource:
         return SimpleNamespace(
             output_text="RAG uses retrieved context. [chunk-1]",
             model=kwargs["model"],
+            status="completed",
             usage=SimpleNamespace(
                 input_tokens=15,
                 output_tokens=7,
