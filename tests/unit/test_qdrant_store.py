@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -77,11 +78,11 @@ def test_upsert_chunks_maps_chunk_payload_and_stable_point_ids() -> None:
         collection="rag_quality_lab",
         chunks=[chunk],
         vectors=[[0, 1, 2]],
+        index_fingerprint="test-fingerprint",
     )
 
     assert count == 1
-    assert client.calls[0][0] == "upsert"
-    call = client.calls[0][1]
+    call = next(kwargs for operation, kwargs in client.calls if operation == "upsert")
     assert call["collection_name"] == "rag_quality_lab"
     assert call["wait"] is True
     point = call["points"][0]
@@ -91,6 +92,7 @@ def test_upsert_chunks_maps_chunk_payload_and_stable_point_ids() -> None:
     )
     assert point.vector == [0.0, 1.0, 2.0]
     assert point.payload == {
+        "index_fingerprint": "test-fingerprint",
         "chunk_id": "rag-overview:0000:overview:abcdef123456",
         "source_slug": "rag-overview",
         "category": "RAG and context handling",
@@ -116,10 +118,15 @@ def test_upsert_chunks_rejects_vector_count_mismatch() -> None:
             collection="rag_quality_lab",
             chunks=[_chunk()],
             vectors=[],
+            index_fingerprint="test-fingerprint",
         )
 
 
 class FakeQdrantClient:
+    def count(self, **kwargs: Any) -> SimpleNamespace:
+        self._record("count", **kwargs)
+        return SimpleNamespace(count=0)
+
     def __init__(
         self,
         *,

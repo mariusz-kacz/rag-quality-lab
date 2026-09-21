@@ -90,8 +90,9 @@ class QdrantStore:
         collection: str,
         chunks: Sequence[Chunk],
         vectors: Sequence[Sequence[float]],
+        index_fingerprint: str,
     ) -> int:
-        """Upsert chunk vectors and metadata payloads into Qdrant."""
+        """Upsert a complete corpus only into an empty or compatible index."""
 
         clean_collection = _clean_collection(collection)
         if len(chunks) != len(vectors):
@@ -101,11 +102,36 @@ class QdrantStore:
         if not chunks:
             return 0
 
+        if not index_fingerprint.strip():
+            raise QdrantStoreError("index_fingerprint must be non-empty")
+        incompatible = self._call(
+            "check Qdrant index fingerprint",
+            self._client.count,
+            collection_name=clean_collection,
+            count_filter=models.Filter(
+                must_not=[
+                    models.FieldCondition(
+                        key="index_fingerprint",
+                        match=models.MatchValue(value=index_fingerprint),
+                    )
+                ]
+            ),
+            exact=True,
+        )
+        if incompatible.count:
+            raise QdrantStoreError(
+                f"Collection {clean_collection!r} contains an incompatible or missing "
+                "index fingerprint. Run corpus ingest --recreate to rebuild it."
+            )
+
         points = [
             models.PointStruct(
                 id=_point_id_for_chunk(chunk),
                 vector=[float(value) for value in vector],
-                payload=_payload_for_chunk(chunk),
+                payload={
+                    **_payload_for_chunk(chunk),
+                    "index_fingerprint": index_fingerprint,
+                },
             )
             for chunk, vector in zip(chunks, vectors, strict=True)
         ]

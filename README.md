@@ -84,7 +84,9 @@ uv run raglab --env-file .env.local corpus inspect
 uv run raglab --env-file .env.local corpus ingest
 ```
 
-Ingestion validates the manifest and snapshots, deterministically creates chunks, embeds them, creates the configured Qdrant collection if needed, and upserts the vectors. Add `--recreate` to replace an existing collection before ingestion.
+Ingestion validates the manifest and snapshots, deterministically creates chunks, embeds them, creates the configured Qdrant collection if needed, and upserts the vectors. Each point stores an index fingerprint covering the complete chunk set and metadata, chunk-size setting, embedding deployment/model, and vector dimensions. Unchanged ingestion is repeatable; an existing point with a different or missing fingerprint blocks the write and directs you to `--recreate`. Use that flag to replace the disposable collection after changing index inputs or when upgrading a collection created without fingerprints.
+
+Ingest into a collection from one process at a time: the fingerprint check and upsert are separate operations, not a concurrency lock. The check runs after embeddings are generated. A model change hidden behind unchanged deployment/model identifiers and dimensions cannot be detected; explicitly rebuild in that case.
 
 5. Run a routed query:
 
@@ -255,7 +257,7 @@ Run the full test suite:
 uv run pytest
 ```
 
-The unit and integration tests use local fakes at external-service boundaries, so the test suite does not require live Foundry credentials or Qdrant.
+The unit and integration tests use local fakes and the Qdrant client's local mode, so the test suite does not require live Foundry credentials or a Qdrant server. Ingestion regressions cover unchanged retries, incompatible updates, explicit rebuilds in memory, and fingerprint persistence after reopening disk storage. With qdrant-client 1.18.0 on Windows, local disk collection recreation can retain points; rebuild tests therefore use memory, while disk tests verify persistence. The application uses server-backed Qdrant via `QDRANT_URL`.
 
 ## Scope
 

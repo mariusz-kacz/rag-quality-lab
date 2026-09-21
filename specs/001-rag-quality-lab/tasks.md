@@ -126,7 +126,6 @@
 - [X] T038 [US2] Keep hybrid lexical/vector retrieval out of the MVP runtime contract and document it only as a future extension
 - [X] T039 [US2] Implement bounded context builder with included chunks, excluded chunks, estimated token totals, and output token limits in src/rag_quality_lab/rag/context.py
 - [X] T040 [US2] Implement context-constrained LangChain answer generation and explicit no-answer prompt handling in src/rag_quality_lab/rag/generation.py
-- [X] T040.1 [US2] Fix Finding 2: accept only the complete normalized refusal sentence required by the prompt (`NO_ANSWER_TEXT`); validate alternative wording and responses with additional text, and verify persisted citation errors and no-answer scoring. Depends on T040, T041, T043, and T052. Extended the canonical generation and query-workflow tests before changing src/rag_quality_lab/rag/generation.py; reproduced false refusal classification for both appended answers and alternative refusal wording, then verified 39 focused tests, 170 full-suite tests, Ruff, and the source/wheel build.
 - [X] T041 [US2] Implement citation extraction and validation against selected context chunks in src/rag_quality_lab/rag/citations.py
 - [X] T042 [US2] Implement query trace creation, schema validation, persistence, and trace loading in src/rag_quality_lab/rag/traces.py
 - [X] T043 [US2] Implement end-to-end query pipeline sequence question -> route -> retrieve -> context -> generate/no-answer -> validate -> trace in src/rag_quality_lab/rag/pipeline.py

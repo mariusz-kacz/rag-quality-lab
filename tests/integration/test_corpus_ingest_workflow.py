@@ -1,15 +1,124 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
+from contextlib import closing
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import pytest
+from qdrant_client import QdrantClient
 
+from rag_quality_lab.corpus.ingest import ingest_corpus
+from rag_quality_lab.providers import EmbeddingResponse
+from rag_quality_lab.retrieval.qdrant_store import QdrantStore, QdrantStoreError
 from rag_quality_lab.schemas import REQUIRED_KNOWLEDGE_CATEGORIES, Chunk
 
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "content", "chunk_size", "source_removed", "metadata",
+        "model", "dimensions", "legacy",
+    ],
+)
+def test_ingestion_requires_explicit_rebuild_for_incompatible_index(
+    temporary_corpus: dict[str, Path],
+    fake_embedding_provider: Any,
+    change: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root = temporary_corpus["root"].parent
+    kwargs = {
+        "project_root": project_root,
+        "collection": "rag_quality_lab",
+        "embedding_provider": fake_embedding_provider,
+    }
+    with closing(QdrantClient(":memory:")) as client:
+        original = ingest_corpus(**kwargs, qdrant_store=QdrantStore(client=client))
+        original_points, _ = client.scroll(
+            "rag_quality_lab", limit=1000, with_vectors=True
+        )
+        assert len(original_points) == original.chunk_count
+
+        store = QdrantStore(client=client)
+        ingest_corpus(**kwargs, qdrant_store=store)
+        assert client.count("rag_quality_lab", exact=True).count == original.chunk_count
+
+        if change == "content":
+            source = temporary_corpus["sources"] / "source-01.md"
+            source.write_text("# Changed\n\nReplacement content.\n", encoding="utf-8")
+        elif change == "chunk_size":
+            kwargs["max_chunk_tokens"] = 5
+        elif change in {"source_removed", "metadata"}:
+            manifest_path = temporary_corpus["manifest"]
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if change == "source_removed":
+                manifest["sources"].pop()
+            else:
+                manifest["sources"][0]["pinned_version"] = "changed-revision"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        elif change in {"model", "dimensions"}:
+            embed_texts = fake_embedding_provider.embed_texts
+
+            def changed_embeddings(texts: Sequence[str]) -> EmbeddingResponse:
+                response = embed_texts(texts)
+                if change == "model":
+                    return replace(response, model="changed-model")
+                return replace(
+                    response, vectors=[vector + [1.0] for vector in response.vectors]
+                )
+
+            monkeypatch.setattr(fake_embedding_provider, "embed_texts", changed_embeddings)
+        else:
+            client.delete_payload(
+                "rag_quality_lab",
+                keys=["index_fingerprint"],
+                points=[original_points[0].id],
+                wait=True,
+            )
+
+        before, _ = client.scroll("rag_quality_lab", limit=1000, with_vectors=True)
+        with pytest.raises(QdrantStoreError, match="--recreate"):
+            ingest_corpus(**kwargs, qdrant_store=store)
+        after, _ = client.scroll("rag_quality_lab", limit=1000, with_vectors=True)
+        assert after == before
+
+        rebuilt = ingest_corpus(**kwargs, qdrant_store=store, recreate=True)
+        points, _ = client.scroll("rag_quality_lab", limit=1000)
+        assert {point.payload["chunk_id"] for point in points} == {
+            chunk.chunk_id for chunk in rebuilt.ingested_chunks
+        }
+        ingest_corpus(**kwargs, qdrant_store=store)
+        assert client.count("rag_quality_lab", exact=True).count == rebuilt.chunk_count
+
+
+def test_index_fingerprint_survives_qdrant_client_restart(
+    temporary_corpus: dict[str, Path],
+    fake_embedding_provider: Any,
+) -> None:
+    project_root = temporary_corpus["root"].parent
+    storage_path = project_root / "qdrant"
+    kwargs = {
+        "project_root": project_root,
+        "collection": "rag_quality_lab",
+        "embedding_provider": fake_embedding_provider,
+    }
+    with closing(QdrantClient(path=str(storage_path))) as client:
+        original = ingest_corpus(**kwargs, qdrant_store=QdrantStore(client=client))
+
+    with closing(QdrantClient(path=str(storage_path))) as client:
+        store = QdrantStore(client=client)
+        ingest_corpus(**kwargs, qdrant_store=store)
+        source = temporary_corpus["sources"] / "source-01.md"
+        source.write_text("# Changed\n\nReplacement content.\n", encoding="utf-8")
+        with pytest.raises(QdrantStoreError, match="--recreate"):
+            ingest_corpus(**kwargs, qdrant_store=store)
+        assert client.count("rag_quality_lab", exact=True).count == original.chunk_count
 
 
 def test_clean_corpus_inspection_and_fake_qdrant_ingestion_workflow(
@@ -110,6 +219,7 @@ class FakeQdrantStore:
         collection: str,
         chunks: Sequence[Chunk],
         vectors: Sequence[Sequence[float]],
+        index_fingerprint: str,
     ) -> int:
         self.operations.append("upsert_chunks")
         assert collection == "rag_quality_lab"

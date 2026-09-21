@@ -58,6 +58,7 @@ class RecordingStore:
         collection: str,
         chunks: Sequence[Chunk],
         vectors: Sequence[Sequence[float]],
+        index_fingerprint: str,
     ) -> int:
         self.operations.append("upsert_chunks")
         return len(chunks)

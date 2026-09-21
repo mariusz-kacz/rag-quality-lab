@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 from collections.abc import Sequence
 from pathlib import Path
@@ -61,6 +63,7 @@ class ChunkVectorStore(Protocol):
         collection: str,
         chunks: Sequence[Chunk],
         vectors: Sequence[Sequence[float]],
+        index_fingerprint: str,
     ) -> int: ...
 
 
@@ -112,6 +115,13 @@ def ingest_corpus(
         collection=target_collection,
         chunks=chunks,
         vectors=vectors,
+        index_fingerprint=_index_fingerprint(
+            chunks,
+            max_chunk_tokens=max_chunk_tokens,
+            deployment=provider.deployment,
+            model=embedding_response.model or provider.deployment,
+            vector_size=vector_size,
+        ),
     )
     if upserted_count != len(chunks):
         raise IngestionError(
@@ -127,6 +137,31 @@ def ingest_corpus(
         ingested_chunks=chunks,
         validation_errors=[],
     )
+
+
+def _index_fingerprint(
+    chunks: Sequence[Chunk],
+    *,
+    max_chunk_tokens: int,
+    deployment: str,
+    model: str,
+    vector_size: int,
+) -> str:
+    """Identify the complete index inputs independently of manifest ordering."""
+
+    inputs = {
+        "version": 1,
+        "chunks": [
+            chunk.model_dump(mode="json")
+            for chunk in sorted(chunks, key=lambda chunk: chunk.chunk_id)
+        ],
+        "max_chunk_tokens": max_chunk_tokens,
+        "deployment": deployment,
+        "model": model,
+        "vector_size": vector_size,
+    }
+    serialized = json.dumps(inputs, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 def _load_validated_inputs(
