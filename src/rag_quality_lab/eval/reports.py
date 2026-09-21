@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from contextlib import ExitStack
+from functools import partial
 from pathlib import Path
 from typing import Any, Protocol, TypedDict
 
@@ -125,24 +127,41 @@ def run_evaluation(
         else artifact_directory / "traces" / retrieval_mode
     )
     golden_set = load_golden_set(golden_file)
-    runner = query_runner or _run_query_for_evaluation
 
     execution_results: list[EvaluationQueryResult] = []
 
-    for question in golden_set.questions:
-        result = _execute_golden_question(
-            runner,
-            question,
-            mode=retrieval_mode,
-            top_k=top_k,
-            max_context_tokens=max_context_tokens,
-            output_token_limit=output_token_limit,
-            trace_dir=trace_directory,
-            config=config,
-        )
-        trace = result["trace"]
-        trace_path = result["trace_path"]
-        execution_results.append({"trace": trace, "trace_path": trace_path})
+    with ExitStack() as resources:
+        runner = query_runner
+        if runner is None:
+            from rag_quality_lab.rag.pipeline import resolve_query_components, run_query
+
+            try:
+                components = resources.enter_context(
+                    resolve_query_components(retrieval_mode=retrieval_mode, config=config)
+                )
+            except Exception as exc:
+                raise EvaluationRunError(f"Evaluation component setup failed: {exc}") from exc
+            runner = partial(
+                run_query,
+                router=components.router,
+                retriever=components.retriever,
+                chat_model=components.chat_model,
+            )
+
+        for question in golden_set.questions:
+            result = _execute_golden_question(
+                runner,
+                question,
+                mode=retrieval_mode,
+                top_k=top_k,
+                max_context_tokens=max_context_tokens,
+                output_token_limit=output_token_limit,
+                trace_dir=trace_directory,
+                config=config,
+            )
+            trace = result["trace"]
+            trace_path = result["trace_path"]
+            execution_results.append({"trace": trace, "trace_path": trace_path})
 
     traces = [result["trace"] for result in execution_results]
     try:
@@ -448,30 +467,6 @@ def _render_comparison_notes(comparison: Mapping[str, Any]) -> str:
         return "No metric-specific notes."
     unique_notes = list(dict.fromkeys(str(note) for note in notes))
     return "\n".join(f"- {note}" for note in unique_notes)
-
-
-def _run_query_for_evaluation(
-    question: Question | str,
-    *,
-    mode: RetrievalMode,
-    top_k: int,
-    max_context_tokens: int,
-    output_token_limit: int,
-    config: AppConfig,
-    trace_dir: Path | None = None,
-    **_: Any,
-) -> Mapping[str, object]:
-    from rag_quality_lab.rag.pipeline import run_query
-
-    return run_query(
-        question,
-        mode=mode,
-        top_k=top_k,
-        max_context_tokens=max_context_tokens,
-        output_token_limit=output_token_limit,
-        config=config,
-        trace_dir=trace_dir or Path("artifacts/traces") / mode,
-    )
 
 
 def _execute_golden_question(

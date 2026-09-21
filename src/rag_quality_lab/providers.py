@@ -40,6 +40,8 @@ class EmbeddingsResource(Protocol):
 class OpenAICompatibleClient(Protocol):
     embeddings: EmbeddingsResource
 
+    def close(self) -> None: ...
+
 
 def create_foundry_openai_client(config: FoundryOpenAIConfig) -> OpenAICompatibleClient:
     """Create an OpenAI-compatible client for a Foundry project endpoint."""
@@ -63,7 +65,14 @@ class FoundryOpenAIEmbeddingProvider:
     ) -> None:
         config.require_embedding()
         self._model = _required(config.embedding_model, "embedding model")
-        self._client = client or create_foundry_openai_client(config)
+        self._owns_client = client is None
+        self._client = create_foundry_openai_client(config) if client is None else client
+
+    def close(self) -> None:
+        """Close a factory-created client once; injected clients remain caller-owned."""
+        if self._owns_client:
+            self._client.close()
+            self._owns_client = False
 
     @property
     def deployment(self) -> str:
@@ -121,7 +130,10 @@ def _foundry_api_key(config: FoundryOpenAIConfig) -> str:
         ) from exc
 
     credential = DefaultAzureCredential()
-    return credential.get_token("https://cognitiveservices.azure.com/.default").token
+    try:
+        return credential.get_token("https://cognitiveservices.azure.com/.default").token
+    finally:
+        credential.close()
 
 
 def _clean_text(text: str) -> str:

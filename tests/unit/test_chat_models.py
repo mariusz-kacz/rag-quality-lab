@@ -19,6 +19,24 @@ from rag_quality_lab.providers import ProviderError
 pytestmark = pytest.mark.unit
 
 
+@pytest.mark.parametrize("injected", [False, True])
+def test_chat_model_closes_only_owned_client(monkeypatch, injected):
+    closed = []
+    client = SimpleNamespace(close=lambda: closed.append(True))
+    monkeypatch.setattr(
+        "rag_quality_lab.chat_models.create_foundry_openai_client", lambda config: client
+    )
+    model = (
+        FoundryResponsesChatModel(model="test-chat", client=client)
+        if injected else create_foundry_chat_model(foundry_config())
+    )
+
+    model.close()
+    model.close()
+
+    assert closed == ([] if injected else [True])
+
+
 def foundry_config(*, chat_model: str | None = "gpt-4o-mini") -> FoundryOpenAIConfig:
     return FoundryOpenAIConfig(
         base_url="https://example.services.ai.azure.com/api/projects/proj/openai/v1",

@@ -39,7 +39,17 @@ class QdrantStore:
     ) -> None:
         if client is None and config is None:
             raise QdrantStoreError("QdrantStore requires a config or client")
-        self._client = client or create_qdrant_client(config)  # type: ignore[arg-type]
+        self._owns_client = client is None
+        if client is None:
+            assert config is not None
+            client = create_qdrant_client(config)
+        self._client = client
+
+    def close(self) -> None:
+        """Close a factory-created client once; injected clients remain caller-owned."""
+        if self._owns_client:
+            self._client.close()
+            self._owns_client = False
 
     def check_available(self) -> None:
         """Verify that Qdrant is reachable before writes begin."""

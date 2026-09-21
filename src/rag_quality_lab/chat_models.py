@@ -21,6 +21,7 @@ def create_foundry_chat_model(
         model=config.chat_model or "",
         client=create_foundry_openai_client(config),
         reasoning_effort=config.reasoning_effort,
+        owns_client=True,
     )
 
 
@@ -33,6 +34,7 @@ class FoundryResponsesChatModel:
         model: str,
         client: Any,
         reasoning_effort: str | None = None,
+        owns_client: bool = False,
     ) -> None:
         self.model_name = model
         self.deployment_name = model
@@ -40,6 +42,13 @@ class FoundryResponsesChatModel:
             reasoning_effort.strip().lower() if reasoning_effort else None
         )
         self._client = client
+        self._owns_client = owns_client
+
+    def close(self) -> None:
+        """Close an owned client once; directly injected clients default to borrowed."""
+        if self._owns_client:
+            self._client.close()
+            self._owns_client = False
 
     def invoke(
         self,

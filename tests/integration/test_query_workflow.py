@@ -230,6 +230,9 @@ def test_no_answer_query_workflow_persists_validation_and_scores_the_response(
 
 
 class FakeRouter:
+    def close(self) -> None:
+        pytest.fail("The query must not close an injected router")
+
     def __init__(self, decision: RouteDecision) -> None:
         self.decision = decision
         self.questions: list[str] = []
@@ -240,6 +243,9 @@ class FakeRouter:
 
 
 class FakeRetriever:
+    def close(self) -> None:
+        pytest.fail("The query must not close an injected retriever")
+
     def __init__(self, results: list[RetrievalResult]) -> None:
         self.results = results
         self.calls: list[dict[str, Any]] = []
@@ -270,6 +276,9 @@ class FakeRetriever:
 
 class FakeChatModel:
     deployment_name = "chat-test"
+
+    def close(self) -> None:
+        pytest.fail("The query must not close an injected chat model")
 
     def __init__(self, content: str) -> None:
         self.content = content

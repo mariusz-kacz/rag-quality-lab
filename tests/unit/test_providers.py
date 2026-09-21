@@ -44,6 +44,52 @@ class FakeEmbeddingsResource:
 class FakeClient:
     def __init__(self) -> None:
         self.embeddings = FakeEmbeddingsResource()
+        self.closed = 0
+
+    def close(self) -> None:
+        self.closed += 1
+
+
+@pytest.mark.parametrize("injected", [False, True])
+def test_embedding_provider_closes_only_owned_client(monkeypatch, injected):
+    client = FakeClient()
+    monkeypatch.setattr(
+        "rag_quality_lab.providers.create_foundry_openai_client", lambda config: client
+    )
+    provider = FoundryOpenAIEmbeddingProvider(
+        foundry_config(), client=client if injected else None
+    )
+
+    provider.close()
+    provider.close()
+
+    assert client.closed == (0 if injected else 1)
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_entra_credential_is_closed_after_token_acquisition(monkeypatch, fails):
+    from rag_quality_lab.providers import _foundry_api_key
+
+    class Credential:
+        closed = False
+
+        def get_token(self, scope):
+            if fails:
+                raise RuntimeError("token failed")
+            return SimpleNamespace(token="test-token")
+
+        def close(self):
+            self.closed = True
+
+    credential = Credential()
+    monkeypatch.setattr("azure.identity.DefaultAzureCredential", lambda: credential)
+    config = foundry_config().model_copy(update={"api_key": None})
+    if fails:
+        with pytest.raises(RuntimeError, match="token failed"):
+            _foundry_api_key(config)
+    else:
+        assert _foundry_api_key(config) == "test-token"
+    assert credential.closed
 
 
 class FailingEmbeddingsResource:

@@ -189,6 +189,10 @@ uv run raglab eval compare artifacts/eval/eval-baseline-vector.json artifacts/ev
 
 Evaluation defaults are `--golden golden/questions.json`, `--artifacts-dir artifacts/eval`, `--top-k 3`, `--max-context-tokens 1000`, and `--output-token-limit 800`. Commands with `--json` emit machine-readable output; note that ingestion JSON includes every ingested chunk and can be large.
 
+Each default evaluation run shares one embedding provider, chat model, store, and (for routed retrieval) router across its questions. The router caches the fixed category embeddings for that run; question context, answers, and traces remain separate. Owned clients close when query execution finishes or fails, including partial setup failures. A standalone query uses the same cleanup policy. Injected components and clients remain caller-owned.
+
+Entra authentication still takes a token snapshot at client creation and closes the temporary credential afterward. Clients are scoped to a query or evaluation run; a run exceeding the token lifetime can require restarting. Long-lived client reuse would require authentication refresh support.
+
 ## Implementation
 
 The runtime path is deliberately small and inspectable:

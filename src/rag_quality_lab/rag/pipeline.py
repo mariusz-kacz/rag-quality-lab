@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, TypedDict
@@ -93,59 +95,59 @@ def run_query(
     if top_k < 1:
         raise ValueError("top_k must be >= 1")
 
-    components = _resolve_components(
+    with resolve_query_components(
         retrieval_mode=retrieval_mode,
         config=config,
         router=router,
         retriever=retriever,
         chat_model=chat_model,
-    )
-    question_record = (
-        question.model_copy(update={"text": clean_question})
-        if isinstance(question, Question)
-        else Question(text=clean_question)
-    )
-    route_decision = (
-        components.router.route(clean_question)
-        if retrieval_mode == "routed-vector" and components.router is not None
-        else None
-    )
-    retrieval = components.retriever.retrieve(
-        question=clean_question,
-        mode=retrieval_mode,
-        top_k=top_k,
-        route_decision=route_decision,
-    )
-    selected_context = build_context(
-        _context_chunks_from_results(retrieval.results),
-        max_context_tokens=max_context_tokens,
-        output_token_limit=output_token_limit,
-        prompt_overhead_tokens=prompt_overhead_tokens,
-    )
-    generation = generate_answer(
-        question=question_record,
-        selected_context=selected_context,
-        chat_model=components.chat_model,
-    )
-    citation_validation = _citation_validation_for_answer(
-        generation.answer.is_no_answer,
-        generation.answer.answer_text,
-        selected_context.included_chunks,
-    )
-    trace = QueryTrace(
-        trace_id=new_trace_id(),
-        question=question_record,
-        retrieval_mode=retrieval_mode,
-        route_decision=route_decision,
-        retrieval_results=retrieval.results,
-        searched_categories=retrieval.searched_categories,
-        context_build=selected_context,
-        answer_result=generation.answer,
-        citation_validation=citation_validation,
-        model_usage=generation.model_usage,
-    )
-    trace_path = save_trace(trace, trace_dir)
-    return {"trace": trace, "trace_path": trace_path}
+    ) as components:
+        question_record = (
+            question.model_copy(update={"text": clean_question})
+            if isinstance(question, Question)
+            else Question(text=clean_question)
+        )
+        route_decision = (
+            components.router.route(clean_question)
+            if retrieval_mode == "routed-vector" and components.router is not None
+            else None
+        )
+        retrieval = components.retriever.retrieve(
+            question=clean_question,
+            mode=retrieval_mode,
+            top_k=top_k,
+            route_decision=route_decision,
+        )
+        selected_context = build_context(
+            _context_chunks_from_results(retrieval.results),
+            max_context_tokens=max_context_tokens,
+            output_token_limit=output_token_limit,
+            prompt_overhead_tokens=prompt_overhead_tokens,
+        )
+        generation = generate_answer(
+            question=question_record,
+            selected_context=selected_context,
+            chat_model=components.chat_model,
+        )
+        citation_validation = _citation_validation_for_answer(
+            generation.answer.is_no_answer,
+            generation.answer.answer_text,
+            selected_context.included_chunks,
+        )
+        trace = QueryTrace(
+            trace_id=new_trace_id(),
+            question=question_record,
+            retrieval_mode=retrieval_mode,
+            route_decision=route_decision,
+            retrieval_results=retrieval.results,
+            searched_categories=retrieval.searched_categories,
+            context_build=selected_context,
+            answer_result=generation.answer,
+            citation_validation=citation_validation,
+            model_usage=generation.model_usage,
+        )
+        trace_path = save_trace(trace, trace_dir)
+        return {"trace": trace, "trace_path": trace_path}
 
 
 @dataclass(frozen=True)
@@ -210,48 +212,45 @@ class QdrantQueryRetriever:
         )
 
 
-def _resolve_components(
+@contextmanager
+def resolve_query_components(
     *,
     retrieval_mode: str,
-    config: AppConfig | None,
-    router: QueryRouter | None,
-    retriever: QueryRetriever | None,
-    chat_model: ChatModel | None,
-) -> _PipelineComponents:
-    if (
-        retriever is not None
-        and chat_model is not None
-        and (retrieval_mode == "baseline-vector" or router is not None)
-    ):
-        return _PipelineComponents(
-            router=router,
-            retriever=retriever,
-            chat_model=chat_model,
-        )
+    config: AppConfig | None = None,
+    router: QueryRouter | None = None,
+    retriever: QueryRetriever | None = None,
+    chat_model: ChatModel | None = None,
+) -> Iterator[_PipelineComponents]:
+    """Borrow injected components; close created resources when the scope exits.
 
-    config = config or load_app_config()
-    embedding_provider = FoundryOpenAIEmbeddingProvider(config.foundry_openai)
-    chat_model = chat_model or create_foundry_chat_model(config.foundry_openai)
-
-    return _PipelineComponents(
-        router=(
-            router
-            or EmbeddingCategoryRouter(
-                embedding_provider,
-                threshold=config.runtime.router_confidence_threshold,
-            )
-            if retrieval_mode == "routed-vector"
-            else None
-        ),
-        retriever=retriever
-        or QdrantQueryRetriever(
-            collection=config.qdrant.collection,
-            embedding_provider=embedding_provider,
-            store=QdrantStore(config.qdrant),
-            category_score_margin=config.runtime.router_category_margin,
-        ),
-        chat_model=chat_model,
-    )
+    An evaluation keeps this scope open across questions so the router can reuse
+    its category embeddings. Query-specific state stays inside ``run_query``.
+    """
+    needs_router = retrieval_mode == "routed-vector" and router is None
+    with ExitStack() as resources:
+        if needs_router or retriever is None or chat_model is None:
+            config = config or load_app_config()
+            if needs_router or retriever is None:
+                embedding_provider = FoundryOpenAIEmbeddingProvider(config.foundry_openai)
+                resources.callback(embedding_provider.close)
+            if chat_model is None:
+                chat_model = create_foundry_chat_model(config.foundry_openai)
+                resources.callback(chat_model.close)
+            if needs_router:
+                router = EmbeddingCategoryRouter(
+                    embedding_provider,
+                    threshold=config.runtime.router_confidence_threshold,
+                )
+            if retriever is None:
+                store = QdrantStore(config.qdrant)
+                resources.callback(store.close)
+                retriever = QdrantQueryRetriever(
+                    collection=config.qdrant.collection,
+                    embedding_provider=embedding_provider,
+                    store=store,
+                    category_score_margin=config.runtime.router_category_margin,
+                )
+        yield _PipelineComponents(router=router, retriever=retriever, chat_model=chat_model)
 
 
 def _selected_routed_categories(

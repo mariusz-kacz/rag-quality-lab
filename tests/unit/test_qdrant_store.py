@@ -14,6 +14,26 @@ from rag_quality_lab.schemas import Chunk, Provenance
 pytestmark = pytest.mark.unit
 
 
+@pytest.mark.parametrize("injected", [False, True])
+def test_store_closes_only_owned_client(monkeypatch, injected):
+    from rag_quality_lab.config import QdrantConfig
+
+    closed = []
+    client = SimpleNamespace(close=lambda: closed.append(True))
+    monkeypatch.setattr(
+        "rag_quality_lab.retrieval.qdrant_store.create_qdrant_client", lambda config: client
+    )
+    store = QdrantStore(
+        QdrantConfig(url="http://localhost:6333", collection="test"),
+        client=client if injected else None,
+    )
+
+    store.close()
+    store.close()
+
+    assert closed == ([] if injected else [True])
+
+
 def test_check_available_calls_qdrant_collections_endpoint() -> None:
     client = FakeQdrantClient()
     store = QdrantStore(client=client)
