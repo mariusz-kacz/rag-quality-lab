@@ -24,6 +24,13 @@ dependencies = [
 [project.scripts]
 raglab = "rag_quality_lab.cli:app"
 
+[project.optional-dependencies]
+eval = [
+    "ir-measures==0.4.3",
+    "langchain-community==0.4.1",
+    "ragas==0.4.3",
+]
+
 [tool.pytest.ini_options]
 minversion = "8.2"
 testpaths = ["tests"]
