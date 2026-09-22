@@ -152,12 +152,10 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("refusal_only", [True, False])
-def test_no_answer_query_workflow_persists_validation_and_scores_the_response(
+def test_no_answer_query_workflow_persists_validation(
     tmp_path: Path,
     refusal_only: bool,
 ) -> None:
-    from rag_quality_lab.eval.metrics import calculate_no_answer_accuracy
-
     run_query, load_trace = _query_workflow_api()
     trace_dir = tmp_path / "traces"
     router = FakeRouter(fallback_route())
@@ -218,12 +216,12 @@ def test_no_answer_query_workflow_persists_validation_and_scores_the_response(
     assert loaded_trace.citation_validation.cited_chunk_ids == citations
     assert loaded_trace.citation_validation.invalid_citations == citations
     errors = (
-        [] if refusal_only
+        []
+        if refusal_only
         else ["Citation C999 from answer text not found in selected context"]
     )
     assert loaded_trace.answer_result.validation_errors == errors
     assert loaded_trace.citation_validation.validation_errors == errors
-    assert calculate_no_answer_accuracy([question], [loaded_trace]) == float(refusal_only)
     assert trace.model_usage is not None
     assert trace.model_usage.input_tokens == 20
     assert trace.model_usage.output_tokens == 9

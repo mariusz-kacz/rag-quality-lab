@@ -1,6 +1,6 @@
 # RAG Quality Lab
 
-RAG Quality Lab is a CLI-first Python retrieval-quality engineering lab for inspectable and reproducible experiments over a pinned corpus and a small curated benchmark. It keeps the corpus, golden questions, retrieval decisions, context budgets, citations, traces, and evaluation reports reviewable and reproducible.
+RAG Quality Lab is a CLI-first Python retrieval-quality engineering lab for inspectable and reproducible experiments over a pinned corpus and a small curated benchmark. It keeps the corpus, golden questions, retrieval decisions, context budgets, citations, and traces reviewable and reproducible.
 
 The lab uses a curated local corpus, Azure AI Foundry models through an OpenAI-compatible project endpoint, and Qdrant for vector storage. It supports two retrieval modes:
 
@@ -15,7 +15,6 @@ The lab uses a curated local corpus, Azure AI Foundry models through an OpenAI-c
 - `corpus/categories.json`: the five routing categories.
 - `golden/questions.json`: answerable, no-answer, and boundary cases used by evaluation.
 - `artifacts/traces/`: query traces.
-- `artifacts/eval/`: evaluation JSON, Markdown reports, and evaluation traces.
 - `tests/`: unit, contract, and integration tests.
 
 ## Prerequisites
@@ -96,18 +95,6 @@ uv run raglab --env-file .env.local query "Why should retrieved context be treat
 
 The command prints the answer and citations, then writes a trace to `artifacts/traces/trace-<id>.json`.
 
-6. Run the golden-set evaluation:
-
-```console
-uv run raglab --env-file .env.local eval run --mode routed-vector
-```
-
-This evaluates all questions in `golden/questions.json` and writes:
-
-- `artifacts/eval/eval-routed-vector.json`
-- `artifacts/eval/eval-routed-vector.md`
-- per-question traces under `artifacts/eval/traces/routed-vector/`
-
 Stop the quickstart Qdrant container when finished:
 
 ```console
@@ -128,12 +115,12 @@ Variables already present in the process environment take precedence over values
 | --- | --- | --- |
 | `FOUNDRY_OPENAI_BASE_URL` | Live model commands | Foundry project OpenAI v1 base URL. Endpoint suffixes such as `/responses` are normalized away. |
 | `FOUNDRY_API_KEY` | No | Foundry project key. When empty, the provider obtains an Entra ID token through `DefaultAzureCredential`. |
-| `FOUNDRY_EMBEDDING_MODEL` | Ingest, query, evaluation | Embedding model deployment name passed as the OpenAI `model`. |
-| `FOUNDRY_CHAT_MODEL` | Query, evaluation | Chat model deployment name passed to the OpenAI Responses API. |
+| `FOUNDRY_EMBEDDING_MODEL` | Ingest, query | Embedding model deployment name passed as the OpenAI `model`. |
+| `FOUNDRY_CHAT_MODEL` | Query | Chat model deployment name passed to the OpenAI Responses API. |
 | `FOUNDRY_REASONING_EFFORT` | No | Optional reasoning effort forwarded to the Responses API. |
-| `QDRANT_URL` | Ingest, query, evaluation | Qdrant HTTP URL. |
+| `QDRANT_URL` | Ingest, query | Qdrant HTTP URL. |
 | `QDRANT_API_KEY` | No | Qdrant API key for a secured or hosted instance. |
-| `RAGLAB_QDRANT_COLLECTION` | Ingest, query, evaluation | Collection used by the query pipeline and by ingestion unless `--collection` overrides it. |
+| `RAGLAB_QDRANT_COLLECTION` | Ingest, query | Collection used by the query pipeline and by ingestion unless `--collection` overrides it. |
 | `RAGLAB_ROUTER_CONFIDENCE_THRESHOLD` | No | Removes category filtering when the top similarity is below this threshold; default `0.18`. |
 | `RAGLAB_ROUTER_CATEGORY_MARGIN` | No | Includes categories whose score is within this margin of the winning route; default `0.15`. |
 
@@ -179,19 +166,12 @@ uv run raglab trace inspect artifacts/traces/<trace-id>.json
 uv run raglab trace inspect artifacts/traces/<trace-id>.json --json
 ```
 
-Evaluate one mode, then compare baseline and routed artifacts:
+## Evaluation status
 
-```console
-uv run raglab --env-file .env.local eval run --mode baseline-vector
-uv run raglab --env-file .env.local eval run --mode routed-vector
-uv run raglab eval compare artifacts/eval/eval-baseline-vector.json artifacts/eval/eval-routed-vector.json --markdown artifacts/eval/comparison.md
-```
-
-Evaluation defaults are `--golden golden/questions.json`, `--artifacts-dir artifacts/eval`, `--top-k 3`, `--max-context-tokens 1000`, and `--output-token-limit 800`. Commands with `--json` emit machine-readable output; note that ingestion JSON includes every ingested chunk and can be large.
-
-Each default evaluation run shares one embedding provider, chat model, store, and (for routed retrieval) router across its questions. The router caches the fixed category embeddings for that run; question context, answers, and traces remain separate. Owned clients close when query execution finishes or fails, including partial setup failures. A standalone query uses the same cleanup policy. Injected components and clients remain caller-owned.
-
-Entra authentication still takes a token snapshot at client creation and closes the temporary credential afterward. Clients are scoped to a query or evaluation run; a run exceeding the token lifetime can require restarting. Long-lived client reuse would require authentication refresh support.
+The legacy evaluator, commands, reports, and automated tests have been removed.
+The benchmark cases and labels remain in `golden/questions.json`. Ragas
+configuration and provider adapters are present; the replacement evaluation
+workflow and CLI are not yet implemented. See [the evaluation plan](tasks/plan.md).
 
 ## Implementation
 
@@ -210,50 +190,17 @@ question
   -> Foundry Responses API answer generation
   -> citation validation and persisted trace
 
-golden questions
-  -> traced query pipeline per retrieval mode
-  -> retrieval, routing, citation, no-answer, and budget metrics
-  -> JSON and Markdown reports
 ```
 
 Provider integration is project-owned. The OpenAI SDK handles Foundry embeddings and Responses calls; `langchain-core` supplies prompt and message types used by generation. The project does not use the older Azure-specific environment variables or a `langchain-openai` Azure chat-model client.
 
-Responses marked `incomplete` raise a provider error with the completion status and reason, even when partial text contains citations. Partial answers are rejected before citation validation and cannot count as successful evaluation results.
+Responses marked `incomplete` raise a provider error with the completion status and reason, even when partial text contains citations. Partial answers are rejected before citation validation.
 
 Baseline retrieval bypasses the category router and performs one global vector search, so its trace records `route_decision: null`. Routed retrieval computes category scores; broad questions may search several categories through category-margin routing, while a top score below the confidence threshold removes category filtering and searches the full collection. Context assembly admits retrieved chunks in rank order while they fit the token budget. Generation must cite selected chunks, and citation validation checks that every returned citation maps to included context. This is a context-membership check, not a claim-level factuality judge.
 
-Evaluation traces retain each golden question's `question_id`. Before calculating metrics, the evaluator matches traces by ID and rejects missing, duplicate, unexpected, or unidentified results; reports are then rendered in the original golden-question order. For routed runs, reports identify the top category, all searched categories, and whether global fallback occurred. Baseline reports mark routing as not applicable while retaining the five-category global retrieval scope for comparison. Aggregate metrics include routing accuracy, fallback count and rate, average searched categories, hit rate at k (`hit_rate_at_k`), MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A question counts as a hit when at least one expected source or expected chunk appears in the top-k retrieved results. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
-
 The router uses heuristic embedding-similarity thresholds. Similarity scores are not calibrated probabilities, and the configured threshold and category margin are specific to the current embedding model, category descriptions, and benchmark.
 
-Evaluation resolves environment configuration once per run and passes it, including any explicit category-margin override, into each query. Query traces record `searched_categories` from the retrieval scope, even when no chunks are returned; reports and category-count metrics use that recorded scope. Older traces without this field remain readable, but their scope is unknown and an aggregate category count involving them is unavailable. Injected retrievers return `QueryRetrievalResult` with both retrieved chunks and searched categories. Custom evaluation runners must likewise record scope in their traces.
-
 Only the complete refusal sentence required by the prompt (`NO_ANSWER_TEXT`) is classified as no-answer, after normalizing case, whitespace, and trailing periods. Alternative refusal wording or a refusal prefix followed by additional text goes through normal answer and citation validation.
-
-## Results and limitations
-
-The checked-in reports capture one run over the 26 pinned corpus snapshots and 16 manually curated golden questions. Fourteen questions are eligible for retrieval scoring; the other two are no-answer cases. The results are useful as inspectable evidence about this configuration, not as proof that routed retrieval is generally superior.
-
-| Metric | `baseline-vector` | `routed-vector` |
-| --- | ---: | ---: |
-| Top-category routing accuracy | n/a | 7/12 eligible questions, 58.3% |
-| Global fallback rate | 0/16 questions, 0.0% | 0/16 questions, 0.0% |
-| Retrieval hit rate at k | 12/14 questions, 85.7% | 13/14 questions, 92.9% |
-| Mean reciprocal rank | 0.6071 | 0.6786 |
-| Citation source match | 12/14 questions, 85.7% | 13/14 questions, 92.9% |
-| Answer/no-answer accuracy | 16/16 questions, 100.0% | 16/16 questions, 100.0% |
-| Average context tokens | 609.7 | 597.8 |
-
-Routed retrieval achieved a higher hit rate on the included curated benchmark: 13/14 questions (92.9%) versus 12/14 (85.7%) for baseline retrieval. This one-question difference is useful evidence that category filtering can help under the included corpus, questions, and tight retrieval settings; it is not evidence of general superiority.
-
-Interpretation boundaries:
-
-- The benchmark is small and manually curated. Results apply to the pinned corpus and included golden questions and should not be generalized to other corpora or query distributions.
-- Small differences can represent a single question: here, the 7.1 percentage-point hit-rate difference is exactly one of 14 retrieval-scored questions.
-- Top-category accuracy is lower than retrieval hit rate. Soft multi-category routing can still search the expected category and recover relevant evidence when the top category is incorrect.
-- Global fallback thresholds and the category margin are heuristic embedding-similarity settings, not calibrated probabilities.
-- Retrieval pressure and routing configuration were adjusted while inspecting this same small benchmark. The reports are therefore engineering evidence and regression fixtures, not holdout validation.
-- Citation source match and citation validation remain useful diagnostics, but they do not establish claim-level factual correctness.
 
 ## Development
 
@@ -267,4 +214,4 @@ The unit and integration tests use local fakes and the Qdrant client's local mod
 
 ## Scope
 
-This is a bounded retrieval-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate providers, alternate vector stores, reranking, production authentication, and claim-level answer grading. The narrow scope keeps retrieval behavior, evidence selection, token budgets, citations, and evaluation artifacts easy to inspect.
+This is a bounded retrieval-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate providers, alternate vector stores, reranking, and production authentication. The narrow scope keeps retrieval behavior, evidence selection, token budgets, citations, and traces easy to inspect. Ragas answer-quality evaluation is planned separately.

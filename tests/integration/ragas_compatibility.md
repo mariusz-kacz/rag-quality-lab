@@ -133,3 +133,56 @@ Upstream references: [Ragas experiments](https://docs.ragas.io/en/stable/concept
 [IR providers](https://ir-measur.es/en/latest/providers.html).
 Version-specific conclusions above come from the locked installed source and
 executable fixture, rather than assuming the rolling documentation matches.
+
+## Task 2 provider boundary
+
+`eval/config.py::load_eval_config` resolves the evaluator environment once without
+loading generator or Qdrant configuration. Both evaluator model variables are
+required. It records endpoint fallback and authentication source; `model_dump()`
+excludes the API key entirely. Numeric errors omit supplied values. Endpoint
+normalization handles API operation suffixes, host case and default ports, and
+rejects URL credentials/query strings/fragments. Only an identical normalized
+Foundry endpoint may reuse Foundry credentials. A different endpoint requires
+`RAGLAB_EVAL_API_KEY`. Explicit evaluator credentials do not need Foundry settings.
+
+Use `async with evaluator_scope(config) as evaluator`, construct native Ragas
+metrics with `evaluator.llm` / `evaluator.embeddings`, then invoke each metric via
+`await evaluator.call(metric.ascore, ...)`. This boundary serializes metric calls
+and latches fatal authentication/configuration failures; later calls return a
+sanitized `stopped` error without model traffic. Task 4 must map these outcomes to
+metric statuses and keep deterministic diagnostics available. It must also retain
+the experiment row gate because metric-call serialization alone does not promise
+row execution order. This module does not capture queries or introduce a second
+evaluation runner.
+
+Owned clients use 120-second SDK timeouts and one SDK transport retry by default;
+explicit nonnegative retry counts and positive finite timeouts are supported.
+Instructor structured-output retries remain zero. Entra authentication uses the
+[async Azure bearer-token provider](https://learn.microsoft.com/en-us/python/api/azure-identity/azure.identity.aio?view=azure-python#azure-identity-aio-get-bearer-token-provider)
+as the SDK's callable API key, retaining the credential until scope exit. Tests
+use near-expiry fake tokens with the real Azure provider and real SDK to verify
+refresh and rejection of later calls after token acquisition fails.
+
+An `AsyncExitStack` closes owned clients and credentials on normal exits, partial
+setup, and scoring failures, including continuing cleanup when client close fails.
+Injected clients/credentials remain caller-owned. An injected SDK client must
+match the resolved endpoint, timeout and retry policy; its authentication remains
+the caller's responsibility. Ordinary generator authentication is unchanged.
+
+`EvalProviderError.as_dict()` exposes only fixed safe fields. The extended real
+HTTP failure matrix distinguishes authentication, invalid request configuration,
+timeouts, unavailable providers and malformed structured output. Instructor
+1.17.0 logs raw API exceptions at ERROR before the caller sees them; a temporary
+context-local filter sanitizes its retry diagnostics and SDK request diagnostics
+during evaluator calls. Logs from unrelated tasks are left alone. This was an
+observed leakage regression, not a speculative logging feature.
+
+Evaluator clients use `AsyncOpenAI` directly. Evaluator token/cost bookkeeping
+was removed at the user's request to keep evaluation simple; there is no custom
+SDK subclass, usage collector, or placeholder usage output.
+
+Task 2 validation: 229 eval-enabled tests passed; the isolated no-extra environment
+passed 220 tests with nine optional cases skipped, and core-only imports/help
+passed. Build, Ruff lint and changed-file formatting passed. The original 26
+repository formatting failures remain outside scope. Live deployment suitability,
+run-level artifact/status mapping and CLI integration remain later work.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import json
+import time
 
 import httpx
 import pytest
@@ -32,6 +33,19 @@ def offline_client(respond):
     )
 
 
+def evaluator_config(client):
+    from rag_quality_lab.eval.config import load_eval_config
+
+    return load_eval_config(
+        {
+            "RAGLAB_EVAL_MODEL": "judge-deployment",
+            "RAGLAB_EVAL_EMBEDDING_MODEL": "embedding-deployment",
+            "RAGLAB_EVAL_BASE_URL": str(client.base_url),
+            "RAGLAB_EVAL_API_KEY": "offline-only",
+        }
+    )
+
+
 def completion(content):
     return httpx.Response(
         200,
@@ -53,10 +67,9 @@ def completion(content):
 
 
 def test_real_metrics_experiment_and_local_round_trip(tmp_path):
+    from rag_quality_lab.eval.providers import evaluator_scope
     from ragas import Dataset, experiment
-    from ragas.embeddings import OpenAIEmbeddings
     from ragas.experiment import Experiment
-    from ragas.llms import llm_factory
     from ragas.metrics.collections import AnswerRelevancy, Faithfulness
 
     question = "Where is Warsaw?"
@@ -108,11 +121,14 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
         return completion(json.dumps(output))
 
     async def run():
-        async with offline_client(respond) as client:
-            llm = llm_factory("judge-deployment", client=client, max_retries=0)
-            embeddings = OpenAIEmbeddings(model="embedding-deployment", client=client)
-            faithfulness = Faithfulness(llm=llm)
-            relevancy = AnswerRelevancy(llm=llm, embeddings=embeddings)
+        async with (
+            offline_client(respond) as client,
+            evaluator_scope(evaluator_config(client), client=client) as evaluator,
+        ):
+            faithfulness = Faithfulness(llm=evaluator.llm)
+            relevancy = AnswerRelevancy(
+                llm=evaluator.llm, embeddings=evaluator.embeddings
+            )
             dataset = Dataset(
                 "compatibility", backend="local/jsonl", root_dir=str(tmp_path)
             )
@@ -142,10 +158,15 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
                         values = [None, None]
                         if row["status"] == "ok":
                             results = [
-                                await faithfulness.ascore(
-                                    question, answer, ["Warsaw is in Poland."]
+                                await evaluator.call(
+                                    faithfulness.ascore,
+                                    question,
+                                    answer,
+                                    ["Warsaw is in Poland."],
                                 ),
-                                await relevancy.ascore(question, answer),
+                                await evaluator.call(
+                                    relevancy.ascore, question, answer
+                                ),
                             ]
                             values = [result.value for result in results]
                             assert all(
@@ -225,33 +246,58 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("failure", "expected_requests"),
-    [("authentication", 1), ("unavailable", 2), ("malformed", 1)],
+    ("failure", "expected_requests", "code", "fatal"),
+    [
+        ("authentication", 1, "authentication", True),
+        ("configuration", 1, "configuration", True),
+        ("unavailable", 2, "provider_error", False),
+        ("timeout", 2, "timeout", False),
+        ("malformed", 1, "invalid_output", False),
+    ],
 )
-def test_adapter_has_one_transport_retry_owner(failure, expected_requests):
-    from instructor.core.exceptions import InstructorRetryException
-    from ragas.llms import llm_factory
+def test_adapter_has_one_transport_retry_owner(
+    failure, expected_requests, code, fatal, capsys, caplog
+):
+    from rag_quality_lab.eval.providers import EvalProviderError, evaluator_scope
     from ragas.metrics.collections import Faithfulness
 
     requests = []
 
     def respond(request):
         requests.append(request)
+        if failure == "timeout":
+            raise httpx.ReadTimeout("secret-token", request=request)
         if failure == "malformed":
             return completion("not JSON")
         return httpx.Response(
-            401 if failure == "authentication" else 503,
-            json={"error": {"message": "offline failure", "type": failure}},
+            {"authentication": 401, "configuration": 400}.get(failure, 503),
+            json={"error": {"message": "secret-token", "type": failure}},
         )
 
     async def run():
         async with offline_client(respond) as client:
-            llm = llm_factory("judge-deployment", client=client, max_retries=0)
-            with pytest.raises(InstructorRetryException):
-                await Faithfulness(llm=llm).ascore("Question", "Answer", ["Context"])
+            config = evaluator_config(client)
+            async with evaluator_scope(config, client=client) as evaluator:
+                metric = Faithfulness(llm=evaluator.llm)
+                with pytest.raises(EvalProviderError) as error:
+                    await evaluator.call(
+                        metric.ascore, "Question", "Answer", ["Context"]
+                    )
+                assert error.value.code == code
+                assert error.value.fatal is fatal
+                assert "secret-token" not in json.dumps(error.value.as_dict())
+                if fatal:
+                    with pytest.raises(EvalProviderError, match="stopped"):
+                        await evaluator.call(
+                            metric.ascore, "Next", "Answer", ["Context"]
+                        )
+                assert len(requests) == expected_requests
+            assert not client.is_closed()
 
     asyncio.run(run())
     assert len(requests) == expected_requests
+    captured = capsys.readouterr()
+    assert "secret-token" not in captured.out + captured.err + caplog.text
 
 
 def test_ir_backend_preserves_cutoff_and_empty_queries():
@@ -280,3 +326,85 @@ def test_ir_backend_preserves_cutoff_and_empty_queries():
         dict(zip(measures, (1 / 3, 1 / 3, 2 / 3, 0.5), strict=True))
     )
     assert evaluator.calc_aggregate([]) == dict.fromkeys(measures, 0.0)
+
+
+@pytest.mark.parametrize("borrowed_credential", [False, True])
+def test_owned_evaluator_refreshes_auth(monkeypatch, borrowed_credential):
+    from azure.core.credentials import AccessToken
+    from azure.core.exceptions import ClientAuthenticationError
+    from azure.identity import aio
+    from rag_quality_lab.eval import providers
+    from rag_quality_lab.eval.config import load_eval_config
+
+    class Credential:
+        requests = 0
+        closed = False
+
+        async def get_token(self, *scopes, **kwargs):
+            assert scopes == ("https://cognitiveservices.azure.com/.default",)
+            self.requests += 1
+            if self.requests == 3:
+                raise ClientAuthenticationError("secret-auth-detail")
+            # Near-expiry tokens force the real Azure bearer provider to refresh.
+            return AccessToken(f"token-{self.requests}", int(time.time()) + 60)
+
+        async def close(self):
+            self.closed = True
+
+    credential = Credential()
+    monkeypatch.setattr(aio, "DefaultAzureCredential", lambda: credential)
+    requests = []
+
+    def respond(request):
+        requests.append(request)
+        assert request.headers["authorization"] == f"Bearer token-{len(requests)}"
+        assert json.loads(request.content)["model"] == "evaluator-embedding"
+        response = {
+            "data": [{"embedding": [1.0, 0.0], "index": 0, "object": "embedding"}],
+            "model": "evaluator-embedding",
+            "object": "list",
+        }
+        return httpx.Response(200, json=response)
+
+    actual_client = providers.AsyncOpenAI
+    clients = []
+
+    def create_client(**kwargs):
+        client = actual_client(
+            **kwargs,
+            http_client=httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+        )
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(providers, "AsyncOpenAI", create_client)
+    config = load_eval_config(
+        {
+            "FOUNDRY_OPENAI_BASE_URL": "https://foundry.invalid/v1",
+            "RAGLAB_EVAL_MODEL": "evaluator-judge",
+            "RAGLAB_EVAL_EMBEDDING_MODEL": "evaluator-embedding",
+        }
+    )
+
+    async def run():
+        async with providers.evaluator_scope(
+            config, credential=credential if borrowed_credential else None
+        ) as evaluator:
+            assert await evaluator.call(evaluator.embeddings.aembed_text, "First") == [
+                1.0,
+                0.0,
+            ]
+            await evaluator.call(evaluator.embeddings.aembed_text, "Second")
+            with pytest.raises(providers.EvalProviderError) as error:
+                await evaluator.call(evaluator.embeddings.aembed_text, "Auth failure")
+            assert error.value.code == "authentication"
+            assert "secret-auth-detail" not in json.dumps(error.value.as_dict())
+            with pytest.raises(providers.EvalProviderError, match="stopped"):
+                await evaluator.call(evaluator.embeddings.aembed_text, "Blocked")
+            assert not credential.closed
+        assert clients[0].is_closed()
+
+    asyncio.run(run())
+    assert credential.requests == 3
+    assert len(requests) == 2
+    assert credential.closed is (not borrowed_credential)

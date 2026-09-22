@@ -15,7 +15,6 @@ from rag_quality_lab.schemas import (
     CitationValidation,
     SelectedContext,
     ContextChunk,
-    GoldenSet,
     ModelUsage,
     QueryTrace,
     Question,
@@ -107,73 +106,6 @@ def temporary_corpus(
         "categories": categories_path,
         "sources": sources_dir,
     }
-
-
-@pytest.fixture
-def golden_questions() -> GoldenSet:
-    questions = [
-        Question(
-            question_id="q-answerable-01",
-            text="How does RAG ground answers in context?",
-            expected_category="RAG and context handling",
-            expected_relevant_sources=["source-02"],
-            answerability="answerable",
-            case_type="answerable",
-        ),
-        Question(
-            question_id="q-no-answer-01",
-            text="What production warranty does this portfolio project provide?",
-            expected_relevant_sources=[],
-            answerability="no_answer",
-            case_type="no_answer",
-        ),
-        Question(
-            question_id="q-ambiguous-01",
-            text="How should a prompt handle missing retrieved evidence?",
-            expected_category="RAG and context handling",
-            expected_relevant_sources=["source-02"],
-            answerability="answerable",
-            case_type="ambiguous_boundary",
-        ),
-        Question(
-            question_id="q-multi-category-01",
-            text="How do tokens, risk, and evaluation interact in a RAG workflow?",
-            expected_relevant_sources=["source-05"],
-            answerability="answerable",
-            case_type="multi_category_routing",
-            expected_fallback_all_categories=False,
-            expected_searched_categories=[
-                "RAG evaluation and quality",
-                "LLM settings, cost, and tokens",
-            ],
-        ),
-    ]
-
-    for index in range(8):
-        questions.append(
-            Question(
-                question_id=f"q-answerable-{index + 2:02d}",
-                text=f"What is useful about curated context example {index + 2}?",
-                expected_category="prompting techniques",
-                expected_relevant_sources=[f"source-{index + 1:02d}"],
-                answerability="answerable",
-                case_type="answerable",
-            )
-        )
-
-    return GoldenSet(questions=questions)
-
-
-@pytest.fixture
-def temporary_golden_file(tmp_path: Path, golden_questions: GoldenSet) -> Path:
-    golden_dir = tmp_path / "golden"
-    golden_dir.mkdir()
-    golden_path = golden_dir / "questions.json"
-    golden_path.write_text(
-        golden_questions.model_dump_json(indent=2) + "\n",
-        encoding="utf-8",
-    )
-    return golden_path
 
 
 @pytest.fixture

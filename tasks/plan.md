@@ -1,6 +1,10 @@
 # Implementation Plan: Ragas evaluation
 
-Status: Task 1 authorized by explicit user request and completed on 2026-09-22. Tasks 2-8 remain unstarted. The planning-stage scope below is historical; implementation evidence is recorded in [todo.md](todo.md) and the [compatibility notes](../tests/integration/ragas_compatibility.md).
+Status: Tasks 1-2 authorized by explicit user requests and completed on 2026-09-22. Tasks 3-8 remain unstarted. The planning-stage scope below is historical; implementation evidence is recorded in [todo.md](todo.md) and the [compatibility notes](../tests/integration/ragas_compatibility.md).
+
+Subsequent user direction: keep evaluation simple and remove evaluator token/cost bookkeeping. Use native SDK clients without custom usage collectors. Existing generation usage in query traces is unaffected. Do not add further eval-specific automated tests; use existing checks, build/lint, and a runtime smoke check for remaining evaluation work.
+
+Legacy retirement was subsequently authorized immediately: all old evaluator implementation, schemas/loaders, automated tests, CLI commands, and saved reports were removed. Only the benchmark JSON cases/labels are retained from that evaluator. The new Ragas configuration/providers and their existing checks remain. References below to reusing legacy loaders, schemas, metrics, reports, or evaluation tests are historical; implement any needed contracts directly for the new workflow. No evaluation CLI is currently exposed. Task 7 becomes a final audit; tasks 3-8 remain unimplemented.
 
 Input: [SPEC-ragas-evaluation.md](../SPEC-ragas-evaluation.md), especially sections 6–11 and AC-01–AC-18. Task checklist: [todo.md](todo.md). Inspected on 2026-09-21 at `15fabc588040bf302ce5e8651e90e97682167050`, matching the specification baseline.
 

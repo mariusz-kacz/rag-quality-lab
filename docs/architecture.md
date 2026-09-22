@@ -13,23 +13,20 @@ the component-to-code map below.
 flowchart TB
     reviewer["Reviewer / developer"]
     corpus_input[("Corpus manifest, category manifest,<br/>and Markdown snapshots")]
-    golden_input[("Curated golden questions")]
     foundry["Azure AI Foundry<br/>Embeddings + Responses APIs"]
     qdrant[("Qdrant<br/>Chunk vectors and payloads")]
-    artifacts[("Local JSON / Markdown artifacts")]
+    artifacts[("Local JSON artifacts")]
 
     subgraph app["RAG Quality Lab — Python CLI process"]
         cli["CLI"]
         corpus["Corpus subsystem<br/>Inspect, validate, chunk, ingest"]
         query["Query pipeline<br/>Orchestrates one traced request"]
-        evaluation["Evaluation subsystem<br/>Runs and compares benchmarks"]
 
         router["Category router"]
         retrieval["Qdrant retriever"]
         context["Context builder"]
         answer["Answer generation<br/>and citation validation"]
         traces["Trace persistence"]
-        metrics["Metrics and report renderer"]
 
         model_adapters["Foundry model adapters"]
         qdrant_adapter["Qdrant adapter"]
@@ -37,8 +34,6 @@ flowchart TB
 
         cli -->|"inspect / ingest"| corpus
         cli -->|"query"| query
-        cli -->|"eval run"| evaluation
-        cli -->|"eval compare"| metrics
         cli -->|"trace inspect"| traces
 
         query -.->|"routed-vector only"| router
@@ -47,9 +42,6 @@ flowchart TB
         retrieval --> context
         context --> answer
         answer --> traces
-
-        evaluation -->|"same query path per question"| query
-        evaluation --> metrics
 
         corpus --> model_adapters
         corpus --> qdrant_adapter
@@ -60,16 +52,13 @@ flowchart TB
 
         contracts -.-> corpus
         contracts -.-> query
-        contracts -.-> evaluation
     end
 
     reviewer --> cli
     corpus_input --> corpus
-    golden_input --> evaluation
     model_adapters --> foundry
     qdrant_adapter --> qdrant
     traces --> artifacts
-    metrics --> artifacts
 
     classDef person fill:#08427b,color:#fff,stroke:#052e56,stroke-width:2px;
     classDef component fill:#1168bd,color:#fff,stroke:#0b4884;
@@ -79,9 +68,9 @@ flowchart TB
     classDef contract fill:#666,color:#fff,stroke:#333;
 
     class reviewer person;
-    class cli,corpus,query,evaluation,router,retrieval,context,answer,traces,metrics component;
+    class cli,corpus,query,router,retrieval,context,answer,traces component;
     class model_adapters,qdrant_adapter adapter;
-    class corpus_input,golden_input,qdrant,artifacts datastore;
+    class corpus_input,qdrant,artifacts datastore;
     class foundry external;
     class contracts contract;
 ```
@@ -155,32 +144,6 @@ The router and retriever intentionally make separate embedding calls. Baseline
 mode skips the router. Low-confidence routed mode keeps the existing global
 fallback by sending the Qdrant query without a category filter.
 
-### Evaluation and comparison
-
-```mermaid
-flowchart LR
-    golden[("Golden questions")]
-    runner["Evaluation runner"]
-    query["Same traced query pipeline<br/>for the selected mode"]
-    match["Match questions and traces<br/>one-to-one by question ID"]
-    metrics["Calculate covered<br/>deterministic metrics"]
-    reports["Render evaluation JSON<br/>and Markdown"]
-    previous[("Existing evaluation JSON")]
-    compare["Validate modes and<br/>render comparison"]
-    output[("Evaluation artifacts")]
-
-    golden --> runner
-    runner -->|"once per question"| query
-    query -->|"trace and path"| match
-    runner --> match
-    match --> metrics
-    metrics --> reports
-    reports --> output
-
-    previous --> compare
-    compare --> output
-```
-
 ## Runtime distinctions represented in the diagram
 
 - `baseline-vector` bypasses the category router and sends an unfiltered vector
@@ -207,17 +170,11 @@ flowchart LR
   included in the selected context. It is not claim-level factuality grading.
   For a generated answer, validation occurs while constructing the answer result
   and again when the pipeline records the trace-level validation object.
-- Evaluation invokes the same traced query pipeline used by the `query`
-  command. It does not have a separate retrieval or generation implementation.
-- The curated benchmark reports top-category routing, searched categories,
-  retrieval, citation, answerability/no-answer, and token-budget metrics. It
-  does not report or draw conclusions about global-fallback behavior.
-
 ## Component-to-code map
 
 | Diagram component | Implemented by | Responsibility verified in code |
 | --- | --- | --- |
-| CLI adapter | `src/rag_quality_lab/cli.py` | Defines `corpus`, `query`, `trace`, and `eval` commands; maps errors and renders human/JSON output. |
+| CLI adapter | `src/rag_quality_lab/cli.py` | Defines `corpus`, `query`, and `trace` commands; maps errors and renders human/JSON output. |
 | Configuration | `src/rag_quality_lab/config.py` | Validates Foundry, Qdrant, retrieval, routing, token-budget, and artifact-path settings. |
 | Corpus inspection and validation | `corpus/inspect.py`, `corpus/manifest.py` | Validates schema versions, source metadata, category coverage, provenance paths, and readable local snapshots. |
 | Ingestion orchestrator | `corpus/ingest.py` | Coordinates validation, chunking, batch embedding, collection setup, and vector upsert. |
@@ -230,13 +187,12 @@ flowchart LR
 | Answer generator | `rag/generation.py`, `chat_models.py` | Builds the source-only prompt, invokes the Responses API, recognizes no-answer output, and records model usage. |
 | Citation validator | `rag/citations.py` | Maps `[C<n>]` aliases to included chunk IDs and reports missing, malformed, or out-of-context citations. |
 | Trace persistence | `rag/traces.py`, `schemas/artifacts.py` | Writes and validates complete `QueryTrace` JSON artifacts. |
-| Evaluation runner | `eval/golden.py`, `eval/reports.py` | Loads golden questions, invokes the query pipeline per question, matches results by question ID, and assembles evaluation runs. |
-| Metrics and reports | `eval/metrics.py`, `eval/reports.py` | Calculates covered deterministic metrics and writes per-run and comparison JSON/Markdown outputs. |
-| Domain contracts | `schemas/` | Defines validated corpus, routing, retrieval, context, answer, trace, and evaluation models shared across boundaries. |
+| Domain contracts | `schemas/` | Defines validated corpus, routing, retrieval, context, answer and trace models shared across boundaries. |
 
 ## Deliberate boundaries
 
 The implementation has no web UI, HTTP application API, agent loop, live
-crawler, reranker, alternate vector-store adapter, or LLM-based evaluation
-judge. Those systems are intentionally absent from the diagram because they are
-not part of this repository.
+crawler, reranker, or alternate vector-store adapter. The legacy evaluator has
+been removed. Ragas configuration/provider adapters are available, but the new
+evaluation workflow and CLI are not yet implemented. Benchmark cases and labels
+remain in `golden/questions.json`.

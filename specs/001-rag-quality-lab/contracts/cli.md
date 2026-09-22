@@ -5,7 +5,7 @@ The CLI is the public interface for the MVP. Commands must support human-readabl
 ## Global Behavior
 
 - Commands return exit code `0` on success.
-- Commands return non-zero exit codes for missing configuration, invalid corpus metadata, unavailable Qdrant, missing golden questions, unsupported retrieval modes, or failed citation validation when strict validation is requested.
+- Commands return non-zero exit codes for missing configuration, invalid corpus metadata, unavailable Qdrant, unsupported retrieval modes, or failed citation validation when strict validation is requested.
 - Errors must be written in a reviewer-readable form and include the failing stage.
 - Commands that write artifacts must print the artifact path.
 
@@ -109,53 +109,6 @@ Inspect a persisted query trace.
 - citation validation result
 - model usage when available
 
-## `raglab eval run`
+## Evaluation status
 
-Run the golden question set for one retrieval mode.
-
-**Options**
-
-- `--mode baseline-vector|routed-vector`
-- `--golden <path>`
-- `--artifacts-dir <path>`
-- `--top-k <n>`
-- `--max-context-tokens <n>`
-- `--output-token-limit <n>`
-- `--json`
-
-**Success Output**
-
-- retrieval mode
-- number of questions evaluated
-- aggregate metrics
-- raw counts alongside rate percentages where available
-- benchmark-scope statement
-- machine-readable artifact path
-- Markdown report path
-
-**Failure Cases**
-
-- golden set outside 12-20 questions
-- missing required case type
-- unsupported retrieval mode, including future-extension modes that are not part of the MVP runtime contract
-- one or more traces cannot be written
-
-## `raglab eval compare`
-
-Compare previously written evaluation artifacts.
-
-**Arguments**
-
-- one or more evaluation artifact paths.
-
-**Options**
-
-- `--markdown <path>`: write comparison table.
-- `--json`: emit machine-readable comparison.
-
-**Success Output**
-
-- metric table by retrieval mode
-- token-budget diagnostics by retrieval mode
-- observed higher or lower value on the included benchmark per comparable metric
-- benchmark-scope and interpretation notes
+The legacy evaluation commands have been removed. The replacement Ragas CLI is not yet implemented.

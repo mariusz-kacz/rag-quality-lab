@@ -11,6 +11,8 @@ User clarification (2026-09-22): Ragas is the only evaluation framework. Preserv
 
 ## 1. Objective
 
+Implementation update: the user authorized immediate deletion of the legacy evaluator, its schemas/loaders, automated tests, commands, and saved outputs. `golden/questions.json` is preserved unchanged. References below to existing evaluator code describe the inspected historical baseline; implement the replacement directly from the benchmark JSON and current Ragas provider boundary. No legacy compatibility or restoration is required.
+
 Replace the bespoke evaluation execution and general-purpose scoring in RAG Quality Lab with Ragas experiments and established metric implementations.
 
 The completed feature must let a developer:
@@ -253,7 +255,7 @@ Use one retry owner for evaluator transport errors; avoid multiplying SDK, frame
 
 Query and evaluator clients have distinct lifetimes. Close resources created by the integration; do not close borrowed clients. If Entra authentication is used, use a refresh-capable provider supported by the selected adapter for the run lifetime.
 
-Never persist API keys, bearer tokens, or unsanitized provider exceptions. Separate generator usage from evaluator usage. Unknown token usage or cost remains null; a price-calculation subsystem is not required.
+Never persist API keys, bearer tokens, or unsanitized provider exceptions. Evaluator token and cost tracking is out of scope per the user's simplification request. Existing generation usage in query traces remains available; do not add custom evaluator usage collectors or placeholder usage fields.
 
 ## 8. CLI behavior
 

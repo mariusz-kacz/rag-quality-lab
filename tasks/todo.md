@@ -1,10 +1,15 @@
 # Tasks: Ragas evaluation
 
-Status: Task 1 completed on 2026-09-22; tasks 2-8 remain unstarted.
+Status: Tasks 1-2 completed on 2026-09-22; tasks 3-8 remain unstarted.
+
+**Authorized early retirement:** The user requested removal of all legacy evaluation code and automated tests, preserving only the benchmark cases/labels in `golden/questions.json`. Removed `eval/golden.py`, `eval/metrics.py`, `eval/reports.py`, `schemas/eval.py`, legacy CLI commands/helpers/defaults, seven dedicated test files (54 cases), obsolete golden fixtures, and legacy report artifacts/documentation. Existing query refusal/citation/trace assertions remain in `test_query_workflow.py`; only its legacy scoring assertion was removed. Core provider ownership, generation, routing, corpus, and trace suites remain. No replacement tests were added for retired evaluation behavior. New Ragas configuration/providers and their existing tests remain. Later task references to removed files describe historical starting points, not code to restore. Task 7 remains a final audit, and no replacement runner/CLI has been implemented.
+
+Retirement validation: 175 remaining tests passed; Ruff lint, formatting of the seven modified existing Python files, `uv build`, root CLI help, and `git diff --check` passed. No source/test references to deleted evaluator APIs remain. Benchmark SHA-256 is unchanged: `6CC804358BDBB02651CBCA631064AC22FFCCCC3FF9ECA7968372B10863E2C68B`. This is intentional feature/test deletion, not behavior-preserving refactoring; no RED/GREEN or replacement tests were added. No Git commit was created.
 
 Read [plan.md](plan.md) with [the specification](../SPEC-ragas-evaluation.md). Paths are repository-relative; new filenames are proposals. Each task includes its tests and should leave affected workflows working. Do not broaden scope to unrelated cleanup. Acceptance references use the specification's AC IDs.
 
 - [x] User explicitly authorized Task 1. Authorization is limited to this task.
+- [x] User subsequently authorized Task 2 only; completed without a Git commit.
 
 Direction clarified on 2026-09-22: Ragas is the sole evaluation framework. Preserve benchmark cases/labels in JSON; old evaluation behavior, scores, options/defaults, schemas, and reports are not compatibility targets. Remove superseded implementation and obsolete tests as the Ragas workflow lands. Preserve tests only for meaningful new contracts or unchanged core query/corpus/trace behavior. Task 7 is a final audit, not a requirement to maintain a second evaluator until then. This planning update does not start another implementation task.
 
@@ -38,13 +43,13 @@ Baseline: 195 tests passed, Ruff lint passed, 26 pre-existing formatting failure
 **Description:** Add a small evaluation-specific configuration/provider boundary using the supported adapters proven in task 1. Keep evaluator clients separate from generator clients and avoid changing ordinary generation authentication.
 
 **Acceptance criteria:**
-- [ ] Require `RAGLAB_EVAL_MODEL` and `RAGLAB_EVAL_EMBEDDING_MODEL`; resolve endpoint fallback explicitly, preserve env-file precedence, validate timeout/retry settings, and expose only non-secret effective configuration. No implicit generator-model fallback (AC-05).
-- [ ] Same-endpoint credential reuse and different-endpoint authentication are tested; Entra uses refresh-capable auth. Defaults are 120-second request timeout and at most one transient retry with one transport retry owner; authentication/configuration failures stop subsequent judging (AC-11).
-- [ ] Owned clients/credentials close on success and partial setup/failure, borrowed clients remain open, provider failures are sanitized, and evaluator usage stays separate from generation usage with unknown values null (AC-13).
+- [x] Require `RAGLAB_EVAL_MODEL` and `RAGLAB_EVAL_EMBEDDING_MODEL`; resolve endpoint fallback explicitly, preserve env-file precedence, validate timeout/retry settings, and expose only non-secret effective configuration. No implicit generator-model fallback (AC-05).
+- [x] Same-endpoint credential reuse and different-endpoint authentication are tested; Entra uses refresh-capable auth. Defaults are 120-second request timeout and at most one transient retry with one transport retry owner; authentication/configuration failures stop subsequent judging (AC-11).
+- [x] Owned clients/credentials close on success and partial setup/failure, borrowed clients remain open, and provider failures are sanitized (AC-13). Evaluator usage bookkeeping was subsequently removed at the user's request.
 
 **Verification:**
-- [ ] `uv run --locked --extra eval pytest tests/unit/test_eval_providers.py tests/integration/test_ragas_compatibility.py tests/unit/test_config.py tests/unit/test_providers.py`
-- [ ] Inspect fake-provider call counts, refresh behavior, and error serialization for secret leakage; no live endpoint calls.
+- [x] `uv run --locked --extra eval pytest tests/unit/test_eval_providers.py tests/integration/test_ragas_compatibility.py tests/unit/test_config.py tests/unit/test_providers.py`
+- [x] Inspect fake-provider call counts, refresh behavior, and error serialization for secret leakage; no live endpoint calls.
 
 **Dependencies:** Task 1.
 
@@ -52,10 +57,16 @@ Baseline: 195 tests passed, Ruff lint passed, 26 pre-existing formatting failure
 
 **Estimated scope:** Medium: 4 files.
 
+**Completion evidence:** Verification path 1 (new observable behavior), implemented in tested increments. Added the canonical evaluator configuration/ownership suite with 25 cases; extended the existing real-Ragas fixture from five to nine cases rather than creating another adapter suite. New tests protect required evaluator identities, endpoint-specific credential isolation, safe configuration serialization, env-file precedence, numeric/URL validation, and resource ownership across setup/scoring/cleanup failures. The existing HTTP failure matrix now owns retry counts, sanitized failures/logs, timeout classification, and stopping after fatal errors. Two credential-lifetime cases prove real Azure bearer-provider refresh, borrowed-credential ownership, and stopping after token acquisition fails. The native experiment fixture now uses the production provider scope. One redundant borrowed-client setup case was replaced by the unique cleanup-failure case. Usage assertions were subsequently removed with the usage feature at the user's request.
+
+The first new configuration/provider tests failed for the absent APIs; usage checks then failed on missing usage reporting, and the cleanup/log checks reproduced raw exception leakage before fixes. A real SDK timeout representation mismatch was diagnosed and fixed using the debugging workflow. Final full suite: 229 passed (including all 47 focused cases); no-extra environment: 220 passed, nine optional cases skipped. Core-only imports and CLI help, Ruff lint, all four changed Python files' formatting, `git diff --check`, and `uv build` passed. The 26 unrelated baseline formatting failures and existing Qdrant deprecation warnings remain. Sandbox cache/temp restrictions required approved reruns, with no application workaround.
+
+The explicit different-endpoint authentication path is an evaluator API key; same-endpoint keyless auth uses Azure's async refresh-capable bearer provider. Borrowed SDK clients must match endpoint/timeout/retries. The user subsequently requested simpler evaluation without token/cost bookkeeping: `_Usage`, the SDK subclass, the usage property, and their assertions were removed. Clients now use `AsyncOpenAI` directly. The specification and provider notes reflect this authorized scope reduction. No new tests, CLI cutover, legacy removal, live scoring, Git commit, or later task was performed. See [provider notes](../tests/integration/ragas_compatibility.md#task-2-provider-boundary) for the interface and remaining integration obligations.
+
 ## Checkpoint: Framework and provider boundary (tasks 1–2)
 
-- [ ] Actual runner, metrics, local backend, and IR measures work with no external model traffic.
-- [ ] Locked installation/build and no-extra smoke pass; compatibility choices and any limitations are ready for review before broad integration.
+- [x] Actual runner, metrics, local backend, and IR measures work with no external model traffic.
+- [x] Locked installation/build and no-extra smoke pass; compatibility choices and any limitations are ready for review before broad integration.
 
 ## Task 3: Capture durable replay inputs
 
@@ -83,7 +94,7 @@ Baseline: 195 tests passed, Ruff lint passed, 26 pre-existing formatting failure
 **Acceptance criteria:**
 - [ ] Faithfulness sees exact original answer text and only ordered selected context. Answer Relevancy uses the explicit judge/embedding pair. Parameterized no-answer/refusal/empty-context/failed-query cases obey status precedence; finite negative scores remain intact and nonfinite/malformed results are errors (AC-04/05/06/12).
 - [ ] Real `ir-measures` agrees with relevant-first/later, no-hit, empty-result, exact-ID, and repeated-source/different-chunk fixtures. Reject duplicate/noncontiguous/over-K rankings; retain unjudged items, every eligible query, and binary full-inventory relevance. No new IR formulas (AC-07/08).
-- [ ] Native results preserve ID-matched statuses/reasons and application routing, citation, refusal, search-scope, context, and usage diagnostics. Concurrency stays one; timeout/malformed/auth failures preserve available results and distinguish unattempted metrics, while deterministic checks remain available (AC-11/13/16).
+- [ ] Native results preserve ID-matched statuses/reasons and application routing, citation, refusal, search-scope, context, and existing generation usage diagnostics. Do not add evaluator token/cost bookkeeping. Concurrency stays one; timeout/malformed/auth failures preserve available results and distinguish unattempted metrics, while deterministic checks remain available (AC-11/13/16).
 
 **Verification:**
 - [ ] `uv run --locked --extra eval pytest tests/integration/test_ragas_compatibility.py tests/integration/test_eval_scoring.py tests/unit/test_metrics.py`
@@ -193,6 +204,6 @@ Baseline: 195 tests passed, Ruff lint passed, 26 pre-existing formatting failure
 
 **Dependencies:** Task 8 and available compatible evaluator/generation deployments, credentials, and indexed corpus. This is not a blocker for offline implementation completion and is not performed during planning.
 
-- [ ] Run a small question selection first, including answerable and no-answer cases; inspect actual judge output and usage.
+- [ ] Run a small question selection first, including answerable and no-answer cases; inspect actual judge output.
 - [ ] Run both full modes with matching settings, rescore a copied bundle, and produce a comparison in new artifact directories.
 - [ ] Inspect selected individual judgments and any observed disagreement/error. Record measured outcomes and exactly what was reviewed; if unavailable, state “live scoring not run.” Never overwrite historical examples or fabricate evidence.
