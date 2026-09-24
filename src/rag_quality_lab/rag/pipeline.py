@@ -11,16 +11,20 @@ from typing import Protocol, TypedDict
 from rag_quality_lab.chat_models import (
     create_foundry_chat_model,
 )
-from rag_quality_lab.config import AppConfig, load_app_config
+from rag_quality_lab.config import AppConfig, load_app_config, load_runtime_config
 from rag_quality_lab.providers import (
     FoundryOpenAIEmbeddingProvider,
 )
-from rag_quality_lab.rag.citations import citation_aliases_for_context, validate_citations
+from rag_quality_lab.rag.citations import (
+    citation_aliases_for_context,
+    validate_citations,
+)
 from rag_quality_lab.rag.context import build_context
 from rag_quality_lab.rag.generation import ChatModel, generate_answer
 from rag_quality_lab.rag.traces import new_trace_id, save_trace
 from rag_quality_lab.retrieval.modes import validate_retrieval_mode
 from rag_quality_lab.retrieval.qdrant_store import QdrantStore
+from rag_quality_lab.retrieval.reranking import FastEmbedReranker, QueryReranker
 from rag_quality_lab.routing.embedding_router import EmbeddingCategoryRouter
 from rag_quality_lab.schemas import (
     CitationValidation,
@@ -81,6 +85,9 @@ def run_query(
     router: QueryRouter | None = None,
     retriever: QueryRetriever | None = None,
     chat_model: ChatModel | None = None,
+    rerank_enabled: bool = False,
+    candidate_k: int = 20,
+    reranker: QueryReranker | None = None,
     prompt_overhead_tokens: int = DEFAULT_PROMPT_OVERHEAD_TOKENS,
 ) -> QueryPipelineResult:
     """Run one query through route, retrieve, context, generation, and tracing."""
@@ -94,6 +101,8 @@ def run_query(
     retrieval_mode = validate_retrieval_mode(mode)
     if top_k < 1:
         raise ValueError("top_k must be >= 1")
+    if rerank_enabled and candidate_k < top_k:
+        raise ValueError("candidate_k must be >= top_k when reranking")
 
     with resolve_query_components(
         retrieval_mode=retrieval_mode,
@@ -101,6 +110,8 @@ def run_query(
         router=router,
         retriever=retriever,
         chat_model=chat_model,
+        rerank_enabled=rerank_enabled,
+        reranker=reranker,
     ) as components:
         question_record = (
             question.model_copy(update={"text": clean_question})
@@ -115,14 +126,27 @@ def run_query(
         retrieval = components.retriever.retrieve(
             question=clean_question,
             mode=retrieval_mode,
-            top_k=top_k,
+            top_k=candidate_k if rerank_enabled else top_k,
             route_decision=route_decision,
         )
+        reranking = (
+            components.reranker.rerank(clean_question, retrieval.results)
+            if rerank_enabled and components.reranker is not None
+            else None
+        )
+        context_candidates = _context_chunks_from_results(retrieval.results)
+        if reranking is not None:
+            ranks = {r.chunk_id: r.rank for r in reranking.results}
+            context_candidates = [
+                c.model_copy(update={"rerank_rank": ranks[c.chunk_id]})
+                for c in context_candidates
+            ]
         selected_context = build_context(
-            _context_chunks_from_results(retrieval.results),
+            context_candidates,
             max_context_tokens=max_context_tokens,
             output_token_limit=output_token_limit,
             prompt_overhead_tokens=prompt_overhead_tokens,
+            max_chunks=top_k,
         )
         generation = generate_answer(
             question=question_record,
@@ -140,6 +164,7 @@ def run_query(
             retrieval_mode=retrieval_mode,
             route_decision=route_decision,
             retrieval_results=retrieval.results,
+            reranking=reranking,
             searched_categories=retrieval.searched_categories,
             context_build=selected_context,
             answer_result=generation.answer,
@@ -155,6 +180,7 @@ class _PipelineComponents:
     router: QueryRouter | None
     retriever: QueryRetriever
     chat_model: ChatModel
+    reranker: QueryReranker | None = None
 
 
 class QdrantQueryRetriever:
@@ -186,7 +212,9 @@ class QdrantQueryRetriever:
         fallback_all_categories = False
         if mode == "routed-vector":
             if route_decision is None:
-                raise ValueError("route_decision is required for routed-vector retrieval")
+                raise ValueError(
+                    "route_decision is required for routed-vector retrieval"
+                )
             selected_category = route_decision.selected_category
             selected_categories = _selected_routed_categories(
                 route_decision,
@@ -220,6 +248,8 @@ def resolve_query_components(
     router: QueryRouter | None = None,
     retriever: QueryRetriever | None = None,
     chat_model: ChatModel | None = None,
+    rerank_enabled: bool = False,
+    reranker: QueryReranker | None = None,
 ) -> Iterator[_PipelineComponents]:
     """Borrow injected components; close created resources when the scope exits.
 
@@ -231,7 +261,9 @@ def resolve_query_components(
         if needs_router or retriever is None or chat_model is None:
             config = config or load_app_config()
             if needs_router or retriever is None:
-                embedding_provider = FoundryOpenAIEmbeddingProvider(config.foundry_openai)
+                embedding_provider = FoundryOpenAIEmbeddingProvider(
+                    config.foundry_openai
+                )
                 resources.callback(embedding_provider.close)
             if chat_model is None:
                 chat_model = create_foundry_chat_model(config.foundry_openai)
@@ -250,7 +282,12 @@ def resolve_query_components(
                     store=store,
                     category_score_margin=config.runtime.router_category_margin,
                 )
-        yield _PipelineComponents(router=router, retriever=retriever, chat_model=chat_model)
+        if rerank_enabled and reranker is None:
+            runtime = config.runtime if config is not None else load_runtime_config()
+            reranker = FastEmbedReranker(runtime.rerank_model)
+        yield _PipelineComponents(
+            router=router, retriever=retriever, chat_model=chat_model, reranker=reranker
+        )
 
 
 def _selected_routed_categories(
@@ -258,7 +295,10 @@ def _selected_routed_categories(
     *,
     margin: float,
 ) -> list[KnowledgeCategoryName] | None:
-    if route_decision.fallback_all_categories or route_decision.selected_category is None:
+    if (
+        route_decision.fallback_all_categories
+        or route_decision.selected_category is None
+    ):
         return None
     cutoff = max(0.0, route_decision.confidence - margin)
     categories = [
@@ -268,7 +308,11 @@ def _selected_routed_categories(
     ]
     return [
         route_decision.selected_category,
-        *(category for category in categories if category != route_decision.selected_category),
+        *(
+            category
+            for category in categories
+            if category != route_decision.selected_category
+        ),
     ]
 
 

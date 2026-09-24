@@ -78,7 +78,11 @@ def collect_answers(dataset, questions, mode, config, trace_dir):
         "collection": config.qdrant.collection,
         "index_fingerprint": inventory.index_fingerprint,
     }
-    with resolve_query_components(retrieval_mode=mode, config=config) as components:
+    with resolve_query_components(
+        retrieval_mode=mode,
+        config=config,
+        rerank_enabled=config.runtime.rerank_enabled,
+    ) as components:
         for question in questions:
             row = {
                 "question_id": question.question_id,
@@ -105,13 +109,23 @@ def collect_answers(dataset, questions, mode, config, trace_dir):
                     router=components.router,
                     retriever=components.retriever,
                     chat_model=components.chat_model,
+                    rerank_enabled=config.runtime.rerank_enabled,
+                    candidate_k=config.runtime.candidate_k,
+                    reranker=components.reranker,
                 )
                 trace = result["trace"]
                 included = trace.context_build.included_chunks
                 row.update(
                     response=trace.answer_result.answer_text,
                     contexts=[chunk.content for chunk in included],
-                    ranked_ids=[chunk.chunk_id for chunk in trace.retrieval_results],
+                    ranked_ids=[
+                        chunk.chunk_id
+                        for chunk in (
+                            trace.reranking.results
+                            if trace.reranking
+                            else trace.retrieval_results
+                        )
+                    ],
                     cited_ids=[
                         chunk.chunk_id
                         for chunk in included
@@ -128,6 +142,12 @@ def collect_answers(dataset, questions, mode, config, trace_dir):
                         ),
                         "context_chunks": len(included),
                         "context_tokens": trace.context_build.final_estimated_context_tokens,
+                        "reranking": trace.reranking.model_dump(mode="json")
+                        if trace.reranking
+                        else None,
+                        "candidate_ranked_ids": [
+                            chunk.chunk_id for chunk in trace.retrieval_results
+                        ],
                         "generation_usage": trace.model_usage.model_dump(mode="json")
                         if trace.model_usage
                         else None,
@@ -177,6 +197,7 @@ def run_evaluation(
     golden_path="golden/questions.json",
     question_ids=None,
     config=None,
+    runtime=None,
 ):
     Dataset, _, _, _ = require_ragas()
     evaluator_config = load_eval_config()
@@ -184,7 +205,9 @@ def run_evaluation(
     questions = GoldenDataset.model_validate_json(
         Path(golden_path).read_bytes()
     ).select(question_ids)
-    config = config or load_app_config()
+    config = config or load_app_config(runtime=runtime)
+    if runtime is not None:
+        config = config.model_copy(update={"runtime": runtime})
     root = Path(artifacts_dir) / uuid4().hex
     dataset = Dataset("answers", backend="local/jsonl", root_dir=str(root))
     dataset_path = root / "datasets/answers.jsonl"

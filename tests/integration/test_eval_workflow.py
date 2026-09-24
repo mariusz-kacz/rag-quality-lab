@@ -129,6 +129,54 @@ def test_run_both_modes_with_real_ragas(tmp_path, capture_env, judge_env):
     assert capture_env.category_calls == 1
 
 
+def test_eval_uses_reranked_order_and_reuses_model(
+    tmp_path, capture_env, judge_env, monkeypatch
+):
+    from rag_quality_lab.eval.runner import run_evaluation
+    from rag_quality_lab.schemas.retrieval import RerankedChunk, RerankingResult
+
+    instances, calls = [], []
+
+    class Reranker:
+        def __init__(self, model):
+            instances.append(self)
+
+        def rerank(self, question, candidates):
+            calls.append(candidates)
+            return RerankingResult(
+                model="test-cross-encoder",
+                elapsed_ms=1,
+                results=[
+                    RerankedChunk(
+                        chunk_id=c.chunk_id,
+                        retrieval_rank=c.rank,
+                        rank=i,
+                        score=float(1 / i),
+                    )
+                    for i, c in enumerate(reversed(candidates), 1)
+                ],
+            )
+
+    monkeypatch.setattr("rag_quality_lab.rag.pipeline.FastEmbedReranker", Reranker)
+    runtime = capture_env.config.runtime.model_copy(update={"rerank_enabled": True})
+    result = run_evaluation(
+        config=capture_env.config,
+        runtime=runtime,
+        artifacts_dir=tmp_path,
+        question_ids=[q["question_id"] for q in capture_env.data["questions"][:2]],
+    )
+    rows = read_rows(result["results_path"])
+    assert len(instances) == 1 and len(calls) == 2
+    for row in rows:
+        assert row["settings"]["rerank_enabled"] is True
+        assert row["ranked_ids"] == list(
+            reversed(row["diagnostics"]["candidate_ranked_ids"])
+        )
+        assert row["cited_ids"] == row["ranked_ids"][:1]
+        assert row["diagnostics"]["context_chunks"] == 5
+        assert row["diagnostics"]["reranking"]["model"] == "test-cross-encoder"
+
+
 def test_fatal_judge_failure_preserves_results_and_stops_calls(
     tmp_path, capture_env, judge_env
 ):
@@ -160,7 +208,7 @@ def test_cli_outputs_one_json_and_reports_saved_failure(
     from rag_quality_lab.cli import app
     from rag_quality_lab.eval import runner
 
-    monkeypatch.setattr(runner, "load_app_config", lambda: capture_env.config)
+    monkeypatch.setattr(runner, "load_app_config", lambda **kwargs: capture_env.config)
     qid = capture_env.data["questions"][0]["question_id"]
     cli = CliRunner()
     result = cli.invoke(
@@ -307,7 +355,7 @@ def test_legacy_index_reports_recovery_before_any_model_calls(
         keys=["index_fingerprint"],
         points=models.FilterSelector(filter=models.Filter()),
     )
-    monkeypatch.setattr(runner, "load_app_config", lambda: capture_env.config)
+    monkeypatch.setattr(runner, "load_app_config", lambda **kwargs: capture_env.config)
     args = ["eval", "run", "--artifacts-dir", str(tmp_path)]
     if json_output:
         args.append("--json")

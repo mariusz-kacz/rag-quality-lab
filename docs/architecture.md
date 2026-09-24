@@ -24,6 +24,7 @@ flowchart TB
 
         router["Category router"]
         retrieval["Qdrant retriever"]
+        rerank["Optional local cross-encoder"]
         context["Context builder"]
         answer["Answer generation<br/>and citation validation"]
         traces["Trace persistence"]
@@ -39,7 +40,9 @@ flowchart TB
         query -.->|"routed-vector only"| router
         router -->|"route scope"| retrieval
         query --> retrieval
-        retrieval --> context
+        retrieval -->|"reranking off"| context
+        retrieval -->|"reranking on"| rerank
+        rerank --> context
         context --> answer
         answer --> traces
 
@@ -68,7 +71,7 @@ flowchart TB
     classDef contract fill:#666,color:#fff,stroke:#333;
 
     class reviewer person;
-    class cli,corpus,query,router,retrieval,context,answer,traces component;
+    class cli,corpus,query,router,retrieval,rerank,context,answer,traces component;
     class model_adapters,qdrant_adapter adapter;
     class corpus_input,qdrant,artifacts datastore;
     class foundry external;
@@ -122,8 +125,9 @@ flowchart LR
     confidence{"Top score meets<br/>threshold?"}
     categories["Winner plus categories<br/>within score margin"]
     global["No category filter"]
-    retrieve["Embed question for retrieval;<br/>query Qdrant top-k"]
-    context["Admit ranked chunks<br/>within token budget"]
+    retrieve["Embed question for retrieval;<br/>query Qdrant"]
+    rerank["Local cross-encoder<br/>reorders candidate shortlist"]
+    context["Admit at most top-k chunks<br/>within token budget"]
     included{"Any included<br/>chunks?"}
     fixed["Fixed no-answer response"]
     generate["Foundry Responses call<br/>using selected context"]
@@ -138,7 +142,9 @@ flowchart LR
     confidence -->|"no"| global
     categories --> retrieve
     global --> retrieve
-    retrieve --> context
+    retrieve -->|"reranking off: top-k results"| context
+    retrieve -->|"reranking on: candidate-k results"| rerank
+    rerank --> context
     context --> included
     included -->|"no"| fixed
     included -->|"yes"| generate
@@ -150,6 +156,19 @@ flowchart LR
 The router and retriever intentionally make separate embedding calls. Baseline
 mode skips the router. Low-confidence routed mode keeps the existing global
 fallback by sending the Qdrant query without a category filter.
+
+Reranking is independent of category routing. With `--rerank`, both modes retrieve
+20 candidates by default. FastEmbed scores the question against each passage's
+section path and body using a local ONNX cross-encoder. The context builder admits
+up to five chunks within 1,000 estimated tokens in rerank order, skipping passages
+that do not fit. It records `chunk_limit_exceeded` and `budget_exceeded` separately.
+
+`retrieval_results` retains vector ranks and scores. Optional `reranking` records
+the model, elapsed milliseconds, and every candidate's new rank and score.
+Context chunks retain `retrieval_rank` and add optional `rerank_rank`; old traces
+without reranking fields remain readable. During evaluation, source hit/MRR use
+reranked order when enabled; actual selected chunks drive answer scoring.
+The evaluator reuses one lazily loaded reranker instance across questions.
 
 ## Runtime distinctions represented in the diagram
 
@@ -166,9 +185,9 @@ fallback by sending the Qdrant query without a category filter.
   embedding endpoint and writes to Qdrant.
 - The retriever embeds a question for Qdrant independently of the embedding
   work performed by the routed-mode router.
-- Context assembly preserves retrieval rank and admits chunks while they fit
-  the configured context-token budget. It records excluded chunks rather than
-  silently dropping them.
+- Context assembly follows vector rank or, when enabled, rerank order, while
+  retaining the original vector rank. Both the chunk limit and token budget
+  constrain selection, and exclusions have explicit reasons.
 - If the selected context contains no included chunk, generation returns the
   fixed no-answer response without calling the chat model.
 - Generation uses `langchain-core` only for prompt and message types. The
@@ -190,7 +209,8 @@ fallback by sending the Qdrant query without a category filter.
 | Category router | `routing/categories.py`, `routing/embedding_router.py` | Embeds fixed category descriptions, scores cosine similarity, selects a category, or emits the existing low-confidence global route. |
 | Query pipeline and retriever | `rag/pipeline.py` | Selects retrieval mode, composes live adapters, applies multi-category margin logic, and orchestrates the complete query. |
 | Qdrant adapter | `retrieval/qdrant_store.py` | Creates cosine collections, stores chunk payloads, and performs global or category-filtered vector queries. |
-| Context builder | `rag/context.py` | Converts ranked results into included and budget-excluded context chunks. |
+| Local reranker | `retrieval/reranking.py` | Lazily loads a FastEmbed cross-encoder, scores candidates, and preserves both rankings. |
+| Context builder | `rag/context.py` | Selects context in the active ranking order, enforcing token and chunk limits. |
 | Answer generator | `rag/generation.py`, `chat_models.py` | Builds the source-only prompt, invokes the Responses API, recognizes no-answer output, and records model usage. |
 | Citation validator | `rag/citations.py` | Maps `[C<n>]` aliases to included chunk IDs and reports missing, malformed, or out-of-context citations. |
 | Trace persistence | `rag/traces.py`, `schemas/artifacts.py` | Writes and validates complete `QueryTrace` JSON artifacts. |
@@ -199,7 +219,7 @@ fallback by sending the Qdrant query without a category filter.
 ## Deliberate boundaries
 
 The implementation has no web UI, HTTP application API, agent loop, live
-crawler, reranker, or alternate vector-store adapter. Evaluation uses one native
+crawler, or alternate vector-store adapter. Evaluation uses one native
 Ragas experiment over saved query inputs. Benchmark cases and labels remain
 in `golden/questions.json`.
 

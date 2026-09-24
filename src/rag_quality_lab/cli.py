@@ -20,6 +20,8 @@ from rag_quality_lab.config import (
     InvalidConfigurationError,
     MissingSettingError,
     RuntimeConfig,
+    load_app_config,
+    load_runtime_config,
 )
 from rag_quality_lab.corpus.ingest import IngestionError, ingest_corpus
 from rag_quality_lab.corpus.inspect import CorpusInspectionError, inspect_corpus
@@ -52,17 +54,45 @@ JsonOutputOption = Annotated[
 TopKOption = Annotated[
     int,
     typer.Option(
-        "--top-k", min=1, help="Maximum number of retrieval results to request."
+        "--top-k",
+        min=1,
+        envvar="RAGLAB_TOP_K",
+        help="Maximum context chunks; also retrieval depth when reranking is off.",
+    ),
+]
+RerankOption = Annotated[
+    bool,
+    typer.Option(
+        "--rerank/--no-rerank",
+        envvar="RAGLAB_RERANK_ENABLED",
+        help="Rerank vector candidates with a local cross-encoder.",
+    ),
+]
+CandidateKOption = Annotated[
+    int,
+    typer.Option(
+        "--candidate-k",
+        min=1,
+        envvar="RAGLAB_CANDIDATE_K",
+        help="Vector candidates to retrieve when reranking is enabled.",
     ),
 ]
 MaxContextTokensOption = Annotated[
     int,
-    typer.Option("--max-context-tokens", min=1, help="Estimated context token budget."),
+    typer.Option(
+        "--max-context-tokens",
+        min=1,
+        envvar="RAGLAB_MAX_CONTEXT_TOKENS",
+        help="Estimated context token budget.",
+    ),
 ]
 OutputTokenLimitOption = Annotated[
     int,
     typer.Option(
-        "--output-token-limit", min=1, help="Maximum answer generation tokens."
+        "--output-token-limit",
+        min=1,
+        envvar="RAGLAB_OUTPUT_TOKEN_LIMIT",
+        help="Maximum answer generation tokens.",
     ),
 ]
 TraceDirOption = Annotated[
@@ -153,6 +183,11 @@ def eval_run(
         "artifacts/eval"
     ),
     question_ids: Annotated[list[str] | None, typer.Option("--question-id")] = None,
+    top_k: TopKOption = RuntimeConfig().top_k,
+    max_context_tokens: MaxContextTokensOption = RuntimeConfig().max_context_tokens,
+    output_token_limit: OutputTokenLimitOption = RuntimeConfig().output_token_limit,
+    rerank_enabled: RerankOption = RuntimeConfig().rerank_enabled,
+    candidate_k: CandidateKOption = RuntimeConfig().candidate_k,
     json_output: JsonOutputOption = False,
 ) -> None:
     """Capture answers with the lab pipeline, then score them with Ragas."""
@@ -165,6 +200,13 @@ def eval_run(
             golden_path=golden,
             artifacts_dir=artifacts_dir,
             question_ids=question_ids,
+            runtime=load_runtime_config(
+                top_k=top_k,
+                max_context_tokens=max_context_tokens,
+                output_token_limit=output_token_limit,
+                rerank_enabled=rerank_enabled,
+                candidate_k=candidate_k,
+            ),
         )
 
     _evaluation_command(operation, json_output)
@@ -207,6 +249,8 @@ def query(
     max_context_tokens: MaxContextTokensOption = RuntimeConfig().max_context_tokens,
     output_token_limit: OutputTokenLimitOption = RuntimeConfig().output_token_limit,
     trace_dir: TraceDirOption = RuntimeConfig().trace_dir,
+    rerank_enabled: RerankOption = RuntimeConfig().rerank_enabled,
+    candidate_k: CandidateKOption = RuntimeConfig().candidate_k,
     json_output: JsonOutputOption = False,
 ) -> None:
     """Run one traced RAG query."""
@@ -219,6 +263,8 @@ def query(
             max_context_tokens=max_context_tokens,
             output_token_limit=output_token_limit,
             trace_dir=trace_dir,
+            rerank_enabled=rerank_enabled,
+            candidate_k=candidate_k,
         ),
         json_output=json_output,
     )
@@ -443,11 +489,23 @@ def run_query(
     max_context_tokens: int,
     output_token_limit: int,
     trace_dir: Path,
+    rerank_enabled: bool = False,
+    candidate_k: int = 20,
 ) -> dict[str, object]:
     """Lazy wrapper for the query pipeline, kept patchable in CLI tests."""
 
     from rag_quality_lab.rag.pipeline import run_query as pipeline_run_query
 
+    if not question.strip():
+        raise ValueError("question cannot be empty")
+    runtime = load_runtime_config(
+        top_k=top_k,
+        max_context_tokens=max_context_tokens,
+        output_token_limit=output_token_limit,
+        trace_dir=trace_dir,
+        rerank_enabled=rerank_enabled,
+        candidate_k=candidate_k,
+    )
     return pipeline_run_query(
         question,
         mode=mode,
@@ -455,6 +513,9 @@ def run_query(
         max_context_tokens=max_context_tokens,
         output_token_limit=output_token_limit,
         trace_dir=trace_dir,
+        rerank_enabled=rerank_enabled,
+        candidate_k=candidate_k,
+        config=load_app_config(runtime=runtime),
     )
 
 
@@ -479,6 +540,8 @@ def _echo_query_result_json(trace: QueryTrace, trace_path: Path) -> None:
             else None
         ),
         "retrieval_result_count": len(trace.retrieval_results),
+        "rerank_model": trace.reranking.model if trace.reranking else None,
+        "rerank_elapsed_ms": trace.reranking.elapsed_ms if trace.reranking else None,
         "included_chunk_count": len(trace.context_build.included_chunks),
         "excluded_chunk_count": len(trace.context_build.excluded_chunks),
         "final_estimated_context_tokens": (
@@ -499,6 +562,10 @@ def _echo_query_result(trace: QueryTrace, trace_path: Path) -> None:
     typer.echo(f"Mode: {trace.retrieval_mode}")
     typer.echo(f"Route: {_route_label(trace)}")
     typer.echo(f"Retrieved chunks: {len(trace.retrieval_results)}")
+    if trace.reranking:
+        typer.echo(
+            f"Reranker: {trace.reranking.model} ({trace.reranking.elapsed_ms:.0f} ms)"
+        )
     typer.echo(f"Included chunks: {len(trace.context_build.included_chunks)}")
     typer.echo(f"Excluded chunks: {len(trace.context_build.excluded_chunks)}")
     typer.echo(f"Trace: {trace_path}")
@@ -515,6 +582,10 @@ def _echo_trace_summary(trace: QueryTrace) -> None:
     typer.echo(f"Mode: {trace.retrieval_mode}")
     typer.echo(f"Route: {_route_label(trace)}")
     typer.echo(f"Retrieved chunks: {len(trace.retrieval_results)}")
+    if trace.reranking:
+        typer.echo(
+            f"Reranker: {trace.reranking.model} ({trace.reranking.elapsed_ms:.0f} ms)"
+        )
     typer.echo(f"Included chunks: {len(trace.context_build.included_chunks)}")
     typer.echo(f"Excluded chunks: {len(trace.context_build.excluded_chunks)}")
     typer.echo(f"Citation validation: {trace.citation_validation.status}")

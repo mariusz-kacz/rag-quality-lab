@@ -110,6 +110,38 @@ def test_context_builder_rejects_prompt_overhead_that_exceeds_budget() -> None:
         )
 
 
+def test_reranked_context_preserves_both_ranks_and_enforces_count_and_tokens():
+    candidates = [
+        context_chunk("c1", rank=1, estimated_tokens=10).model_copy(
+            update={"rerank_rank": 4}
+        ),
+        context_chunk("c2", rank=2, estimated_tokens=200).model_copy(
+            update={"rerank_rank": 2}
+        ),
+        context_chunk("c3", rank=3, estimated_tokens=30).model_copy(
+            update={"rerank_rank": 3}
+        ),
+        context_chunk("c4", rank=4, estimated_tokens=40).model_copy(
+            update={"rerank_rank": 1}
+        ),
+    ]
+    context = build_context(
+        candidates,
+        max_context_tokens=100,
+        output_token_limit=100,
+        prompt_overhead_tokens=0,
+        max_chunks=2,
+    )
+    assert [c.chunk_id for c in context.included_chunks] == ["c4", "c3"]
+    assert [c.retrieval_rank for c in context.included_chunks] == [4, 3]
+    assert [c.rerank_rank for c in context.included_chunks] == [1, 3]
+    assert [(c.chunk_id, c.reason) for c in context.excluded_chunks] == [
+        ("c2", "budget_exceeded"),
+        ("c1", "chunk_limit_exceeded"),
+    ]
+    assert context.final_estimated_context_tokens == 70
+
+
 def context_chunk(chunk_id: str, *, rank: int, estimated_tokens: int) -> ContextChunk:
     return ContextChunk(
         chunk_id=chunk_id,

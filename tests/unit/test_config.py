@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from rag_quality_lab.config import (
+    InvalidConfigurationError,
     MissingSettingError,
     load_app_config,
     load_foundry_openai_config,
@@ -39,7 +40,7 @@ def test_load_app_config_reads_required_environment() -> None:
     assert config.qdrant.url == "http://localhost:6333"
     assert config.qdrant.api_key is None
     assert config.qdrant.collection == "rag_quality_lab"
-    assert config.runtime.top_k == 3
+    assert config.runtime.top_k == 5
     assert config.runtime.max_context_tokens == 1000
 
 
@@ -92,6 +93,9 @@ def test_runtime_config_uses_environment_and_explicit_overrides() -> None:
             "RAGLAB_TOP_K": "8",
             "RAGLAB_MAX_CONTEXT_TOKENS": "3000",
             "RAGLAB_OUTPUT_TOKEN_LIMIT": "700",
+            "RAGLAB_RERANK_ENABLED": "true",
+            "RAGLAB_CANDIDATE_K": "25",
+            "RAGLAB_RERANK_MODEL": "Xenova/ms-marco-MiniLM-L-6-v2",
             "RAGLAB_ROUTER_CONFIDENCE_THRESHOLD": "0.42",
             "RAGLAB_ROUTER_CATEGORY_MARGIN": "0.12",
             "RAGLAB_TRACE_DIR": "custom/traces",
@@ -103,7 +107,34 @@ def test_runtime_config_uses_environment_and_explicit_overrides() -> None:
     assert runtime.top_k == 4
     assert runtime.max_context_tokens == 3000
     assert runtime.output_token_limit == 700
+    assert runtime.rerank_enabled is True
+    assert runtime.candidate_k == 25
+    assert runtime.rerank_model == "Xenova/ms-marco-MiniLM-L-6-v2"
     assert runtime.router_confidence_threshold == 0.42
     assert runtime.router_category_margin == 0.12
     assert runtime.trace_dir == Path("custom/traces")
     assert runtime.schema_version == "1.1"
+
+
+def test_reranking_rejects_candidate_pool_smaller_than_context_limit():
+    with pytest.raises(InvalidConfigurationError, match="candidate_k"):
+        load_runtime_config(
+            {
+                "RAGLAB_RERANK_ENABLED": "true",
+                "RAGLAB_CANDIDATE_K": "2",
+                "RAGLAB_TOP_K": "3",
+            }
+        )
+    assert (
+        load_runtime_config({"RAGLAB_CANDIDATE_K": "2", "RAGLAB_TOP_K": "3"}).top_k == 3
+    )
+
+
+def test_explicit_runtime_overrides_environment_before_cross_field_validation():
+    env = {
+        **valid_environment(),
+        "RAGLAB_RERANK_ENABLED": "true",
+        "RAGLAB_CANDIDATE_K": "2",
+    }
+    runtime = load_runtime_config(env, rerank_enabled=False, top_k=3)
+    assert load_app_config(env, runtime=runtime).runtime == runtime

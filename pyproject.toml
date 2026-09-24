@@ -30,6 +30,9 @@ eval = [
     "langchain-community==0.4.1",
     "ragas==0.4.3",
 ]
+rerank = [
+    "fastembed>=0.8.1",
+]
 
 [tool.pytest.ini_options]
 minversion = "8.2"

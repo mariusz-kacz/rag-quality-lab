@@ -100,7 +100,7 @@ Ingest into a collection from one process at a time: the fingerprint check and u
 5. Run a routed query:
 
 ```console
-uv run raglab --env-file .env.local query "Why should retrieved context be treated as data rather than instructions?" --mode routed-vector --top-k 3 --max-context-tokens 1000 --output-token-limit 500
+uv run raglab --env-file .env.local query "Why should retrieved context be treated as data rather than instructions?" --mode routed-vector --top-k 5 --max-context-tokens 1000 --output-token-limit 500
 ```
 
 The command prints the answer and citations, then writes a trace to `artifacts/traces/trace-<id>.json`.
@@ -131,6 +131,12 @@ Variables already present in the process environment take precedence over values
 | `QDRANT_URL` | Ingest, query | Qdrant HTTP URL. |
 | `QDRANT_API_KEY` | No | Qdrant API key for a secured or hosted instance. |
 | `RAGLAB_QDRANT_COLLECTION` | Ingest, query | Collection used by the query pipeline and by ingestion unless `--collection` overrides it. |
+| `RAGLAB_TOP_K` | No | Maximum selected context chunks; default `5`. Also the retrieval depth without reranking. `--top-k` overrides it. |
+| `RAGLAB_MAX_CONTEXT_TOKENS` | No | Budget for selected chunk token estimates; default `1000`. `--max-context-tokens` overrides it. Excludes serialized prompt overhead and answer tokens. |
+| `RAGLAB_OUTPUT_TOKEN_LIMIT` | No | Maximum answer tokens; default `500`. `--output-token-limit` overrides it. |
+| `RAGLAB_RERANK_ENABLED` | No | Local cross-encoder reranking; default `false`. `--rerank` or `--no-rerank` overrides it. |
+| `RAGLAB_CANDIDATE_K` | No | Vector candidates when reranking; default `20`, must be at least `top_k`. `--candidate-k` overrides it. Ignored without reranking. |
+| `RAGLAB_RERANK_MODEL` | No | FastEmbed cross-encoder model; default `Xenova/ms-marco-MiniLM-L-6-v2`. |
 | `RAGLAB_ROUTER_CONFIDENCE_THRESHOLD` | No | Removes category filtering when the top similarity is below this threshold; default `0.18`. |
 | `RAGLAB_ROUTER_CATEGORY_MARGIN` | No | Includes categories whose score is within this margin of the winning route; default `0.15`. |
 
@@ -167,7 +173,30 @@ uv run raglab --env-file .env.local query "How does RAG ground an answer?" --mod
 uv run raglab --env-file .env.local query "How does RAG ground an answer?" --mode routed-vector --json
 ```
 
-Query defaults are `--top-k 3`, `--max-context-tokens 1000`, `--output-token-limit 500`, and `--trace-dir artifacts/traces`.
+Query defaults are `--top-k 5`, `--max-context-tokens 1000`, `--output-token-limit 500`, and `--trace-dir artifacts/traces`. Budget and reranking options apply to both query and evaluation; explicit options take precedence over environment values.
+
+### Retrieve 20 candidates, rerank, select up to five
+
+Enable the optional local reranker with either retrieval mode:
+
+```console
+uv run --extra rerank raglab --env-file .env.local query "Which checks tell me whether retrieved chunks contain enough relevant evidence for the generated answer, rather than just explaining how to retrieve chunks?" --rerank --candidate-k 20 --top-k 5 --max-context-tokens 1000
+```
+
+FastEmbed runs an ONNX cross-encoder on CPU. The first use downloads the model
+into `.cache/fastembed`; later calls reuse that cache. Evaluation reuses one model
+instance across questions. No Qdrant rebuild or extra Foundry generation call is
+needed. Use `--no-rerank` for the original vector-search control.
+
+Reranking scores each question/passage pair, then context selection admits at most
+five passages in rerank order within the token budget. Oversized passages are
+skipped so a later fitting passage can be admitted. Traces preserve the original
+vector ranks and scores, all reranker scores, selected chunks, exclusion reasons,
+model identifier, and reranking time. A model failure is reported rather than
+silently switching back to vector order.
+
+See the [reranking results](docs/reranking-review.md) and the earlier
+[context-budget investigation](docs/context-budget-review.md).
 
 Inspect a saved trace:
 
@@ -198,9 +227,21 @@ uv run --extra eval raglab --env-file .env.local eval run --mode baseline-vector
 uv run --extra eval raglab --env-file .env.local eval run --mode routed-vector
 ```
 
-Run accepts `--golden`, repeatable `--question-id`, and `--artifacts-dir`.
-It accepts `--json` and uses ordinary query runtime settings. `eval run` is the
+Run accepts `--golden`, repeatable `--question-id`, and `--artifacts-dir`, plus the
+same budget and reranking options as `query`. It accepts `--json`. `eval run` is the
 only evaluation command; each invocation generates and scores fresh answers.
+
+To evaluate reranking in both search modes:
+
+```console
+uv run --extra eval --extra rerank raglab --env-file .env.local eval run --mode baseline-vector --rerank
+uv run --extra eval --extra rerank raglab --env-file .env.local eval run --mode routed-vector --rerank
+```
+
+With reranking, source hit/MRR at `top_k` use the reranked list before token-budget
+selection. The original vector ranking is retained in diagnostics. These metrics
+remain source-label proxies; answer success and faithfulness use the actual
+selected generation context.
 
 Each run writes two native Ragas files:
 
