@@ -15,6 +15,74 @@ from rag_quality_lab.schemas import Question, RetrievalResult, RouteDecision
 pytestmark = pytest.mark.integration
 
 
+def test_reranking_requests_twenty_candidates_and_generates_from_three(tmp_path: Path):
+    from rag_quality_lab.schemas.retrieval import RerankingResult, RerankedChunk
+
+    run_query, load_trace = _query_workflow_api()
+    candidates = [
+        retrieval_result(
+            f"c{i}",
+            rank=i,
+            estimated_tokens=200,
+            content=f"Evidence {i}",
+            mode="baseline-vector",
+        )
+        for i in range(1, 21)
+    ]
+    retriever = FakeRetriever(candidates)
+
+    class ReverseReranker:
+        def rerank(self, question, candidates):
+            assert question == "Which evidence?"
+            return RerankingResult(
+                model="test-cross-encoder",
+                elapsed_ms=5,
+                results=[
+                    RerankedChunk(
+                        chunk_id=c.chunk_id,
+                        retrieval_rank=c.rank,
+                        rank=i,
+                        score=float(21 - i),
+                    )
+                    for i, c in enumerate(reversed(candidates), 1)
+                ],
+            )
+
+    result = run_query(
+        "Which evidence?",
+        mode="baseline-vector",
+        top_k=3,
+        max_context_tokens=1000,
+        output_token_limit=500,
+        trace_dir=tmp_path,
+        retriever=retriever,
+        chat_model=FakeChatModel("Evidence 20. [C1]"),
+        rerank_enabled=True,
+        candidate_k=20,
+        reranker=ReverseReranker(),
+    )
+    trace = load_trace(result["trace_path"])
+    assert retriever.calls[0]["top_k"] == 20
+    assert [r.chunk_id for r in trace.retrieval_results] == [
+        f"c{i}" for i in range(1, 21)
+    ]
+    assert trace.reranking.model == "test-cross-encoder"
+    assert [c.chunk_id for c in trace.context_build.included_chunks] == [
+        "c20",
+        "c19",
+        "c18",
+    ]
+    assert [c.retrieval_rank for c in trace.context_build.included_chunks] == [
+        20,
+        19,
+        18,
+    ]
+    assert len(trace.context_build.excluded_chunks) == 17
+    assert trace.context_build.final_estimated_context_tokens == 600
+    assert trace.answer_result.citations == ["c20"]
+    assert trace.citation_validation.status == "valid"
+
+
 def test_baseline_query_bypasses_router_and_serializes_routing_as_not_applicable(
     tmp_path: Path,
 ) -> None:
@@ -152,12 +220,10 @@ def test_answerable_query_workflow_persists_valid_trace(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("refusal_only", [True, False])
-def test_no_answer_query_workflow_persists_validation_and_scores_the_response(
+def test_no_answer_query_workflow_persists_validation(
     tmp_path: Path,
     refusal_only: bool,
 ) -> None:
-    from rag_quality_lab.eval.metrics import calculate_no_answer_accuracy
-
     run_query, load_trace = _query_workflow_api()
     trace_dir = tmp_path / "traces"
     router = FakeRouter(fallback_route())
@@ -218,12 +284,12 @@ def test_no_answer_query_workflow_persists_validation_and_scores_the_response(
     assert loaded_trace.citation_validation.cited_chunk_ids == citations
     assert loaded_trace.citation_validation.invalid_citations == citations
     errors = (
-        [] if refusal_only
+        []
+        if refusal_only
         else ["Citation C999 from answer text not found in selected context"]
     )
     assert loaded_trace.answer_result.validation_errors == errors
     assert loaded_trace.citation_validation.validation_errors == errors
-    assert calculate_no_answer_accuracy([question], [loaded_trace]) == float(refusal_only)
     assert trace.model_usage is not None
     assert trace.model_usage.input_tokens == 20
     assert trace.model_usage.output_tokens == 9

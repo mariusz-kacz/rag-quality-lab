@@ -1,5 +1,7 @@
 # Tasks: RAG Quality Lab
 
+Evaluation scope is now defined by [SPEC-ragas-evaluation.md](../../SPEC-ragas-evaluation.md). The original evaluation/reporting tasks below are historical: the current CLI exposes `eval run` only, with native JSONL outputs and a terminal summary.
+
 **Input**: Design documents from `/specs/001-rag-quality-lab/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/

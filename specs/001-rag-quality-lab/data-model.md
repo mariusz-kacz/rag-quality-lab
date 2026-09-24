@@ -175,28 +175,9 @@ Represents the persisted record of one full query workflow.
 **Validation Rules**
 
 - Query traces must include every applicable deterministic pipeline stage and explicitly serialize non-applicable routing as `null`.
-- Evaluation traces must retain the originating golden `question_id`; result sets are matched and validated by ID before metrics are calculated.
+- Traces for benchmark questions retain the originating `question_id`.
 - Model usage may be absent only when the LangChain chat model does not return usage metadata.
 - Trace files must be machine-readable.
-
-## EvaluationRun
-
-Represents a golden-set evaluation for one retrieval mode.
-
-**Fields**
-
-- `run_id`: evaluation run identifier.
-- `mode`: retrieval mode under evaluation.
-- `questions`: per-question outcomes and trace references.
-- `metrics`: aggregate metric values.
-- `artifact_paths`: machine-readable and Markdown artifact paths.
-- `created_at`: evaluation timestamp.
-
-**Validation Rules**
-
-- Each evaluation run covers one retrieval mode.
-- Required metrics must be present for implemented modes.
-- Every per-question outcome must reference a persisted query trace.
 
 ## State Transitions
 
@@ -207,7 +188,3 @@ Represents a golden-set evaluation for one retrieval mode.
 **Query**
 
 `received` -> `routed` -> `retrieved` -> `context_built` -> `generated` -> `citations_validated` -> `trace_persisted`
-
-**Evaluation**
-
-`configured` -> `running` -> `traces_written` -> `metrics_computed` -> `artifacts_written`

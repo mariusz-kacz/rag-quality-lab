@@ -1,457 +1,392 @@
-from __future__ import annotations
+"""Real Ragas persistence and metric calls over offline lab/query providers."""
 
 import json
+import importlib.util
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
 
+import httpx
 import pytest
+from openai import AsyncOpenAI
+from typer.testing import CliRunner
 
-from rag_quality_lab.schemas import (
-    REQUIRED_EVALUATION_METRICS,
-    REQUIRED_KNOWLEDGE_CATEGORIES,
-    AnswerResult,
-    CitationValidation,
-    ContextChunk,
-    ModelUsage,
-    QueryTrace,
-    Question,
-    RetrievalMode,
-    RetrievalResult,
-    RouteDecision,
-    SelectedContext,
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("ragas") is None, reason="requires eval extra"
 )
 
 
-pytestmark = pytest.mark.integration
+@pytest.fixture
+def judge_env(monkeypatch):
+    from rag_quality_lab.eval import providers
 
+    monkeypatch.setenv("RAGAS_DO_NOT_TRACK", "true")
+    for key, value in {
+        "RAGLAB_EVAL_MODEL": "judge",
+        "RAGLAB_EVAL_BASE_URL": "https://judge.invalid/openai/v1",
+        "RAGLAB_EVAL_API_KEY": "secret-key",
+        "RAGLAB_EVAL_MAX_RETRIES": "0",
+    }.items():
+        monkeypatch.setenv(key, value)
+    state = SimpleNamespace(requests=[], fail=False, clients=[], verdict="pass")
 
-REQUIRED_MARKDOWN_SECTIONS = (
-    "Run summary",
-    "Retrieval mode and configuration",
-    "Aggregate metrics",
-    "Per-question table",
-    "Request-response pairs",
-    "Token-budget diagnostics",
-    "No-answer cases",
-    "Citation validation failures",
-    "Limitations and interpretation notes",
-)
-
-
-def test_baseline_vector_evaluation_writes_json_and_markdown_artifacts(
-    tmp_path: Path,
-    temporary_golden_file: Path,
-) -> None:
-    run = _run_evaluation(
-        mode="baseline-vector",
-        golden_path=temporary_golden_file,
-        artifacts_dir=tmp_path / "artifacts" / "eval",
-        trace_dir=tmp_path / "artifacts" / "traces" / "baseline-vector",
-    )
-
-    _assert_evaluation_artifacts(
-        run=run,
-        mode="baseline-vector",
-        golden_path=temporary_golden_file,
-    )
-
-
-def test_routed_vector_evaluation_writes_json_and_markdown_artifacts(
-    tmp_path: Path,
-    temporary_golden_file: Path,
-) -> None:
-    run = _run_evaluation(
-        mode="routed-vector",
-        golden_path=temporary_golden_file,
-        artifacts_dir=tmp_path / "artifacts" / "eval",
-        trace_dir=tmp_path / "artifacts" / "traces" / "routed-vector",
-    )
-
-    _assert_evaluation_artifacts(
-        run=run,
-        mode="routed-vector",
-        golden_path=temporary_golden_file,
-    )
-
-
-def _run_evaluation(
-    *,
-    mode: RetrievalMode,
-    golden_path: Path,
-    artifacts_dir: Path,
-    trace_dir: Path,
-) -> Any:
-    from rag_quality_lab.eval.reports import run_evaluation
-
-    query_runner = FakeEvaluationQueryRunner(trace_dir)
-    return run_evaluation(
-        mode=mode,
-        golden_path=golden_path,
-        artifacts_dir=artifacts_dir,
-        top_k=3,
-        max_context_tokens=500,
-        output_token_limit=120,
-        query_runner=query_runner,
-    )
-
-
-def _assert_evaluation_artifacts(
-    *,
-    run: Any,
-    mode: RetrievalMode,
-    golden_path: Path,
-) -> None:
-    assert run.retrieval_mode == mode
-    assert run.artifact_paths is not None
-
-    json_path = Path(run.artifact_paths.json_path)
-    markdown_path = Path(run.artifact_paths.markdown_path)
-
-    assert json_path.exists()
-    assert markdown_path.exists()
-    assert json_path.parent == markdown_path.parent
-
-    payload = json.loads(json_path.read_text(encoding="utf-8"))
-    assert set(payload) >= {
-        "schema_version",
-        "run_id",
-        "created_at",
-        "retrieval_mode",
-        "golden_set_path",
-        "configuration",
-        "metrics",
-        "questions",
-        "trace_paths",
-    }
-    assert payload["retrieval_mode"] == mode
-    assert Path(payload["golden_set_path"]) == golden_path
-    assert payload["configuration"] == {
-        "top_k": 3,
-        "max_context_tokens": 500,
-        "output_token_limit": 120,
-        "router_category_margin": 0.15,
-    }
-
-    assert set(REQUIRED_EVALUATION_METRICS) <= set(payload["metrics"])
-    if mode == "baseline-vector":
-        assert payload["metrics"]["routing_accuracy"] is None
-        assert all(
-            question["metrics"]["routing_accuracy"] is None
-            for question in payload["questions"]
-        )
-    else:
-        assert payload["metrics"]["routing_accuracy"] is not None
-    assert len(payload["questions"]) == 12
-    assert len(payload["trace_paths"]) == 12
-    assert {question["case_type"] for question in payload["questions"]} >= {
-        "answerable",
-        "no_answer",
-        "ambiguous_boundary",
-        "multi_category_routing",
-    }
-    assert all("answer_text" in question for question in payload["questions"])
-    assert all("is_no_answer" in question for question in payload["questions"])
-    assert all(
-        "global_fallback_occurred" not in question
-        for question in payload["questions"]
-    )
-    assert all("fallback" not in metric for metric in payload["metrics"])
-
-    trace_paths = [Path(path) for path in payload["trace_paths"]]
-    assert all(path.exists() for path in trace_paths)
-    serialized_traces = [
-        json.loads(path.read_text(encoding="utf-8")) for path in trace_paths
-    ]
-    if mode == "baseline-vector":
-        assert all(trace["route_decision"] is None for trace in serialized_traces)
-    else:
-        assert all(trace["route_decision"] is not None for trace in serialized_traces)
-    assert {
-        Path(question["trace_path"]) for question in payload["questions"]
-    } == set(trace_paths)
-
-    markdown = markdown_path.read_text(encoding="utf-8")
-    normalized_markdown = markdown.lower()
-    assert "fallback" not in normalized_markdown
-    for section in REQUIRED_MARKDOWN_SECTIONS:
-        assert section.lower() in normalized_markdown
-    assert mode in markdown
-    assert str(json_path) in markdown
-    assert "The selected context supports the answer." in markdown
-
-
-def test_reordered_results_are_reported_in_golden_question_order(
-    tmp_path: Path,
-    temporary_golden_file: Path,
-    golden_questions: Any,
-) -> None:
-    from rag_quality_lab.eval.reports import run_evaluation
-
-    runner = ReorderedEvaluationQueryRunner(
-        tmp_path / "artifacts" / "traces",
-        list(reversed(golden_questions.questions)),
-    )
-    run = run_evaluation(
-        mode="routed-vector",
-        golden_path=temporary_golden_file,
-        artifacts_dir=tmp_path / "artifacts" / "eval",
-        top_k=3,
-        max_context_tokens=500,
-        output_token_limit=120,
-        query_runner=runner,
-    )
-
-    golden_ids = [question.question_id for question in golden_questions.questions]
-    assert [result.question_id for result in run.questions] == golden_ids
-    assert run.artifact_paths is not None
-    markdown = Path(run.artifact_paths.markdown_path).read_text(encoding="utf-8")
-    heading_positions = [markdown.index(f"### {question_id}") for question_id in golden_ids]
-    assert heading_positions == sorted(heading_positions)
-
-
-def test_incomplete_evaluation_run_reports_missing_question_ids(
-    tmp_path: Path,
-    temporary_golden_file: Path,
-    golden_questions: Any,
-) -> None:
-    from rag_quality_lab.eval.reports import EvaluationRunError, run_evaluation
-
-    repeated_question = golden_questions.questions[0]
-    runner = ReorderedEvaluationQueryRunner(
-        tmp_path / "artifacts" / "traces",
-        [repeated_question] * len(golden_questions.questions),
-    )
-
-    with pytest.raises(
-        EvaluationRunError,
-        match="missing question results:",
-    ):
-        run_evaluation(
-            mode="routed-vector",
-            golden_path=temporary_golden_file,
-            artifacts_dir=tmp_path / "artifacts" / "eval",
-            top_k=3,
-            max_context_tokens=500,
-            output_token_limit=120,
-            query_runner=runner,
+    def respond(request):
+        body = json.loads(request.content)
+        state.requests.append(body)
+        if state.fail:
+            return httpx.Response(401, json={"error": {"message": "secret-key"}})
+        assert request.url.path.endswith("/chat/completions")
+        prompt = json.dumps(body["messages"])
+        if "StatementGeneratorOutput" in prompt:
+            content = {"statements": ["Evidence from the index."]}
+        elif "NLIStatementOutput" in prompt:
+            content = {
+                "statements": [
+                    {
+                        "statement": "Evidence from the index.",
+                        "reason": "Supported",
+                        "verdict": 1,
+                    }
+                ]
+            }
+        else:
+            assert "DiscreteResponseModel" in prompt
+            content = {"value": state.verdict, "reason": "Offline fixture verdict."}
+        return httpx.Response(
+            200,
+            json={
+                "id": "offline",
+                "object": "chat.completion",
+                "created": 0,
+                "model": "judge",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {
+                            "role": "assistant",
+                            "content": json.dumps(content),
+                        },
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 1,
+                    "completion_tokens": 1,
+                    "total_tokens": 2,
+                },
+            },
         )
 
-
-@pytest.mark.parametrize("scope", [["LLM security and risks"], None])
-def test_reports_use_recorded_scope_even_when_it_disagrees_with_route_scores(
-    tmp_path: Path,
-    temporary_golden_file: Path,
-    scope: list[str] | None,
-) -> None:
-    from rag_quality_lab.eval.reports import run_evaluation
-
-    fake_runner = FakeEvaluationQueryRunner(tmp_path / "traces")
-
-    def runner(question, **kwargs):
-        result = fake_runner(question, **kwargs)
-        result["trace"] = result["trace"].model_copy(update={"searched_categories": scope})
-        result["trace_path"].write_text(result["trace"].model_dump_json(), encoding="utf-8")
+    def client(**kwargs):
+        result = AsyncOpenAI(
+            **kwargs,
+            http_client=httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+        )
+        state.clients.append(result)
         return result
 
-    run = run_evaluation(
-        mode="routed-vector",
-        golden_path=temporary_golden_file,
-        artifacts_dir=tmp_path / "eval",
-        top_k=3,
-        max_context_tokens=500,
-        output_token_limit=120,
-        query_runner=runner,
-    )
+    monkeypatch.setattr(providers, "AsyncOpenAI", client)
+    return state
 
-    assert all(result.searched_categories == scope for result in run.questions)
-    assert run.metrics.average_searched_categories == (None if scope is None else 1.0)
-    markdown = run.artifact_paths.markdown_path.read_text(encoding="utf-8")
-    if scope is None:
-        assert "unknown (not recorded)" in markdown
-        assert "route filter miss" not in markdown
+
+def read_rows(path):
+    return [
+        json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines()
+    ]
+
+
+def test_run_both_modes_with_real_ragas(tmp_path, capture_env, judge_env):
+    from rag_quality_lab.eval.runner import run_evaluation
+
+    ids = [q["question_id"] for q in capture_env.data["questions"][:2]]
+    for mode in ("baseline-vector", "routed-vector"):
+        result = run_evaluation(
+            mode=mode,
+            config=capture_env.config,
+            question_ids=ids,
+            artifacts_dir=tmp_path,
+        )
+        rows = read_rows(result["results_path"])
+        assert {r["question_id"] for r in rows} == set(ids)
+        assert all(r["response"] and r["contexts"] and r["mode"] == mode for r in rows)
+        assert result["metrics"]["faithfulness"] == {
+            "mean": 1.0,
+            "scored_count": 2,
+            "eligible_count": 2,
+        }
+        assert result["metrics"]["answer_success"]["mean"] == 1
+        assert len(read_rows(result["dataset_path"])) == 2
+        root = Path(result["dataset_path"]).parent.parent
+        assert not (root / "manifest.json").exists()
+        assert not (root / "inputs.jsonl").exists()
+        assert not (root / "summary.json").exists()
+    assert all(client.is_closed() for client in judge_env.clients)
+    assert (
+        capture_env.opened.count("embedding")
+        == capture_env.closed.count("embedding")
+        == 2
+    )
+    assert capture_env.opened.count("chat") == capture_env.closed.count("chat") == 2
+    assert capture_env.category_calls == 1
+
+
+def test_eval_uses_reranked_order_and_reuses_model(
+    tmp_path, capture_env, judge_env, monkeypatch
+):
+    from rag_quality_lab.eval.runner import run_evaluation
+    from rag_quality_lab.schemas.retrieval import RerankedChunk, RerankingResult
+
+    instances, calls = [], []
+
+    class Reranker:
+        def __init__(self, model):
+            instances.append(self)
+
+        def rerank(self, question, candidates):
+            calls.append(candidates)
+            return RerankingResult(
+                model="test-cross-encoder",
+                elapsed_ms=1,
+                results=[
+                    RerankedChunk(
+                        chunk_id=c.chunk_id,
+                        retrieval_rank=c.rank,
+                        rank=i,
+                        score=float(1 / i),
+                    )
+                    for i, c in enumerate(reversed(candidates), 1)
+                ],
+            )
+
+    monkeypatch.setattr("rag_quality_lab.rag.pipeline.FastEmbedReranker", Reranker)
+    runtime = capture_env.config.runtime.model_copy(update={"rerank_enabled": True})
+    result = run_evaluation(
+        config=capture_env.config,
+        runtime=runtime,
+        artifacts_dir=tmp_path,
+        question_ids=[q["question_id"] for q in capture_env.data["questions"][:2]],
+    )
+    rows = read_rows(result["results_path"])
+    assert len(instances) == 1 and len(calls) == 2
+    for row in rows:
+        assert row["settings"]["rerank_enabled"] is True
+        assert row["ranked_ids"] == list(
+            reversed(row["diagnostics"]["candidate_ranked_ids"])
+        )
+        assert row["cited_ids"] == row["ranked_ids"][:1]
+        assert row["diagnostics"]["context_chunks"] == 5
+        assert row["diagnostics"]["reranking"]["model"] == "test-cross-encoder"
+
+
+def test_fatal_judge_failure_preserves_results_and_stops_calls(
+    tmp_path, capture_env, judge_env
+):
+    from rag_quality_lab.eval.runner import EvaluationError, run_evaluation
+
+    judge_env.fail = True
+    ids = [q["question_id"] for q in capture_env.data["questions"][:2]]
+    with pytest.raises(EvaluationError) as error:
+        run_evaluation(
+            config=capture_env.config, question_ids=ids, artifacts_dir=tmp_path
+        )
+    rows = read_rows(error.value.results_path)
+    assert len(rows) == 2
+    statuses = [
+        r["metrics"][name]["status"]
+        for r in rows
+        for name in ("faithfulness", "answer_success")
+    ]
+    assert statuses.count("error") == 1 and statuses.count("not_run") == 3
+    assert len(judge_env.requests) == 1
+    assert all(r["metrics"]["source_hit_at_k"]["status"] == "ok" for r in rows)
+    assert "secret-key" not in str(error.value) + error.value.results_path.read_text()
+    assert all(client.is_closed() for client in judge_env.clients)
+
+
+def test_cli_outputs_one_json_and_reports_saved_failure(
+    tmp_path, capture_env, judge_env, monkeypatch
+):
+    from rag_quality_lab.cli import app
+    from rag_quality_lab.eval import runner
+
+    monkeypatch.setattr(runner, "load_app_config", lambda **kwargs: capture_env.config)
+    qid = capture_env.data["questions"][0]["question_id"]
+    cli = CliRunner()
+    result = cli.invoke(
+        app,
+        [
+            "eval",
+            "run",
+            "--question-id",
+            qid,
+            "--artifacts-dir",
+            str(tmp_path),
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    saved = json.loads(result.stdout)
+    assert (
+        Path(saved["dataset_path"]).is_file() and Path(saved["results_path"]).is_file()
+    )
+    judge_env.fail = True
+    failed = cli.invoke(
+        app,
+        [
+            "eval",
+            "run",
+            "--question-id",
+            qid,
+            "--artifacts-dir",
+            str(tmp_path),
+            "--json",
+        ],
+    )
+    assert failed.exit_code == 4 and not failed.stdout
+    payload = json.loads(failed.stderr.splitlines()[-1])
+    assert not payload["ok"] and Path(payload["results_path"]).is_file()
+    assert "secret-key" not in failed.output
+
+
+def test_partial_query_run_keeps_failure_unscored(tmp_path, capture_env, judge_env):
+    from rag_quality_lab.eval.runner import EvaluationError, run_evaluation, summarize
+
+    ids = [q["question_id"] for q in capture_env.data["questions"][:2]]
+    capture_env.fail_at = 1
+    with pytest.raises(EvaluationError) as error:
+        run_evaluation(
+            mode="routed-vector",
+            config=capture_env.config,
+            question_ids=ids,
+            artifacts_dir=tmp_path,
+        )
+    rows = read_rows(error.value.results_path)
+    assert len(rows) == 2
+    failed = next(row for row in rows if row["error"] is not None)
+    assert failed["metrics"]["answer_success"]["value"] is None
+    assert failed["metrics"]["answer_success"]["status"] == "not_run"
+    assert summarize(rows)["metrics"]["faithfulness"] == {
+        "mean": 1.0,
+        "scored_count": 1,
+        "eligible_count": 2,
+    }
+    assert capture_env.opened.count("chat") == capture_env.closed.count("chat")
+
+
+def test_no_answer_cases_are_judged_against_notes(tmp_path, capture_env, judge_env):
+    from rag_quality_lab.eval.runner import run_evaluation
+
+    ids = [
+        q["question_id"]
+        for q in capture_env.data["questions"]
+        if q["answerability"] == "no_answer"
+    ]
+    result = run_evaluation(
+        config=capture_env.config, question_ids=ids, artifacts_dir=tmp_path
+    )
+    assert result["metrics"]["faithfulness"]["mean"] is None
+    assert result["metrics"]["faithfulness"]["eligible_count"] == 0
+    assert result["metrics"]["answer_success"]["scored_count"] == len(ids)
+    assert len(judge_env.requests) == len(ids)
+
+
+def test_source_coverage_survives_empty_retrieval(
+    tmp_path, capture_env, judge_env, monkeypatch
+):
+    from rag_quality_lab.eval.runner import run_evaluation
+    from rag_quality_lab.retrieval.qdrant_store import QdrantStore
+
+    questions = capture_env.data["questions"][:2]
+    source = questions[0]["expected_relevant_sources"][0]
+    questions[1]["expected_relevant_sources"] = [f"{source}:chunk"]
+    golden = tmp_path / "golden.json"
+    golden.write_text(json.dumps({"questions": questions}))
+    monkeypatch.setattr(QdrantStore, "search_chunks", lambda *args, **kwargs: [])
+    result = run_evaluation(
+        config=capture_env.config, golden_path=golden, artifacts_dir=tmp_path
+    )
+    rows = read_rows(result["dataset_path"])
+    assert rows[0]["relevant_ids"] and rows[1]["relevant_ids"] == [f"{source}:chunk"]
+    assert all(row["ranked_ids"] == [] for row in rows)
+    assert result["metrics"]["source_hit_at_k"]["mean"] == 0
+    assert result["metrics"]["source_mrr_at_k"]["mean"] == 0
+
+
+def test_query_setup_failure_closes_owned_clients(tmp_path, capture_env, judge_env):
+    from rag_quality_lab.eval.runner import EvaluationError, run_evaluation
+
+    capture_env.setup_fail = True
+    with pytest.raises(EvaluationError) as error:
+        run_evaluation(config=capture_env.config, artifacts_dir=tmp_path)
+    assert error.value.dataset_path is None and error.value.results_path is None
+    assert capture_env.closed.count("embedding") == 1
+    assert not judge_env.requests
+    assert "secret-key" not in str(error.value)
+
+
+def test_failed_answer_is_a_quality_result_not_a_provider_failure(
+    tmp_path, capture_env, judge_env
+):
+    from rag_quality_lab.eval.runner import run_evaluation
+
+    judge_env.verdict = "fail"
+    result = run_evaluation(
+        config=capture_env.config,
+        artifacts_dir=tmp_path,
+        question_ids=[capture_env.data["questions"][0]["question_id"]],
+    )
+    assert result["metrics"]["answer_success"]["mean"] == 0
+    assert result["metrics"]["answer_success"]["scored_count"] == 1
+    assert result["metrics"]["faithfulness"]["mean"] == 1
+    row = read_rows(result["results_path"])[0]
+    assert row["metrics"]["answer_success"]["reason"] == "Offline fixture verdict."
+    assert row["question"]["grading_notes"]
+
+
+@pytest.mark.parametrize("json_output", [False, True])
+def test_legacy_index_reports_recovery_before_any_model_calls(
+    tmp_path, capture_env, judge_env, monkeypatch, json_output
+):
+    from qdrant_client import models
+    from rag_quality_lab.cli import app
+    from rag_quality_lab.eval import runner
+
+    capture_env.client.delete_payload(
+        collection_name="capture",
+        keys=["index_fingerprint"],
+        points=models.FilterSelector(filter=models.Filter()),
+    )
+    monkeypatch.setattr(runner, "load_app_config", lambda **kwargs: capture_env.config)
+    args = ["eval", "run", "--artifacts-dir", str(tmp_path)]
+    if json_output:
+        args.append("--json")
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 4
+    if json_output:
+        assert not result.stdout
+        payload = json.loads(result.stderr)
+        assert payload["stage"] == "retrieval"
+        assert payload["dataset_path"] is None
+        message = payload["message"]
     else:
-        assert "route filter miss" in markdown
+        message = result.stderr
+    assert "index_fingerprint" in message and "corpus ingest --recreate" in message
+    assert not judge_env.requests and not capture_env.query_calls
+    assert capture_env.closed.count("store") == 1
+    assert not list(tmp_path.rglob("answers.jsonl"))
 
 
-class FakeEvaluationQueryRunner:
-    def __init__(self, trace_dir: Path) -> None:
-        self.trace_dir = trace_dir
-        self.calls: list[dict[str, Any]] = []
+def test_remote_index_error_does_not_expose_provider_details(
+    tmp_path, capture_env, judge_env, monkeypatch
+):
+    from rag_quality_lab.eval.runner import EvaluationError, run_evaluation
 
-    def __call__(
-        self,
-        question: Question | str,
-        *,
-        mode: RetrievalMode,
-        top_k: int,
-        max_context_tokens: int,
-        output_token_limit: int,
-        trace_dir: Path | None = None,
-        **_: Any,
-    ) -> dict[str, Any]:
-        golden_question = question if isinstance(question, Question) else Question(text=question)
-        trace_directory = trace_dir or self.trace_dir
-        trace_directory.mkdir(parents=True, exist_ok=True)
+    def fail_scroll(**kwargs):
+        raise RuntimeError("Authorization: Bearer secret-key")
 
-        self.calls.append(
-            {
-                "question": golden_question.text,
-                "mode": mode,
-                "top_k": top_k,
-                "max_context_tokens": max_context_tokens,
-                "output_token_limit": output_token_limit,
-            }
-        )
-
-        trace = _trace_for_question(
-            golden_question,
-            mode=mode,
-            ordinal=len(self.calls),
-            top_k=top_k,
-            max_context_tokens=max_context_tokens,
-            output_token_limit=output_token_limit,
-        )
-        trace_path = trace_directory / f"{trace.trace_id}.json"
-        trace_path.write_text(trace.model_dump_json(indent=2) + "\n", encoding="utf-8")
-
-        return {"trace": trace, "trace_path": trace_path}
-
-
-class ReorderedEvaluationQueryRunner(FakeEvaluationQueryRunner):
-    def __init__(self, trace_dir: Path, questions: list[Question]) -> None:
-        super().__init__(trace_dir)
-        self.questions = questions
-
-    def __call__(
-        self,
-        question: Question | str,
-        *args: Any,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
-        del question
-        next_question = self.questions[len(self.calls)]
-        return super().__call__(next_question, *args, **kwargs)
-
-
-def _trace_for_question(
-    question: Question,
-    *,
-    mode: RetrievalMode,
-    ordinal: int,
-    top_k: int,
-    max_context_tokens: int,
-    output_token_limit: int,
-) -> QueryTrace:
-    source_slug = (
-        question.expected_relevant_sources[0]
-        if question.expected_relevant_sources
-        else f"unmatched-source-{ordinal:02d}"
-    )
-    chunk_id = f"{source_slug}:overview:0001"
-    category = question.expected_category or "RAG and context handling"
-    is_no_answer = question.answerability == "no_answer"
-    route_decision = None if mode == "baseline-vector" else _route_decision(question)
-    retrieval_results = [
-        RetrievalResult(
-            mode=mode,
-            rank=rank,
-            chunk_id=chunk_id if rank == 1 else f"distractor-{ordinal:02d}-{rank}",
-            source_slug=source_slug if rank == 1 else f"distractor-source-{rank}",
-            category=category,
-            section_path=["Overview"],
-            score=1.0 - (rank / 10),
-            estimated_tokens=24 + rank,
-            content=f"Retrieved context for {question.text}",
-        )
-        for rank in range(1, top_k + 1)
-    ]
-    included_chunks = [
-        ContextChunk(
-            chunk_id=result.chunk_id,
-            source_slug=result.source_slug,
-            category=result.category,
-            section_path=result.section_path,
-            retrieval_rank=result.rank,
-            content=result.content or "Retrieved context.",
-            estimated_tokens=result.estimated_tokens or 1,
-        )
-        for result in retrieval_results[:2]
-    ]
-
-    return QueryTrace(
-        trace_id=f"trace-{mode}-{ordinal:02d}",
-        question=question,
-        retrieval_mode=mode,
-        route_decision=route_decision,
-        searched_categories=(
-            list(REQUIRED_KNOWLEDGE_CATEGORIES)
-            if route_decision is None or route_decision.fallback_all_categories
-            else question.expected_searched_categories or [route_decision.selected_category]
-        ),
-        retrieval_results=retrieval_results,
-        context_build=SelectedContext(
-            max_context_tokens=max_context_tokens,
-            output_token_limit=output_token_limit,
-            included_chunks=included_chunks,
-            excluded_chunks=[],
-            final_estimated_context_tokens=sum(
-                chunk.estimated_tokens for chunk in included_chunks
-            ),
-        ),
-        answer_result=AnswerResult(
-            answer_text=(
-                "I do not have enough evidence in the selected context to answer."
-                if is_no_answer
-                else f"The selected context supports the answer. [{chunk_id}]"
-            ),
-            is_no_answer=is_no_answer,
-            citations=[] if is_no_answer else [chunk_id],
-            validation_status="not_applicable" if is_no_answer else "valid",
-        ),
-        citation_validation=CitationValidation(
-            status="not_applicable" if is_no_answer else "valid",
-            cited_chunk_ids=[] if is_no_answer else [chunk_id],
-        ),
-        model_usage=ModelUsage(
-            input_tokens=100 + ordinal,
-            output_tokens=20,
-            total_tokens=120 + ordinal,
-            model="gpt-test",
-            deployment="chat-test",
-        ),
-    )
-
-
-def _route_decision(question: Question) -> RouteDecision:
-    scores = {category: 0.05 for category in REQUIRED_KNOWLEDGE_CATEGORIES}
-    if question.case_type == "fallback_routing":
-        return RouteDecision(
-            selected_category=None,
-            fallback_all_categories=True,
-            confidence=0.24,
-            threshold=0.5,
-            category_scores={category: 0.24 for category in REQUIRED_KNOWLEDGE_CATEGORIES},
-        )
-
-    if question.case_type == "multi_category_routing":
-        selected_category = question.expected_searched_categories[0]
-        for category in question.expected_searched_categories:
-            scores[category] = 0.75
-        scores[selected_category] = 0.86
-        return RouteDecision(
-            selected_category=selected_category,
-            fallback_all_categories=False,
-            confidence=0.86,
-            threshold=0.5,
-            category_scores=scores,
-        )
-
-    selected_category = question.expected_category or "RAG and context handling"
-    scores[selected_category] = 0.86
-    return RouteDecision(
-        selected_category=selected_category,
-        fallback_all_categories=False,
-        confidence=0.86,
-        threshold=0.5,
-        category_scores=scores,
-    )
+    monkeypatch.setattr(capture_env.client, "scroll", fail_scroll)
+    with pytest.raises(EvaluationError) as error:
+        run_evaluation(config=capture_env.config, artifacts_dir=tmp_path)
+    assert "secret-key" not in str(error.value)
+    assert "Qdrant" in str(error.value)
+    assert error.value.stage == "retrieval"
+    assert not judge_env.requests and not capture_env.query_calls

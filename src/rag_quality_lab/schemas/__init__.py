@@ -20,16 +20,6 @@ from rag_quality_lab.schemas.corpus import (
     SourcePage,
     SourceSection,
 )
-from rag_quality_lab.schemas.eval import (
-    BENCHMARK_SCOPE_STATEMENT,
-    REQUIRED_EVALUATION_METRICS,
-    EvaluationArtifactPaths,
-    EvaluationMetricCount,
-    EvaluationMetrics,
-    EvaluationQuestionResult,
-    EvaluationRun,
-    GoldenSet,
-)
 from rag_quality_lab.schemas.query import (
     AnswerResult,
     Answerability,
@@ -48,8 +38,6 @@ from rag_quality_lab.schemas.query import (
 from rag_quality_lab.schemas.retrieval import RetrievalMode, RetrievalResult
 
 __all__ = [
-    "BENCHMARK_SCOPE_STATEMENT",
-    "REQUIRED_EVALUATION_METRICS",
     "REQUIRED_KNOWLEDGE_CATEGORIES",
     "AnswerResult",
     "Answerability",
@@ -62,14 +50,8 @@ __all__ = [
     "ContextChunk",
     "CorpusSummaryArtifact",
     "DEFAULT_SCHEMA_VERSION",
-    "EvaluationArtifactPaths",
-    "EvaluationMetricCount",
-    "EvaluationMetrics",
-    "EvaluationQuestionResult",
-    "EvaluationRun",
     "ExcludedContextChunk",
     "GenerationResult",
-    "GoldenSet",
     "IngestionSummaryArtifact",
     "KnowledgeCategory",
     "KnowledgeCategoryName",

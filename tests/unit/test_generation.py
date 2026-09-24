@@ -14,9 +14,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_generate_answer_builds_grounded_prompt_and_returns_answer_result() -> None:
-    chat_model = FakeChatModel(
-        "RAG grounds answers in selected context. [C1]"
-    )
+    chat_model = FakeChatModel("RAG grounds answers in selected context. [C1]")
     selected_context = context_with_chunks(
         [
             context_chunk(
@@ -29,7 +27,10 @@ def test_generate_answer_builds_grounded_prompt_and_returns_answer_result() -> N
     )
 
     result = generate_answer(
-        question=Question(text="How does RAG ground answers?"),
+        question=Question(
+            text="How does RAG ground answers?",
+            grading_notes="Evaluator-only success criteria.",
+        ),
         selected_context=selected_context,
         chat_model=chat_model,
     )
@@ -57,9 +58,15 @@ def test_generate_answer_builds_grounded_prompt_and_returns_answer_result() -> N
     assert "[C1]" in messages[1].content
     assert "chunk-rag-1" not in messages[1].content
     assert "RAG grounds answers in selected context." in messages[1].content
+    assert all(
+        "Evaluator-only success criteria." not in message.content
+        for message in messages
+    )
 
 
-def test_generate_answer_returns_no_answer_without_provider_when_context_is_empty() -> None:
+def test_generate_answer_returns_no_answer_without_provider_when_context_is_empty() -> (
+    None
+):
     chat_model = FakeChatModel("This should not be called.")
     selected_context = context_with_chunks([], output_token_limit=80)
 
@@ -120,9 +127,14 @@ def test_generate_answer_returns_no_answer_without_provider_when_context_is_empt
         ),
     ],
     ids=[
-        "prompt-refusal", "normalized-refusal", "no-period",
-        "alternate-no-evidence", "alternate-insufficient-context",
-        "unknown-citation", "known-citation", "missing-citation",
+        "prompt-refusal",
+        "normalized-refusal",
+        "no-period",
+        "alternate-no-evidence",
+        "alternate-insufficient-context",
+        "unknown-citation",
+        "known-citation",
+        "missing-citation",
     ],
 )
 def test_generate_answer_only_exempts_the_prompt_refusal_from_citation_validation(

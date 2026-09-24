@@ -29,7 +29,6 @@ def test_root_help_exposes_base_command_groups() -> None:
     assert result.exit_code == 0
     assert "corpus" in result.output
     assert "trace" in result.output
-    assert "eval" in result.output
     assert "version" in result.output
 
 

@@ -32,3 +32,18 @@ class RetrievalResult(SchemaModel):
         if any(not section.strip() for section in value):
             raise ValueError("section_path entries must be non-empty")
         return value
+
+
+class RerankedChunk(SchemaModel):
+    """Cross-encoder ranking, linked to an unchanged vector-search result."""
+
+    chunk_id: str = Field(min_length=1)
+    retrieval_rank: int = Field(ge=1)
+    rank: int = Field(ge=1)
+    score: float = Field(allow_inf_nan=False)
+
+
+class RerankingResult(SchemaModel):
+    model: str = Field(min_length=1)
+    elapsed_ms: float = Field(ge=0, allow_inf_nan=False)
+    results: list[RerankedChunk] = Field(default_factory=list)

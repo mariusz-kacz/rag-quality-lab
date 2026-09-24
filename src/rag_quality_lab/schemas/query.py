@@ -12,7 +12,11 @@ from rag_quality_lab.schemas.categories import (
     REQUIRED_KNOWLEDGE_CATEGORIES,
     KnowledgeCategoryName,
 )
-from rag_quality_lab.schemas.retrieval import RetrievalMode, RetrievalResult
+from rag_quality_lab.schemas.retrieval import (
+    RetrievalMode,
+    RetrievalResult,
+    RerankingResult,
+)
 
 
 Answerability: TypeAlias = Literal["answerable", "no_answer"]
@@ -33,6 +37,11 @@ class Question(SchemaModel):
     question_id: str | None = Field(default=None, min_length=1)
     expected_category: KnowledgeCategoryName | None = None
     expected_relevant_sources: list[str] = Field(default_factory=list)
+    grading_notes: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Evaluation criteria, never generation input.",
+    )
     answerability: Answerability = "answerable"
     case_type: CaseType = "answerable"
     expected_fallback_all_categories: bool | None = None
@@ -105,6 +114,7 @@ class ContextChunk(SchemaModel):
     category: KnowledgeCategoryName
     section_path: list[str] = Field(min_length=1)
     retrieval_rank: int = Field(ge=1)
+    rerank_rank: int | None = Field(default=None, ge=1)
     content: str = Field(min_length=1)
     estimated_tokens: int = Field(gt=0)
 
@@ -137,9 +147,13 @@ class SelectedContext(SchemaModel):
             raise ValueError(
                 "final_estimated_context_tokens cannot exceed max_context_tokens"
             )
-        included_ranks = [chunk.retrieval_rank for chunk in self.included_chunks]
+        included_ranks = [
+            chunk.rerank_rank or chunk.retrieval_rank for chunk in self.included_chunks
+        ]
         if included_ranks != sorted(included_ranks):
-            raise ValueError("included_chunks must preserve retrieval rank order")
+            raise ValueError(
+                "included_chunks must preserve retrieval rank order or rerank order"
+            )
         return self
 
 
@@ -189,6 +203,7 @@ class QueryTrace(SchemaModel):
     # None denotes a legacy trace without recorded retrieval scope.
     searched_categories: list[KnowledgeCategoryName] | None = None
     retrieval_results: list[RetrievalResult] = Field(default_factory=list)
+    reranking: RerankingResult | None = None
     context_build: SelectedContext
     answer_result: AnswerResult
     citation_validation: CitationValidation

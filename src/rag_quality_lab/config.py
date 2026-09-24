@@ -14,6 +14,7 @@ from pydantic import (
     SecretStr,
     ValidationError,
     field_validator,
+    model_validator,
 )
 
 
@@ -22,6 +23,7 @@ FOUNDRY_API_KEY_ENV_VAR = "FOUNDRY_API_KEY"
 FOUNDRY_EMBEDDING_MODEL_ENV_VAR = "FOUNDRY_EMBEDDING_MODEL"
 FOUNDRY_CHAT_MODEL_ENV_VAR = "FOUNDRY_CHAT_MODEL"
 FOUNDRY_REASONING_EFFORT_ENV_VAR = "FOUNDRY_REASONING_EFFORT"
+DEFAULT_RERANK_MODEL = "Xenova/ms-marco-MiniLM-L-6-v2"
 QDRANT_REQUIRED_ENV_VARS = (
     "QDRANT_URL",
     "RAGLAB_QDRANT_COLLECTION",
@@ -133,14 +135,22 @@ class RuntimeConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    top_k: int = Field(default=3, ge=1)
+    top_k: int = Field(default=5, ge=1)
     max_context_tokens: int = Field(default=1000, ge=1)
     output_token_limit: int = Field(default=500, ge=1)
+    rerank_enabled: bool = False
+    candidate_k: int = Field(default=20, ge=1)
+    rerank_model: str = Field(default=DEFAULT_RERANK_MODEL, min_length=1)
     router_confidence_threshold: float = Field(default=0.18, ge=0.0, le=1.0)
     router_category_margin: float = Field(default=0.15, ge=0.0, le=1.0)
     trace_dir: Path = Path("artifacts/traces")
-    eval_artifacts_dir: Path = Path("artifacts/eval")
     schema_version: str = Field(default="1.0", min_length=1)
+
+    @model_validator(mode="after")
+    def validate_rerank_depth(self) -> "RuntimeConfig":
+        if self.rerank_enabled and self.candidate_k < self.top_k:
+            raise ValueError("candidate_k must be >= top_k when reranking")
+        return self
 
 
 class AppConfig(BaseModel):
@@ -153,12 +163,14 @@ class AppConfig(BaseModel):
     runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
 
 
-def load_app_config(environ: Mapping[str, str] | None = None) -> AppConfig:
+def load_app_config(
+    environ: Mapping[str, str] | None = None, *, runtime: RuntimeConfig | None = None
+) -> AppConfig:
     """Load complete application configuration from environment variables."""
 
     foundry_openai = load_foundry_openai_config(environ)
     qdrant = load_qdrant_config(environ)
-    runtime = load_runtime_config(environ)
+    runtime = runtime if runtime is not None else load_runtime_config(environ)
     return AppConfig(
         foundry_openai=foundry_openai,
         qdrant=qdrant,
@@ -229,10 +241,12 @@ def load_runtime_config(
         "top_k": _read(env, "RAGLAB_TOP_K"),
         "max_context_tokens": _read(env, "RAGLAB_MAX_CONTEXT_TOKENS"),
         "output_token_limit": _read(env, "RAGLAB_OUTPUT_TOKEN_LIMIT"),
+        "rerank_enabled": _read(env, "RAGLAB_RERANK_ENABLED"),
+        "candidate_k": _read(env, "RAGLAB_CANDIDATE_K"),
+        "rerank_model": _read(env, "RAGLAB_RERANK_MODEL"),
         "router_confidence_threshold": _read(env, "RAGLAB_ROUTER_CONFIDENCE_THRESHOLD"),
         "router_category_margin": _read(env, "RAGLAB_ROUTER_CATEGORY_MARGIN"),
         "trace_dir": _read(env, "RAGLAB_TRACE_DIR"),
-        "eval_artifacts_dir": _read(env, "RAGLAB_EVAL_ARTIFACTS_DIR"),
         "schema_version": _read(env, "RAGLAB_SCHEMA_VERSION"),
     }
     values = {key: value for key, value in values.items() if value is not None}

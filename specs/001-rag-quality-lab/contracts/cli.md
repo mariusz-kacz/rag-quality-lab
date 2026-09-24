@@ -5,7 +5,7 @@ The CLI is the public interface for the MVP. Commands must support human-readabl
 ## Global Behavior
 
 - Commands return exit code `0` on success.
-- Commands return non-zero exit codes for missing configuration, invalid corpus metadata, unavailable Qdrant, missing golden questions, unsupported retrieval modes, or failed citation validation when strict validation is requested.
+- Commands return non-zero exit codes for missing configuration, invalid corpus metadata, unavailable Qdrant, unsupported retrieval modes, or failed citation validation when strict validation is requested.
 - Errors must be written in a reviewer-readable form and include the failing stage.
 - Commands that write artifacts must print the artifact path.
 
@@ -109,53 +109,27 @@ Inspect a persisted query trace.
 - citation validation result
 - model usage when available
 
-## `raglab eval run`
+## Evaluation status
 
-Run the golden question set for one retrieval mode.
+`raglab eval run --mode baseline-vector|routed-vector` captures the golden
+questions and scores them in a native Ragas experiment. Options: `--golden`,
+repeatable `--question-id`, `--artifacts-dir`, and `--json`.
 
-**Options**
+`eval run` is the only evaluation command. Each invocation generates and scores
+fresh answers; saved-run loading, rescoring, and automatic comparison are not supported.
 
-- `--mode baseline-vector|routed-vector`
-- `--golden <path>`
-- `--artifacts-dir <path>`
-- `--top-k <n>`
-- `--max-context-tokens <n>`
-- `--output-token-limit <n>`
-- `--json`
+JSON success is one stdout object. Failure is one stderr JSON object containing
+`ok: false`, `stage`, `message`, `dataset_path`, and `results_path` (null when unavailable).
+Ragas progress goes to stderr. Incomplete evaluation exits 4; artifact errors
+exit 3; configuration errors exit 2. Low quality scores alone do not fail a run.
+The first reported metric is `answer_success`, a pass rate with scored/eligible
+coverage. Both answerable and no-answer questions are judged against grading notes.
+Faithfulness and source Hit/MRR follow as supporting metrics. Refusal detection is
+labeled diagnostic. JSON metric summaries contain `mean`, `scored_count`, and
+`eligible_count`; error and exclusion reasons remain in individual result rows.
+Evaluation configuration requires a judge model, not an evaluator embedding model.
 
-**Success Output**
-
-- retrieval mode
-- number of questions evaluated
-- aggregate metrics
-- raw counts alongside rate percentages where available
-- benchmark-scope statement
-- machine-readable artifact path
-- Markdown report path
-
-**Failure Cases**
-
-- golden set outside 12-20 questions
-- missing required case type
-- unsupported retrieval mode, including future-extension modes that are not part of the MVP runtime contract
-- one or more traces cannot be written
-
-## `raglab eval compare`
-
-Compare previously written evaluation artifacts.
-
-**Arguments**
-
-- one or more evaluation artifact paths.
-
-**Options**
-
-- `--markdown <path>`: write comparison table.
-- `--json`: emit machine-readable comparison.
-
-**Success Output**
-
-- metric table by retrieval mode
-- token-budget diagnostics by retrieval mode
-- observed higher or lower value on the included benchmark per comparable metric
-- benchmark-scope and interpretation notes
+Index preflight failures use stage `retrieval` and exit 4. Missing fingerprint
+metadata, empty indexes, mixed fingerprints, and duplicate chunk IDs report
+actionable validation messages. Remote Qdrant failures report configuration checks
+without exposing raw provider exception details.

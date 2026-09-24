@@ -1,1 +1,1 @@
-"""Golden-set evaluation helpers."""
+"""Ragas evaluator configuration and provider adapters."""

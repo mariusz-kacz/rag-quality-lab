@@ -1,6 +1,6 @@
 # Quickstart: RAG Quality Lab
 
-This guide validates the MVP end to end from corpus inspection through ingestion, single-query tracing, and retrieval-mode evaluation.
+This guide validates the MVP end to end from corpus inspection through ingestion, single-query tracing.
 
 ## Prerequisites
 
@@ -58,7 +58,7 @@ Expected outcome:
 ## 3. Run an Answerable Query
 
 ```powershell
-raglab query "How does retrieval augmented generation help with context grounding?" --mode routed-vector --top-k 3 --max-context-tokens 1000 --output-token-limit 500
+raglab query "How does retrieval augmented generation help with context grounding?" --mode routed-vector --top-k 5 --max-context-tokens 1000 --output-token-limit 500
 ```
 
 Expected outcome:
@@ -89,40 +89,6 @@ raglab trace inspect artifacts/traces/<trace_id>.json
 Expected outcome:
 
 - Routed queries show the route decision; baseline queries show routing as not applicable. Retrieval results, context budget, citations, validation result, and model usage when available are visible in both modes.
-
-## 6. Run Evaluation for Baseline Vector Retrieval
-
-```powershell
-raglab eval run --mode baseline-vector --golden golden/questions.json --artifacts-dir artifacts/eval
-```
-
-Expected outcome:
-
-- All 12-15 golden questions are evaluated.
-- Required metrics are written to JSON.
-- A Markdown report is written with aggregate and per-question results.
-
-## 7. Run Evaluation for Routed Vector Retrieval
-
-```powershell
-raglab eval run --mode routed-vector --golden golden/questions.json --artifacts-dir artifacts/eval
-```
-
-Expected outcome:
-
-- Metrics are comparable with the baseline run.
-- Routing accuracy and fallback rate are reported.
-- Token-budget diagnostics are included.
-
-## 8. Compare Evaluation Artifacts
-
-```powershell
-raglab eval compare artifacts/eval/<baseline_run>.json artifacts/eval/<routed_run>.json --markdown artifacts/eval/comparison.md
-```
-
-Expected outcome:
-
-- A comparison table shows routing, retrieval, citation, no-answer, and token-budget metrics by mode.
 
 ## Future Extension: Hybrid Retrieval
 

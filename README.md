@@ -1,11 +1,57 @@
 # RAG Quality Lab
 
-RAG Quality Lab is a CLI-first Python retrieval-quality engineering lab for inspectable and reproducible experiments over a pinned corpus and a small curated benchmark. It keeps the corpus, golden questions, retrieval decisions, context budgets, citations, traces, and evaluation reports reviewable and reproducible.
+RAG Quality Lab is a CLI-first Python retrieval-quality engineering lab for inspectable and reproducible experiments over a pinned corpus and a small curated benchmark. It keeps the corpus, golden questions, retrieval decisions, context budgets, citations, and traces reviewable and reproducible.
 
 The lab uses a curated local corpus, Azure AI Foundry models through an OpenAI-compatible project endpoint, and Qdrant for vector storage. It supports two retrieval modes:
 
 - `baseline-vector`: searches the full collection.
 - `routed-vector`: deterministically routes the question across five knowledge categories, then applies one or more category filters when routing confidence is high enough.
+
+## Evaluation Results
+
+The latest experiments favor retrieving 20 candidates, reranking locally, and
+selecting up to five chunks within a 1,000-token context budget. Five is now the
+shared chunk-limit default; reranking remains opt-in with `--rerank`.
+
+Recorded **2026-09-24** on 16 curated questions and a 285-chunk index built from
+26 source snapshots. All runs below use the same index, questions, grading rubric,
+generator/evaluator settings, 1,000-token context budget, and 500-token answer
+limit. Answer success is an LLM-judge verdict; faithfulness measures claim support
+against the selected context and excludes the two expected no-answer questions.
+
+| Search mode | Reranking | Chunk cap | Answer success | Mean faithfulness | Mean input tokens |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Baseline | Off | 3 | 14/16 | 0.866 | 829 |
+| Baseline | On, 20 candidates | 3 | 15/16 | 0.932 | 859 |
+| Baseline | On, 20 candidates | 5 | 16/16 | 0.909 | 1,179 |
+| Routed | Off | 3 | 14/16 | 0.889 | 848 |
+| Routed | On, 20 candidates | 3 | 13/16 | 0.928 | 898 |
+| Routed | On, 20 candidates | 5 | 15/16 | 0.961 | 1,149 |
+
+- **Reranking recovered missing evidence.** For `q-cross-category-005`, baseline
+  vector search placed the passage explaining context recall and precision at
+  rank 20. Reranking moved it to first place, and the answer passed with just three
+  selected chunks. This fixed the case without increasing the token budget.
+- **Five chunks improved the observed pass counts, with tradeoffs.** Compared
+  with three reranked chunks, mean generation input grew 37% in baseline and 28%
+  in routed mode. Baseline faithfulness fell slightly while routed faithfulness
+  rose. The token budget still limits some answers to three or four chunks.
+- **Routing did not consistently improve answer success.** Both modes remain
+  available for comparison. Routed search still fails `q-multi-category-002` at
+  five chunks. Both expected no-answer cases are correctly refused in every run.
+
+These are single runs on a small tuning set, not a held-out quality estimate.
+Baseline's final improvement includes a borderline judge pass on
+`q-multi-category-002`, so 16/16 does not establish that every answer is complete
+or that five will always outperform three. The no-reranking controls above use
+the earlier three-chunk setting; they do not measure the current five-chunk
+default without reranking. Local reranking also adds CPU work: the earlier
+three-chunk runs measured about 2.4 seconds per query after the first call, under
+concurrent execution rather than an isolated latency benchmark.
+
+See the [full analysis and reproduction commands](docs/reranking-review.md),
+[original comparison data](artifacts/reranking-review/summary.json), and
+[three-versus-five comparison with answers and judge reasons](artifacts/reranking-review/five-chunks/comparison.json).
 
 ## Repository Map
 
@@ -15,7 +61,6 @@ The lab uses a curated local corpus, Azure AI Foundry models through an OpenAI-c
 - `corpus/categories.json`: the five routing categories.
 - `golden/questions.json`: answerable, no-answer, and boundary cases used by evaluation.
 - `artifacts/traces/`: query traces.
-- `artifacts/eval/`: evaluation JSON, Markdown reports, and evaluation traces.
 - `tests/`: unit, contract, and integration tests.
 
 ## Prerequisites
@@ -84,29 +129,27 @@ uv run raglab --env-file .env.local corpus inspect
 uv run raglab --env-file .env.local corpus ingest
 ```
 
-Ingestion validates the manifest and snapshots, deterministically creates chunks, embeds them, creates the configured Qdrant collection if needed, and upserts the vectors. Each point stores an index fingerprint covering the complete chunk set and metadata, chunk-size setting, embedding deployment/model, and vector dimensions. Unchanged ingestion is repeatable; an existing point with a different or missing fingerprint blocks the write and directs you to `--recreate`. Use that flag to replace the disposable collection after changing index inputs or when upgrading a collection created without fingerprints.
+Ingestion validates the manifest and snapshots, deterministically creates chunks, embeds them, creates the configured Qdrant collection if needed, and upserts the vectors. Each point stores an index fingerprint covering the complete chunk set and metadata, exact embedding text, chunk-size setting, embedding deployment/model, and vector dimensions. Unchanged ingestion is repeatable; an existing point with a different or missing fingerprint blocks the write and directs you to `--recreate`. Use that flag to replace the disposable collection after changing index inputs or when upgrading a collection created without fingerprints.
+
+Corpus preparation excludes the normalized snapshots' administrative sections:
+`Source snapshot`, `Related frameworks and provenance`, `Related frameworks and references`,
+and `Related references and provenance`. These are exact heading matches, so
+substantive guidance about metadata or provenance remains searchable. The source
+files and provenance metadata are retained. Embedding input includes the manifest
+title and full section path before each passage; stored passage text and its token
+count remain unchanged. An index built with body-only embeddings needs rebuilding.
+To preserve an existing index, ingest with `--collection <new-name>` and set
+`RAGLAB_QDRANT_COLLECTION` to that name when querying or evaluating it.
 
 Ingest into a collection from one process at a time: the fingerprint check and upsert are separate operations, not a concurrency lock. The check runs after embeddings are generated. A model change hidden behind unchanged deployment/model identifiers and dimensions cannot be detected; explicitly rebuild in that case.
 
 5. Run a routed query:
 
 ```console
-uv run raglab --env-file .env.local query "Why should retrieved context be treated as data rather than instructions?" --mode routed-vector --top-k 3 --max-context-tokens 1000 --output-token-limit 500
+uv run raglab --env-file .env.local query "Why should retrieved context be treated as data rather than instructions?" --mode routed-vector --top-k 5 --max-context-tokens 1000 --output-token-limit 500
 ```
 
 The command prints the answer and citations, then writes a trace to `artifacts/traces/trace-<id>.json`.
-
-6. Run the golden-set evaluation:
-
-```console
-uv run raglab --env-file .env.local eval run --mode routed-vector
-```
-
-This evaluates all questions in `golden/questions.json` and writes:
-
-- `artifacts/eval/eval-routed-vector.json`
-- `artifacts/eval/eval-routed-vector.md`
-- per-question traces under `artifacts/eval/traces/routed-vector/`
 
 Stop the quickstart Qdrant container when finished:
 
@@ -128,12 +171,18 @@ Variables already present in the process environment take precedence over values
 | --- | --- | --- |
 | `FOUNDRY_OPENAI_BASE_URL` | Live model commands | Foundry project OpenAI v1 base URL. Endpoint suffixes such as `/responses` are normalized away. |
 | `FOUNDRY_API_KEY` | No | Foundry project key. When empty, the provider obtains an Entra ID token through `DefaultAzureCredential`. |
-| `FOUNDRY_EMBEDDING_MODEL` | Ingest, query, evaluation | Embedding model deployment name passed as the OpenAI `model`. |
-| `FOUNDRY_CHAT_MODEL` | Query, evaluation | Chat model deployment name passed to the OpenAI Responses API. |
+| `FOUNDRY_EMBEDDING_MODEL` | Ingest, query | Embedding model deployment name passed as the OpenAI `model`. |
+| `FOUNDRY_CHAT_MODEL` | Query | Chat model deployment name passed to the OpenAI Responses API. |
 | `FOUNDRY_REASONING_EFFORT` | No | Optional reasoning effort forwarded to the Responses API. |
-| `QDRANT_URL` | Ingest, query, evaluation | Qdrant HTTP URL. |
+| `QDRANT_URL` | Ingest, query | Qdrant HTTP URL. |
 | `QDRANT_API_KEY` | No | Qdrant API key for a secured or hosted instance. |
-| `RAGLAB_QDRANT_COLLECTION` | Ingest, query, evaluation | Collection used by the query pipeline and by ingestion unless `--collection` overrides it. |
+| `RAGLAB_QDRANT_COLLECTION` | Ingest, query | Collection used by the query pipeline and by ingestion unless `--collection` overrides it. |
+| `RAGLAB_TOP_K` | No | Maximum selected context chunks; default `5`. Also the retrieval depth without reranking. `--top-k` overrides it. |
+| `RAGLAB_MAX_CONTEXT_TOKENS` | No | Budget for selected chunk token estimates; default `1000`. `--max-context-tokens` overrides it. Excludes serialized prompt overhead and answer tokens. |
+| `RAGLAB_OUTPUT_TOKEN_LIMIT` | No | Maximum answer tokens; default `500`. `--output-token-limit` overrides it. |
+| `RAGLAB_RERANK_ENABLED` | No | Local cross-encoder reranking; default `false`. `--rerank` or `--no-rerank` overrides it. |
+| `RAGLAB_CANDIDATE_K` | No | Vector candidates when reranking; default `20`, must be at least `top_k`. `--candidate-k` overrides it. Ignored without reranking. |
+| `RAGLAB_RERANK_MODEL` | No | FastEmbed cross-encoder model; default `Xenova/ms-marco-MiniLM-L-6-v2`. |
 | `RAGLAB_ROUTER_CONFIDENCE_THRESHOLD` | No | Removes category filtering when the top similarity is below this threshold; default `0.18`. |
 | `RAGLAB_ROUTER_CATEGORY_MARGIN` | No | Includes categories whose score is within this margin of the winning route; default `0.15`. |
 
@@ -170,7 +219,30 @@ uv run raglab --env-file .env.local query "How does RAG ground an answer?" --mod
 uv run raglab --env-file .env.local query "How does RAG ground an answer?" --mode routed-vector --json
 ```
 
-Query defaults are `--top-k 3`, `--max-context-tokens 1000`, `--output-token-limit 500`, and `--trace-dir artifacts/traces`.
+Query defaults are `--top-k 5`, `--max-context-tokens 1000`, `--output-token-limit 500`, and `--trace-dir artifacts/traces`. Budget and reranking options apply to both query and evaluation; explicit options take precedence over environment values.
+
+### Retrieve 20 candidates, rerank, select up to five
+
+Enable the optional local reranker with either retrieval mode:
+
+```console
+uv run --extra rerank raglab --env-file .env.local query "Which checks tell me whether retrieved chunks contain enough relevant evidence for the generated answer, rather than just explaining how to retrieve chunks?" --rerank --candidate-k 20 --top-k 5 --max-context-tokens 1000
+```
+
+FastEmbed runs an ONNX cross-encoder on CPU. The first use downloads the model
+into `.cache/fastembed`; later calls reuse that cache. Evaluation reuses one model
+instance across questions. No Qdrant rebuild or extra Foundry generation call is
+needed. Use `--no-rerank` for the original vector-search control.
+
+Reranking scores each question/passage pair, then context selection admits at most
+five passages in rerank order within the token budget. Oversized passages are
+skipped so a later fitting passage can be admitted. Traces preserve the original
+vector ranks and scores, all reranker scores, selected chunks, exclusion reasons,
+model identifier, and reranking time. A model failure is reported rather than
+silently switching back to vector order.
+
+See the [reranking results](docs/reranking-review.md) and the earlier
+[context-budget investigation](docs/context-budget-review.md).
 
 Inspect a saved trace:
 
@@ -179,19 +251,120 @@ uv run raglab trace inspect artifacts/traces/<trace-id>.json
 uv run raglab trace inspect artifacts/traces/<trace-id>.json --json
 ```
 
-Evaluate one mode, then compare baseline and routed artifacts:
+## Evaluation
 
-```console
-uv run raglab --env-file .env.local eval run --mode baseline-vector
-uv run raglab --env-file .env.local eval run --mode routed-vector
-uv run raglab eval compare artifacts/eval/eval-baseline-vector.json artifacts/eval/eval-routed-vector.json --markdown artifacts/eval/comparison.md
+Evaluation follows `rag_eval/evals.py`: save a dataset, run one Ragas experiment,
+and save its results. Start at [eval/runner.py](src/rag_quality_lab/eval/runner.py).
+
+Install `uv sync --locked --extra eval`, then set an explicit evaluator deployment
+in `.env.local`:
+
+```dotenv
+RAGLAB_EVAL_MODEL=your-judge-deployment
 ```
 
-Evaluation defaults are `--golden golden/questions.json`, `--artifacts-dir artifacts/eval`, `--top-k 3`, `--max-context-tokens 1000`, and `--output-token-limit 800`. Commands with `--json` emit machine-readable output; note that ingestion JSON includes every ingested chunk and can be large.
+The endpoint and authentication default to your Foundry settings. For a separate
+endpoint, set `RAGLAB_EVAL_BASE_URL` and `RAGLAB_EVAL_API_KEY`. Judge requests use
+`max_completion_tokens=4096` without sampling parameters; only the SDK retries
+transport failures.
 
-Each default evaluation run shares one embedding provider, chat model, store, and (for routed retrieval) router across its questions. The router caches the fixed category embeddings for that run; question context, answers, and traces remain separate. Owned clients close when query execution finishes or fails, including partial setup failures. A standalone query uses the same cleanup policy. Injected components and clients remain caller-owned.
+```console
+uv run --extra eval raglab --env-file .env.local eval run --mode baseline-vector
+uv run --extra eval raglab --env-file .env.local eval run --mode routed-vector
+```
 
-Entra authentication still takes a token snapshot at client creation and closes the temporary credential afterward. Clients are scoped to a query or evaluation run; a run exceeding the token lifetime can require restarting. Long-lived client reuse would require authentication refresh support.
+Run accepts `--golden`, repeatable `--question-id`, and `--artifacts-dir`, plus the
+same budget and reranking options as `query`. It accepts `--json`. `eval run` is the
+only evaluation command; each invocation generates and scores fresh answers.
+
+To evaluate reranking in both search modes:
+
+```console
+uv run --extra eval --extra rerank raglab --env-file .env.local eval run --mode baseline-vector --rerank --candidate-k 20 --top-k 5 --max-context-tokens 1000 --output-token-limit 500
+uv run --extra eval --extra rerank raglab --env-file .env.local eval run --mode routed-vector --rerank --candidate-k 20 --top-k 5 --max-context-tokens 1000 --output-token-limit 500
+```
+
+Use `--top-k 3` for the earlier reranked configuration. To reproduce the original
+vector-search controls, also replace `--rerank` with `--no-rerank`. Explicit
+budget options keep these comparisons independent of local environment overrides.
+
+With reranking, source hit/MRR at `top_k` use the reranked list before token-budget
+selection. The original vector ranking is retained in diagnostics. These metrics
+remain source-label proxies; answer success and faithfulness use the actual
+selected generation context.
+
+Each run writes two native Ragas files:
+
+- `datasets/answers.jsonl`: questions, answers, context, relevance labels, settings,
+  and diagnostics needed to calculate metrics.
+- `experiments/scores.jsonl`: those rows plus scores and evaluator settings.
+
+The existing query pipeline also writes its ordinary traces. There is no evaluation
+manifest, checksum, separate input snapshot, or saved summary. Summaries are
+calculated at the end of the run. Saved files are for inspecting individual answers,
+their evidence, and judge explanations. Interrupted generation can leave a partial
+dataset. To evaluate changes, run the command again; previous files remain intact.
+
+The primary metric is **answer_success**: a Ragas `DiscreteMetric` judges whether
+the answer satisfies the question's `grading_notes` and is supported by its
+actual generation context. It returns pass (1) or fail (0), with an explanation.
+The summary mean is the pass rate among successfully judged answers; coverage
+shows how many were scored. Query or judge errors stay unscored and make the run
+incomplete. A low pass rate is a valid evaluation result.
+
+Each of the 16 questions in [golden/questions.json](golden/questions.json) now has
+editable grading notes describing essential facts or the expected refusal.
+Requirements match what each question asks. Details marked optional do not affect
+completeness, but any claims included must still be correct and supported.
+Examples are alternatives, not an exhaustive checklist. A prohibition on false
+guarantees does not require an explicit caveat in an otherwise correct answer.
+For answerable cases, refusing or omitting required information fails even if
+retrieval supplied insufficient evidence. No-answer cases are judged too:
+a clear admission of insufficient evidence can pass without an exact phrase.
+
+Supporting metrics help explain failures:
+
+- **faithfulness**: native Ragas claim support against selected context; it does
+  not establish completeness. Skipped for expected no-answer cases, recognized
+  refusals, and empty context.
+- **source_hit_at_k / source_mrr_at_k**: `ir-measures` checks expected-source
+  coverage and the first matching chunk's rank. Source slugs expand to all their
+  indexed chunks; these scores do **not** establish passage relevance, evidence
+  completeness, or recall. Explicit chunk-ID labels are also accepted.
+  No-answer cases are excluded; an empty ranking on an answerable case scores zero.
+
+Routing-label matches, citation-source matches, citation validation, refusal
+phrase detection, and generation usage are diagnostics, not answer-quality
+scores. Citation matching does not prove that a citation supports its claim.
+
+The notes are a starting rubric, not human-validated ground truth. Before using
+the pass rate to select a system, review saved answers against the notes and
+context **before looking at the judge's verdict**. Record your pass/fail and a
+short reason by question ID in a separate review file, then inspect disagreements
+with `metrics.answer_success.reason`, especially judge passes you would reject.
+Include incomplete but grounded answers, hallucinations, alternate refusal
+wording, and injection attempts. Refine ambiguous notes, run evaluation again, and check
+agreement on held-out answers; simulated test verdicts do not validate the judge.
+
+This design follows the focused pass/fail metric and error-analysis loop in
+[Ragas's RAG evaluation guide](https://docs.ragas.io/en/stable/howtos/applications/evaluate-and-improve-rag/).
+
+When reviewing runs side by side, account for changes in questions, grading notes,
+index, model, and runtime settings. A small benchmark does not establish a
+universal quality claim.
+
+Low scores are successful execution. Partial failures exit nonzero and report
+available dataset/result paths. JSON success is one stdout object; error JSON and
+progress go to stderr. The summary contains metric means and scored/eligible
+counts, plus refusal diagnostics. Error and exclusion reasons remain in individual
+result rows. Saved-run loading, rescoring, and automatic comparison are not supported.
+
+If evaluation reports missing `index_fingerprint`, the collection may have been
+ingested before index provenance was added. Current ingestion writes this metadata.
+Create a new collection, or run
+`uv run raglab --env-file .env.local corpus ingest --recreate`
+to replace the configured collection, then retry evaluation. Rebuilding replaces
+the collection's existing points and makes embedding calls.
 
 ## Implementation
 
@@ -206,65 +379,33 @@ local corpus snapshots
 question
   -> baseline: global Qdrant retrieval (no category routing)
   -> routed: embedding-based category routing -> category-filtered Qdrant retrieval
+  -> optional local cross-encoder reranking (20 candidates by default)
   -> bounded context assembly
   -> Foundry Responses API answer generation
   -> citation validation and persisted trace
 
-golden questions
-  -> traced query pipeline per retrieval mode
-  -> retrieval, routing, citation, no-answer, and budget metrics
-  -> JSON and Markdown reports
 ```
 
 Provider integration is project-owned. The OpenAI SDK handles Foundry embeddings and Responses calls; `langchain-core` supplies prompt and message types used by generation. The project does not use the older Azure-specific environment variables or a `langchain-openai` Azure chat-model client.
 
-Responses marked `incomplete` raise a provider error with the completion status and reason, even when partial text contains citations. Partial answers are rejected before citation validation and cannot count as successful evaluation results.
+Responses marked `incomplete` raise a provider error with the completion status and reason, even when partial text contains citations. Partial answers are rejected before citation validation.
 
 Baseline retrieval bypasses the category router and performs one global vector search, so its trace records `route_decision: null`. Routed retrieval computes category scores; broad questions may search several categories through category-margin routing, while a top score below the confidence threshold removes category filtering and searches the full collection. Context assembly admits retrieved chunks in rank order while they fit the token budget. Generation must cite selected chunks, and citation validation checks that every returned citation maps to included context. This is a context-membership check, not a claim-level factuality judge.
 
-Evaluation traces retain each golden question's `question_id`. Before calculating metrics, the evaluator matches traces by ID and rejects missing, duplicate, unexpected, or unidentified results; reports are then rendered in the original golden-question order. For routed runs, reports identify the top category, all searched categories, and whether global fallback occurred. Baseline reports mark routing as not applicable while retaining the five-category global retrieval scope for comparison. Aggregate metrics include routing accuracy, fallback count and rate, average searched categories, hit rate at k (`hit_rate_at_k`), MRR, citation source match, no-answer accuracy, average context tokens, and average included chunks. A question counts as a hit when at least one expected source or expected chunk appears in the top-k retrieved results. These are lightweight regression signals over the checked-in golden set, not a comprehensive benchmark.
-
 The router uses heuristic embedding-similarity thresholds. Similarity scores are not calibrated probabilities, and the configured threshold and category margin are specific to the current embedding model, category descriptions, and benchmark.
 
-Evaluation resolves environment configuration once per run and passes it, including any explicit category-margin override, into each query. Query traces record `searched_categories` from the retrieval scope, even when no chunks are returned; reports and category-count metrics use that recorded scope. Older traces without this field remain readable, but their scope is unknown and an aggregate category count involving them is unavailable. Injected retrievers return `QueryRetrievalResult` with both retrieved chunks and searched categories. Custom evaluation runners must likewise record scope in their traces.
-
 Only the complete refusal sentence required by the prompt (`NO_ANSWER_TEXT`) is classified as no-answer, after normalizing case, whitespace, and trailing periods. Alternative refusal wording or a refusal prefix followed by additional text goes through normal answer and citation validation.
-
-## Results and limitations
-
-The checked-in reports capture one run over the 26 pinned corpus snapshots and 16 manually curated golden questions. Fourteen questions are eligible for retrieval scoring; the other two are no-answer cases. The results are useful as inspectable evidence about this configuration, not as proof that routed retrieval is generally superior.
-
-| Metric | `baseline-vector` | `routed-vector` |
-| --- | ---: | ---: |
-| Top-category routing accuracy | n/a | 7/12 eligible questions, 58.3% |
-| Global fallback rate | 0/16 questions, 0.0% | 0/16 questions, 0.0% |
-| Retrieval hit rate at k | 12/14 questions, 85.7% | 13/14 questions, 92.9% |
-| Mean reciprocal rank | 0.6071 | 0.6786 |
-| Citation source match | 12/14 questions, 85.7% | 13/14 questions, 92.9% |
-| Answer/no-answer accuracy | 16/16 questions, 100.0% | 16/16 questions, 100.0% |
-| Average context tokens | 609.7 | 597.8 |
-
-Routed retrieval achieved a higher hit rate on the included curated benchmark: 13/14 questions (92.9%) versus 12/14 (85.7%) for baseline retrieval. This one-question difference is useful evidence that category filtering can help under the included corpus, questions, and tight retrieval settings; it is not evidence of general superiority.
-
-Interpretation boundaries:
-
-- The benchmark is small and manually curated. Results apply to the pinned corpus and included golden questions and should not be generalized to other corpora or query distributions.
-- Small differences can represent a single question: here, the 7.1 percentage-point hit-rate difference is exactly one of 14 retrieval-scored questions.
-- Top-category accuracy is lower than retrieval hit rate. Soft multi-category routing can still search the expected category and recover relevant evidence when the top category is incorrect.
-- Global fallback thresholds and the category margin are heuristic embedding-similarity settings, not calibrated probabilities.
-- Retrieval pressure and routing configuration were adjusted while inspecting this same small benchmark. The reports are therefore engineering evidence and regression fixtures, not holdout validation.
-- Citation source match and citation validation remain useful diagnostics, but they do not establish claim-level factual correctness.
 
 ## Development
 
 Run the full test suite:
 
 ```console
-uv run pytest
+uv run --locked --extra eval pytest
 ```
 
 The unit and integration tests use local fakes and the Qdrant client's local mode, so the test suite does not require live Foundry credentials or a Qdrant server. Ingestion regressions cover unchanged retries, incompatible updates, explicit rebuilds in memory, and fingerprint persistence after reopening disk storage. With qdrant-client 1.18.0 on Windows, local disk collection recreation can retain points; rebuild tests therefore use memory, while disk tests verify persistence. The application uses server-backed Qdrant via `QDRANT_URL`.
 
 ## Scope
 
-This is a bounded retrieval-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate providers, alternate vector stores, reranking, production authentication, and claim-level answer grading. The narrow scope keeps retrieval behavior, evidence selection, token budgets, citations, and evaluation artifacts easy to inspect.
+This is a bounded retrieval-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate vector stores, and production authentication. The scope keeps retrieval behavior, optional local reranking, evidence selection, token budgets, citations, traces, and Ragas experiments inspectable.

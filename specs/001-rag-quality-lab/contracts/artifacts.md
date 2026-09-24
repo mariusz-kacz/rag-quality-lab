@@ -1,6 +1,6 @@
 # Artifact Contract: RAG Quality Lab
 
-Artifacts are machine-readable files written by the CLI. JSON is the default contract format for traces, evaluation runs, corpus summaries, and ingestion summaries.
+Artifacts are machine-readable files written by the CLI. JSON is the default contract format for traces, corpus summaries, and ingestion summaries.
 
 ## Trace Artifact
 
@@ -35,59 +35,6 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 - output token limit
 - actual input/output/total token usage when available
 
-## Evaluation Artifact
-
-**Path Pattern**
-
-`artifacts/eval/<run_id>.json`
-
-**Required Top-Level Fields**
-
-- `schema_version`
-- `benchmark_scope`
-- `run_id`
-- `created_at`
-- `retrieval_mode`
-- `golden_set_path`
-- `configuration`
-- `metrics`
-- `metric_counts`
-- `questions`
-- `trace_paths`
-
-**Required Metrics**
-
-- `routing_accuracy`
-- `fallback_rate`
-- `hit_rate_at_k`
-- `mrr`
-- `citation_source_match`
-- `no_answer_accuracy`
-- `average_context_tokens`
-- `average_included_chunks`
-
-Rate metrics should include raw numerator and denominator values in `metric_counts`. Metrics that are not applicable for a mode must be present with `null` and a reason in the Markdown report. `routing_accuracy` is not applicable for `baseline-vector` because baseline retrieval does not use route filtering.
-
-## Markdown Evaluation Report
-
-**Path Pattern**
-
-`artifacts/eval/<run_id>.md`
-
-**Required Sections**
-
-- Run summary
-- Retrieval mode and configuration
-- Aggregate metrics
-- Per-question table
-- Request-response pairs
-- Token-budget diagnostics
-- No-answer cases
-- Citation validation failures
-- Limitations and interpretation notes
-
-The report must identify the small, manually curated benchmark scope and render counts alongside percentages for rate metrics where a numerator and denominator are available.
-
 ## Corpus Summary Artifact
 
 **Required Top-Level Fields**
@@ -112,3 +59,24 @@ The report must identify the small, manually curated benchmark scope and render 
 - `embedding_model`
 - `ingested_chunks`
 - `validation_errors`
+
+## Evaluation files
+
+Ragas owns two JSONL files in each new output directory:
+
+- `datasets/answers.jsonl`: question ID, labels and grading notes, response, selected context,
+  ranked/relevant/cited chunk IDs, mode/settings, query error, and diagnostics.
+- `experiments/scores.jsonl`: the same inputs plus metric outcomes and evaluator
+  settings. Each outcome has status, numeric value or null, and reason.
+
+There is no evaluation manifest, digest, state machine, full embedded trace, or
+saved summary. The terminal summary is calculated at run completion. JSONL files
+are inspection outputs, not inputs for further evaluation commands. Judge output
+is checked for finite numbers before scores are recorded.
+
+Native persistence saves each collected answer. An interruption may leave a
+partial dataset. Run evaluation again to generate fresh answers and scores.
+Ordinary query traces and corpus/index contracts remain unchanged.
+The primary `answer_success` outcome is 1 (pass) or 0 (fail), with a judge reason.
+Faithfulness and source Hit/MRR are supporting metrics. Routing, citation and
+refusal detection stay in diagnostics.

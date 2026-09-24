@@ -13,23 +13,21 @@ the component-to-code map below.
 flowchart TB
     reviewer["Reviewer / developer"]
     corpus_input[("Corpus manifest, category manifest,<br/>and Markdown snapshots")]
-    golden_input[("Curated golden questions")]
     foundry["Azure AI Foundry<br/>Embeddings + Responses APIs"]
     qdrant[("Qdrant<br/>Chunk vectors and payloads")]
-    artifacts[("Local JSON / Markdown artifacts")]
+    artifacts[("Local JSON artifacts")]
 
     subgraph app["RAG Quality Lab — Python CLI process"]
         cli["CLI"]
         corpus["Corpus subsystem<br/>Inspect, validate, chunk, ingest"]
         query["Query pipeline<br/>Orchestrates one traced request"]
-        evaluation["Evaluation subsystem<br/>Runs and compares benchmarks"]
 
         router["Category router"]
         retrieval["Qdrant retriever"]
+        rerank["Optional local cross-encoder"]
         context["Context builder"]
         answer["Answer generation<br/>and citation validation"]
         traces["Trace persistence"]
-        metrics["Metrics and report renderer"]
 
         model_adapters["Foundry model adapters"]
         qdrant_adapter["Qdrant adapter"]
@@ -37,19 +35,16 @@ flowchart TB
 
         cli -->|"inspect / ingest"| corpus
         cli -->|"query"| query
-        cli -->|"eval run"| evaluation
-        cli -->|"eval compare"| metrics
         cli -->|"trace inspect"| traces
 
         query -.->|"routed-vector only"| router
         router -->|"route scope"| retrieval
         query --> retrieval
-        retrieval --> context
+        retrieval -->|"reranking off"| context
+        retrieval -->|"reranking on"| rerank
+        rerank --> context
         context --> answer
         answer --> traces
-
-        evaluation -->|"same query path per question"| query
-        evaluation --> metrics
 
         corpus --> model_adapters
         corpus --> qdrant_adapter
@@ -60,16 +55,13 @@ flowchart TB
 
         contracts -.-> corpus
         contracts -.-> query
-        contracts -.-> evaluation
     end
 
     reviewer --> cli
     corpus_input --> corpus
-    golden_input --> evaluation
     model_adapters --> foundry
     qdrant_adapter --> qdrant
     traces --> artifacts
-    metrics --> artifacts
 
     classDef person fill:#08427b,color:#fff,stroke:#052e56,stroke-width:2px;
     classDef component fill:#1168bd,color:#fff,stroke:#0b4884;
@@ -79,9 +71,9 @@ flowchart TB
     classDef contract fill:#666,color:#fff,stroke:#333;
 
     class reviewer person;
-    class cli,corpus,query,evaluation,router,retrieval,context,answer,traces,metrics component;
+    class cli,corpus,query,router,retrieval,rerank,context,answer,traces component;
     class model_adapters,qdrant_adapter adapter;
-    class corpus_input,golden_input,qdrant,artifacts datastore;
+    class corpus_input,qdrant,artifacts datastore;
     class foundry external;
     class contracts contract;
 ```
@@ -116,6 +108,13 @@ flowchart LR
 
 Corpus inspection ends after validation. It does not contact Foundry or Qdrant.
 
+Chunking excludes the normalized snapshots' administrative metadata and
+reference-list headings by exact name. Source files and chunk provenance remain
+intact. Embeddings use the document title, section path, and passage body;
+retrieval payloads keep the original passage body and its token estimate. The
+index fingerprint includes exact embedding input, so title or embedding-format
+changes require a fresh collection or an explicit rebuild.
+
 ### One query
 
 ```mermaid
@@ -126,8 +125,9 @@ flowchart LR
     confidence{"Top score meets<br/>threshold?"}
     categories["Winner plus categories<br/>within score margin"]
     global["No category filter"]
-    retrieve["Embed question for retrieval;<br/>query Qdrant top-k"]
-    context["Admit ranked chunks<br/>within token budget"]
+    retrieve["Embed question for retrieval;<br/>query Qdrant"]
+    rerank["Local cross-encoder<br/>reorders candidate shortlist"]
+    context["Admit at most top-k chunks<br/>within token budget"]
     included{"Any included<br/>chunks?"}
     fixed["Fixed no-answer response"]
     generate["Foundry Responses call<br/>using selected context"]
@@ -142,7 +142,9 @@ flowchart LR
     confidence -->|"no"| global
     categories --> retrieve
     global --> retrieve
-    retrieve --> context
+    retrieve -->|"reranking off: top-k results"| context
+    retrieve -->|"reranking on: candidate-k results"| rerank
+    rerank --> context
     context --> included
     included -->|"no"| fixed
     included -->|"yes"| generate
@@ -155,31 +157,18 @@ The router and retriever intentionally make separate embedding calls. Baseline
 mode skips the router. Low-confidence routed mode keeps the existing global
 fallback by sending the Qdrant query without a category filter.
 
-### Evaluation and comparison
+Reranking is independent of category routing. With `--rerank`, both modes retrieve
+20 candidates by default. FastEmbed scores the question against each passage's
+section path and body using a local ONNX cross-encoder. The context builder admits
+up to five chunks within 1,000 estimated tokens in rerank order, skipping passages
+that do not fit. It records `chunk_limit_exceeded` and `budget_exceeded` separately.
 
-```mermaid
-flowchart LR
-    golden[("Golden questions")]
-    runner["Evaluation runner"]
-    query["Same traced query pipeline<br/>for the selected mode"]
-    match["Match questions and traces<br/>one-to-one by question ID"]
-    metrics["Calculate covered<br/>deterministic metrics"]
-    reports["Render evaluation JSON<br/>and Markdown"]
-    previous[("Existing evaluation JSON")]
-    compare["Validate modes and<br/>render comparison"]
-    output[("Evaluation artifacts")]
-
-    golden --> runner
-    runner -->|"once per question"| query
-    query -->|"trace and path"| match
-    runner --> match
-    match --> metrics
-    metrics --> reports
-    reports --> output
-
-    previous --> compare
-    compare --> output
-```
+`retrieval_results` retains vector ranks and scores. Optional `reranking` records
+the model, elapsed milliseconds, and every candidate's new rank and score.
+Context chunks retain `retrieval_rank` and add optional `rerank_rank`; old traces
+without reranking fields remain readable. During evaluation, source hit/MRR use
+reranked order when enabled; actual selected chunks drive answer scoring.
+The evaluator reuses one lazily loaded reranker instance across questions.
 
 ## Runtime distinctions represented in the diagram
 
@@ -196,9 +185,9 @@ flowchart LR
   embedding endpoint and writes to Qdrant.
 - The retriever embeds a question for Qdrant independently of the embedding
   work performed by the routed-mode router.
-- Context assembly preserves retrieval rank and admits chunks while they fit
-  the configured context-token budget. It records excluded chunks rather than
-  silently dropping them.
+- Context assembly follows vector rank or, when enabled, rerank order, while
+  retaining the original vector rank. Both the chunk limit and token budget
+  constrain selection, and exclusions have explicit reasons.
 - If the selected context contains no included chunk, generation returns the
   fixed no-answer response without calling the chat model.
 - Generation uses `langchain-core` only for prompt and message types. The
@@ -207,17 +196,11 @@ flowchart LR
   included in the selected context. It is not claim-level factuality grading.
   For a generated answer, validation occurs while constructing the answer result
   and again when the pipeline records the trace-level validation object.
-- Evaluation invokes the same traced query pipeline used by the `query`
-  command. It does not have a separate retrieval or generation implementation.
-- The curated benchmark reports top-category routing, searched categories,
-  retrieval, citation, answerability/no-answer, and token-budget metrics. It
-  does not report or draw conclusions about global-fallback behavior.
-
 ## Component-to-code map
 
 | Diagram component | Implemented by | Responsibility verified in code |
 | --- | --- | --- |
-| CLI adapter | `src/rag_quality_lab/cli.py` | Defines `corpus`, `query`, `trace`, and `eval` commands; maps errors and renders human/JSON output. |
+| CLI adapter | `src/rag_quality_lab/cli.py` | Defines `corpus`, `query`, and `trace` commands; maps errors and renders human/JSON output. |
 | Configuration | `src/rag_quality_lab/config.py` | Validates Foundry, Qdrant, retrieval, routing, token-budget, and artifact-path settings. |
 | Corpus inspection and validation | `corpus/inspect.py`, `corpus/manifest.py` | Validates schema versions, source metadata, category coverage, provenance paths, and readable local snapshots. |
 | Ingestion orchestrator | `corpus/ingest.py` | Coordinates validation, chunking, batch embedding, collection setup, and vector upsert. |
@@ -226,17 +209,39 @@ flowchart LR
 | Category router | `routing/categories.py`, `routing/embedding_router.py` | Embeds fixed category descriptions, scores cosine similarity, selects a category, or emits the existing low-confidence global route. |
 | Query pipeline and retriever | `rag/pipeline.py` | Selects retrieval mode, composes live adapters, applies multi-category margin logic, and orchestrates the complete query. |
 | Qdrant adapter | `retrieval/qdrant_store.py` | Creates cosine collections, stores chunk payloads, and performs global or category-filtered vector queries. |
-| Context builder | `rag/context.py` | Converts ranked results into included and budget-excluded context chunks. |
+| Local reranker | `retrieval/reranking.py` | Lazily loads a FastEmbed cross-encoder, scores candidates, and preserves both rankings. |
+| Context builder | `rag/context.py` | Selects context in the active ranking order, enforcing token and chunk limits. |
 | Answer generator | `rag/generation.py`, `chat_models.py` | Builds the source-only prompt, invokes the Responses API, recognizes no-answer output, and records model usage. |
 | Citation validator | `rag/citations.py` | Maps `[C<n>]` aliases to included chunk IDs and reports missing, malformed, or out-of-context citations. |
 | Trace persistence | `rag/traces.py`, `schemas/artifacts.py` | Writes and validates complete `QueryTrace` JSON artifacts. |
-| Evaluation runner | `eval/golden.py`, `eval/reports.py` | Loads golden questions, invokes the query pipeline per question, matches results by question ID, and assembles evaluation runs. |
-| Metrics and reports | `eval/metrics.py`, `eval/reports.py` | Calculates covered deterministic metrics and writes per-run and comparison JSON/Markdown outputs. |
-| Domain contracts | `schemas/` | Defines validated corpus, routing, retrieval, context, answer, trace, and evaluation models shared across boundaries. |
+| Domain contracts | `schemas/` | Defines validated corpus, routing, retrieval, context, answer and trace models shared across boundaries. |
 
 ## Deliberate boundaries
 
 The implementation has no web UI, HTTP application API, agent loop, live
-crawler, reranker, alternate vector-store adapter, or LLM-based evaluation
-judge. Those systems are intentionally absent from the diagram because they are
-not part of this repository.
+crawler, or alternate vector-store adapter. Evaluation uses one native
+Ragas experiment over saved query inputs. Benchmark cases and labels remain
+in `golden/questions.json`.
+
+## Evaluation flow
+
+```mermaid
+flowchart LR
+    questions[Golden questions and grading notes] --> capture[Existing query pipeline]
+    capture --> inputs[Saved answers and context]
+    inputs --> experiment[One Ragas experiment]
+    experiment --> results[Native JSONL results]
+    results --> summary[Answer pass rate and supporting scores]
+```
+
+Read `eval/runner.py` for the workflow and terminal summary, and `eval/metrics.py`
+for metric calls and diagnostics. Ragas owns the saved
+answers dataset, experiment scheduling, and result storage. Rows contain the
+fields needed for scoring; no manifest, checksum, or full trace snapshot is needed.
+Each `eval run` generates and scores fresh answers. The saved files support
+inspection; there is no saved-run loader, rescoring path, or comparison command.
+See the README for commands and limitations.
+The primary metric is a native Ragas DiscreteMetric using the question, grading
+notes, response, and selected context. Faithfulness and expected-source coverage
+support diagnosis. Routing/citation/refusal checks remain diagnostics.
+Evaluation uses only a judge deployment; generation still uses its own embeddings.

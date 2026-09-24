@@ -17,6 +17,49 @@ pytestmark = pytest.mark.contract
 runner = CliRunner()
 
 
+@pytest.mark.parametrize("explicit", [False, True])
+def test_query_budget_options_override_env_file(
+    monkeypatch: pytest.MonkeyPatch,
+    sample_query_trace: QueryTrace,
+    tmp_path: Path,
+    explicit: bool,
+) -> None:
+    env_file = tmp_path / ".env.local"
+    env_file.write_text(
+        "RAGLAB_TOP_K=9\nRAGLAB_MAX_CONTEXT_TOKENS=3200\n"
+        "RAGLAB_OUTPUT_TOKEN_LIMIT=600\n",
+        encoding="utf-8",
+    )
+    captured = {}
+
+    def fake_run_query(question, **kwargs):
+        captured.update(kwargs)
+        return {"trace": sample_query_trace, "trace_path": tmp_path / "trace.json"}
+
+    monkeypatch.setattr(cli, "run_query", fake_run_query)
+    options = (
+        ["--top-k", "4", "--max-context-tokens", "1800", "--output-token-limit", "300"]
+        if explicit
+        else []
+    )
+    result = runner.invoke(
+        app,
+        ["--env-file", str(env_file), "query", "Check evidence", *options, "--json"],
+        env={
+            "RAGLAB_TOP_K": None,
+            "RAGLAB_MAX_CONTEXT_TOKENS": None,
+            "RAGLAB_OUTPUT_TOKEN_LIMIT": None,
+        },
+    )
+
+    assert result.exit_code == 0, result.stderr
+    assert (
+        captured["top_k"],
+        captured["max_context_tokens"],
+        captured["output_token_limit"],
+    ) == ((4, 1800, 300) if explicit else (9, 3200, 600))
+
+
 def test_query_json_reports_answer_route_context_and_trace_path(
     monkeypatch: pytest.MonkeyPatch,
     sample_query_trace: QueryTrace,
@@ -33,6 +76,8 @@ def test_query_json_reports_answer_route_context_and_trace_path(
         max_context_tokens: int,
         output_token_limit: int,
         trace_dir: Path,
+        rerank_enabled: bool = False,
+        candidate_k: int = 20,
     ) -> dict[str, Any]:
         captured.update(
             {
@@ -122,6 +167,8 @@ def test_query_human_output_reports_trace_path(
         max_context_tokens: int,
         output_token_limit: int,
         trace_dir: Path,
+        rerank_enabled: bool = False,
+        candidate_k: int = 20,
     ) -> dict[str, Any]:
         return {
             "trace": sample_query_trace,
@@ -168,3 +215,36 @@ def test_query_unsupported_mode_reports_error() -> None:
     assert result.exit_code != 0
     assert "unsupported" in result.stderr.lower()
     assert "keyword-search" in result.stderr
+
+
+def test_query_rerank_flag_overrides_environment(
+    monkeypatch, sample_query_trace, tmp_path
+):
+    captured = {}
+
+    def fake_run_query(question, **kwargs):
+        captured.update(kwargs)
+        return {"trace": sample_query_trace, "trace_path": tmp_path / "trace.json"}
+
+    monkeypatch.setattr(cli, "run_query", fake_run_query)
+    result = runner.invoke(
+        app,
+        ["query", "question", "--rerank", "--candidate-k", "20", "--json"],
+        env={"RAGLAB_RERANK_ENABLED": "false"},
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["rerank_enabled"] is True and captured["candidate_k"] == 20
+    result = runner.invoke(
+        app,
+        ["query", "question", "--no-rerank", "--json"],
+        env={"RAGLAB_RERANK_ENABLED": "true"},
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["rerank_enabled"] is False
+    result = runner.invoke(
+        app,
+        ["query", "question", "--json"],
+        env={"RAGLAB_RERANK_ENABLED": "true", "RAGLAB_CANDIDATE_K": "25"},
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["rerank_enabled"] is True and captured["candidate_k"] == 25
