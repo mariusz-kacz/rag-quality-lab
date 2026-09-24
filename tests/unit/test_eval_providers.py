@@ -16,14 +16,11 @@ def environment(**overrides):
         "FOUNDRY_CHAT_MODEL": "generator",
         "FOUNDRY_EMBEDDING_MODEL": "retriever",
         "RAGLAB_EVAL_MODEL": "judge",
-        "RAGLAB_EVAL_EMBEDDING_MODEL": "eval-embedding",
         **overrides,
     }
 
 
-@pytest.mark.parametrize(
-    "missing", ["RAGLAB_EVAL_MODEL", "RAGLAB_EVAL_EMBEDDING_MODEL"]
-)
+@pytest.mark.parametrize("missing", ["RAGLAB_EVAL_MODEL"])
 def test_models_are_required_even_when_generator_models_exist(missing):
     from rag_quality_lab.eval.config import load_eval_config
 
@@ -66,7 +63,7 @@ def test_endpoint_authentication_and_safe_effective_settings(
     assert config.auth_source == auth_source
     assert (config.api_key.get_secret_value() if config.api_key else None) == key
     assert config.model == "judge"
-    assert config.embedding_model == "eval-embedding"
+    assert "embedding_model" not in config.model_dump()
     assert config.timeout_seconds == 120
     assert config.max_retries == 1
     serialized = config.model_dump_json()
@@ -118,7 +115,7 @@ def test_explicit_settings_work_without_generation_or_qdrant_configuration(
     monkeypatch.setenv("RAGLAB_EVAL_MODEL", "process-judge")
     path = tmp_path / "eval.env"
     path.write_text(
-        "RAGLAB_EVAL_MODEL=file-judge\nRAGLAB_EVAL_EMBEDDING_MODEL=embed\n"
+        "RAGLAB_EVAL_MODEL=file-judge\n"
         "RAGLAB_EVAL_BASE_URL=https://judge.invalid/v1\nRAGLAB_EVAL_API_KEY=key\n"
         "RAGLAB_EVAL_TIMEOUT_SECONDS=5.5\nRAGLAB_EVAL_MAX_RETRIES=0\n",
         encoding="utf-8",
@@ -184,10 +181,10 @@ def test_scope_closes_only_owned_resources_on_all_exit_paths(
     def adapters(config, client):
         if failure == "adapter_setup":
             raise ValueError("secret-in-setup")
-        return SimpleNamespace(), SimpleNamespace()
+        return SimpleNamespace()
 
     monkeypatch.setattr(providers, "AsyncOpenAI", create_client)
-    monkeypatch.setattr(providers, "_build_adapters", adapters)
+    monkeypatch.setattr(providers, "_build_llm", adapters)
     config = load_eval_config(environment(FOUNDRY_API_KEY=""))
 
     async def run():

@@ -32,6 +32,7 @@ def test_trace_inspect_json_outputs_trace_schema_fields(
         "question_id": None,
         "expected_category": None,
         "expected_relevant_sources": [],
+        "grading_notes": None,
         "answerability": "answerable",
         "case_type": "answerable",
         "expected_fallback_all_categories": None,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from qdrant_client import QdrantClient, models
@@ -15,6 +16,18 @@ from rag_quality_lab.schemas import Chunk, RetrievalMode, RetrievalResult
 
 class QdrantStoreError(Exception):
     """Raised when Qdrant operations fail or receive invalid input."""
+
+
+class IndexInventoryError(QdrantStoreError):
+    """Index validation failure with a safe, actionable message for the user."""
+
+
+@dataclass(frozen=True)
+class IndexInventory:
+    """Identity and complete chunk/source mapping read from the active index."""
+
+    index_fingerprint: str
+    chunk_sources: dict[str, str]
 
 
 def create_qdrant_client(config: QdrantConfig) -> QdrantClient:
@@ -153,6 +166,60 @@ class QdrantStore:
             wait=True,
         )
         return len(points)
+
+    def inventory(self, *, collection: str, page_size: int = 256) -> IndexInventory:
+        """Read payloads without vectors or writes; require a homogeneous index."""
+        clean_collection = _clean_collection(collection)
+        if page_size < 1:
+            raise QdrantStoreError("page_size must be >= 1")
+        offset = None
+        chunk_sources: dict[str, str] = {}
+        fingerprints: set[str] = set()
+        while True:
+            points, offset = self._call(
+                "read Qdrant inventory",
+                self._client.scroll,
+                collection_name=clean_collection,
+                limit=page_size,
+                offset=offset,
+                with_payload=["chunk_id", "source_slug", "index_fingerprint"],
+                with_vectors=False,
+            )
+            for point in points:
+                payload = point.payload or {}
+                missing = [
+                    key
+                    for key in ("chunk_id", "source_slug", "index_fingerprint")
+                    if not isinstance(payload.get(key), str) or not payload[key].strip()
+                ]
+                if missing:
+                    raise IndexInventoryError(
+                        f"Qdrant index has chunks missing {', '.join(missing)}. "
+                        "Re-ingest into a new collection, or run corpus ingest --recreate "
+                        "to replace the current collection before evaluation."
+                    )
+                chunk_id = payload["chunk_id"]
+                source_slug = payload["source_slug"]
+                fingerprint = payload["index_fingerprint"]
+                if chunk_id in chunk_sources:
+                    raise IndexInventoryError(
+                        "Qdrant index contains duplicate chunk IDs. "
+                        "Rebuild it with corpus ingest --recreate before evaluation."
+                    )
+                chunk_sources[chunk_id] = source_slug
+                fingerprints.add(fingerprint)
+            if offset is None:
+                break
+        if not chunk_sources:
+            raise IndexInventoryError(
+                "Qdrant collection is empty. Run corpus ingest before evaluation."
+            )
+        if len(fingerprints) != 1:
+            raise IndexInventoryError(
+                "Qdrant collection contains mixed index fingerprints. "
+                "Rebuild it with corpus ingest --recreate before evaluation."
+            )
+        return IndexInventory(fingerprints.pop(), chunk_sources)
 
     def search_chunks(
         self,

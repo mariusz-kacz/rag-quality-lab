@@ -59,3 +59,24 @@ Artifacts are machine-readable files written by the CLI. JSON is the default con
 - `embedding_model`
 - `ingested_chunks`
 - `validation_errors`
+
+## Evaluation files
+
+Ragas owns two JSONL files in each new output directory:
+
+- `datasets/answers.jsonl`: question ID, labels and grading notes, response, selected context,
+  ranked/relevant/cited chunk IDs, mode/settings, query error, and diagnostics.
+- `experiments/scores.jsonl`: the same inputs plus metric outcomes and evaluator
+  settings. Each outcome has status, numeric value or null, and reason.
+
+There is no evaluation manifest, digest, state machine, full embedded trace, or
+saved summary. The terminal summary is calculated at run completion. JSONL files
+are inspection outputs, not inputs for further evaluation commands. Judge output
+is checked for finite numbers before scores are recorded.
+
+Native persistence saves each collected answer. An interruption may leave a
+partial dataset. Run evaluation again to generate fresh answers and scores.
+Ordinary query traces and corpus/index contracts remain unchanged.
+The primary `answer_success` outcome is 1 (pass) or 0 (fail), with a judge reason.
+Faithfulness and source Hit/MRR are supporting metrics. Routing, citation and
+refusal detection stay in diagnostics.

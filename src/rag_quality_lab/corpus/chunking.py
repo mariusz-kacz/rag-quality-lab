@@ -11,6 +11,14 @@ import tiktoken
 from rag_quality_lab.schemas import Chunk, SourcePage
 
 DEFAULT_MAX_CHUNK_TOKENS = 500
+# Administrative headings used by the normalized snapshots. Match exactly so
+# substantive sections about metadata or provenance remain searchable.
+_ADMINISTRATIVE_HEADINGS = {
+    "source snapshot",
+    "related frameworks and provenance",
+    "related frameworks and references",
+    "related references and provenance",
+}
 _HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 _WHITESPACE_PATTERN = re.compile(r"\s+")
 _SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
@@ -36,6 +44,8 @@ def chunk_source_page(
     for section in _parse_markdown_sections(
         markdown, fallback_heading=source_page.title
     ):
+        if section.section_path[-1].casefold() in _ADMINISTRATIVE_HEADINGS:
+            continue
         section_markdown = "\n".join(section.lines)
         for content in split_into_chunks(
             section_markdown, max_chunk_tokens=max_chunk_tokens

@@ -105,6 +105,13 @@ flowchart LR
 
 Corpus inspection ends after validation. It does not contact Foundry or Qdrant.
 
+Chunking excludes the normalized snapshots' administrative metadata and
+reference-list headings by exact name. Source files and chunk provenance remain
+intact. Embeddings use the document title, section path, and passage body;
+retrieval payloads keep the original passage body and its token estimate. The
+index fingerprint includes exact embedding input, so title or embedding-format
+changes require a fresh collection or an explicit rebuild.
+
 ### One query
 
 ```mermaid
@@ -192,7 +199,29 @@ fallback by sending the Qdrant query without a category filter.
 ## Deliberate boundaries
 
 The implementation has no web UI, HTTP application API, agent loop, live
-crawler, reranker, or alternate vector-store adapter. The legacy evaluator has
-been removed. Ragas configuration/provider adapters are available, but the new
-evaluation workflow and CLI are not yet implemented. Benchmark cases and labels
-remain in `golden/questions.json`.
+crawler, reranker, or alternate vector-store adapter. Evaluation uses one native
+Ragas experiment over saved query inputs. Benchmark cases and labels remain
+in `golden/questions.json`.
+
+## Evaluation flow
+
+```mermaid
+flowchart LR
+    questions[Golden questions and grading notes] --> capture[Existing query pipeline]
+    capture --> inputs[Saved answers and context]
+    inputs --> experiment[One Ragas experiment]
+    experiment --> results[Native JSONL results]
+    results --> summary[Answer pass rate and supporting scores]
+```
+
+Read `eval/runner.py` for the workflow and terminal summary, and `eval/metrics.py`
+for metric calls and diagnostics. Ragas owns the saved
+answers dataset, experiment scheduling, and result storage. Rows contain the
+fields needed for scoring; no manifest, checksum, or full trace snapshot is needed.
+Each `eval run` generates and scores fresh answers. The saved files support
+inspection; there is no saved-run loader, rescoring path, or comparison command.
+See the README for commands and limitations.
+The primary metric is a native Ragas DiscreteMetric using the question, grading
+notes, response, and selected context. Faithfulness and expected-source coverage
+support diagnosis. Routing/citation/refusal checks remain diagnostics.
+Evaluation uses only a judge deployment; generation still uses its own embeddings.

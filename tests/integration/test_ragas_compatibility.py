@@ -39,7 +39,6 @@ def evaluator_config(client):
     return load_eval_config(
         {
             "RAGLAB_EVAL_MODEL": "judge-deployment",
-            "RAGLAB_EVAL_EMBEDDING_MODEL": "embedding-deployment",
             "RAGLAB_EVAL_BASE_URL": str(client.base_url),
             "RAGLAB_EVAL_API_KEY": "offline-only",
         }
@@ -70,7 +69,9 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
     from rag_quality_lab.eval.providers import evaluator_scope
     from ragas import Dataset, experiment
     from ragas.experiment import Experiment
-    from ragas.metrics.collections import AnswerRelevancy, Faithfulness
+    from ragas.metrics.collections import Faithfulness
+    from ragas.metrics import DiscreteMetric
+    from rag_quality_lab.eval.metrics import ANSWER_SUCCESS_PROMPT
 
     question = "Where is Warsaw?"
     answer = "Warsaw is in France. [source:1]"
@@ -80,27 +81,6 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
         assert request.url.host == "foundry.invalid"
         body = json.loads(request.content)
         requests.append((request.url.path, body))
-        if request.url.path.endswith("/embeddings"):
-            texts = body["input"]
-            texts = [texts] if isinstance(texts, str) else texts
-            return httpx.Response(
-                200,
-                json={
-                    "object": "list",
-                    "model": "embedding-deployment",
-                    "data": [
-                        {
-                            "object": "embedding",
-                            "index": i,
-                            "embedding": [1.0, 0.0]
-                            if text == question
-                            else [-1.0, 0.0],
-                        }
-                        for i, text in enumerate(texts)
-                    ],
-                    "usage": {"prompt_tokens": 2, "total_tokens": 2},
-                },
-            )
         assert request.url.path.endswith("/chat/completions")
         prompt = json.dumps(body["messages"])
         if "StatementGeneratorOutput" in prompt:
@@ -116,8 +96,12 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
                 ]
             }
         else:
-            assert "AnswerRelevanceOutput" in prompt
-            output = {"question": "Where is Paris?", "noncommittal": 0}
+            assert "DiscreteResponseModel" in prompt
+            assert "Warsaw is in Poland." in prompt
+            output = {
+                "value": "fail",
+                "reason": "The country contradicts the evidence.",
+            }
         return completion(json.dumps(output))
 
     async def run():
@@ -126,8 +110,10 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
             evaluator_scope(evaluator_config(client), client=client) as evaluator,
         ):
             faithfulness = Faithfulness(llm=evaluator.llm)
-            relevancy = AnswerRelevancy(
-                llm=evaluator.llm, embeddings=evaluator.embeddings
+            success = DiscreteMetric(
+                name="answer_success",
+                prompt=ANSWER_SUCCESS_PROMPT,
+                allowed_values=["pass", "fail"],
             )
             dataset = Dataset(
                 "compatibility", backend="local/jsonl", root_dir=str(tmp_path)
@@ -165,14 +151,22 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
                                     ["Warsaw is in Poland."],
                                 ),
                                 await evaluator.call(
-                                    relevancy.ascore, question, answer
+                                    success.ascore,
+                                    llm=evaluator.llm,
+                                    question=question,
+                                    response=answer,
+                                    contexts='["Warsaw is in Poland."]',
+                                    answerability="answerable",
+                                    grading_notes="Identify Poland.",
                                 ),
                             ]
                             values = [result.value for result in results]
-                            assert all(
-                                result.reason is None and result.traces is None
-                                for result in results
+                            assert results[0].reason is None
+                            assert (
+                                results[1].reason
+                                == "The country contradicts the evidence."
                             )
+                            assert results[1].traces["input"]
                         return {
                             "question_id": row["question_id"],
                             "metrics": {
@@ -182,7 +176,7 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
                                     "reason": row["reason"],
                                 }
                                 for name, value in zip(
-                                    ("faithfulness", "answer_relevancy"),
+                                    ("faithfulness", "answer_success"),
                                     values,
                                     strict=True,
                                 )
@@ -222,7 +216,7 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
     )
     for qid in ("q-1", "q-2"):
         assert by_id[qid]["metrics"]["faithfulness"]["value"] == 0.0
-        assert by_id[qid]["metrics"]["answer_relevancy"]["value"] == -1.0
+        assert by_id[qid]["metrics"]["answer_success"]["value"] == "fail"
     for status, reason in (
         ("error", "provider_error"),
         ("not_applicable", "no_answer"),
@@ -233,14 +227,15 @@ def test_real_metrics_experiment_and_local_round_trip(tmp_path):
             for outcome in by_id[status]["metrics"].values()
         )
     chat = [body for path, body in requests if path.endswith("/chat/completions")]
-    # Two faithfulness calls plus default strictness=3 per answer.
-    assert len(chat) == 10
+    # Two faithfulness calls plus one discrete judgment per answer.
+    assert len(chat) == len(requests) == 6
     assert all(body["model"] == "judge-deployment" for body in chat)
     assert all(body["response_format"] == {"type": "json_object"} for body in chat)
     assert all(
-        body["temperature"] == 0.01
-        and body["top_p"] == 0.1
-        and body["max_tokens"] == 1024
+        body["max_completion_tokens"] == 4096
+        and "temperature" not in body
+        and "top_p" not in body
+        and "max_tokens" not in body
         for body in chat
     )
 
@@ -335,6 +330,7 @@ def test_owned_evaluator_refreshes_auth(monkeypatch, borrowed_credential):
     from azure.identity import aio
     from rag_quality_lab.eval import providers
     from rag_quality_lab.eval.config import load_eval_config
+    from ragas.metrics import DiscreteMetric
 
     class Credential:
         requests = 0
@@ -358,13 +354,8 @@ def test_owned_evaluator_refreshes_auth(monkeypatch, borrowed_credential):
     def respond(request):
         requests.append(request)
         assert request.headers["authorization"] == f"Bearer token-{len(requests)}"
-        assert json.loads(request.content)["model"] == "evaluator-embedding"
-        response = {
-            "data": [{"embedding": [1.0, 0.0], "index": 0, "object": "embedding"}],
-            "model": "evaluator-embedding",
-            "object": "list",
-        }
-        return httpx.Response(200, json=response)
+        assert json.loads(request.content)["model"] == "evaluator-judge"
+        return completion(json.dumps({"value": "pass", "reason": "Supported."}))
 
     actual_client = providers.AsyncOpenAI
     clients = []
@@ -382,7 +373,6 @@ def test_owned_evaluator_refreshes_auth(monkeypatch, borrowed_credential):
         {
             "FOUNDRY_OPENAI_BASE_URL": "https://foundry.invalid/v1",
             "RAGLAB_EVAL_MODEL": "evaluator-judge",
-            "RAGLAB_EVAL_EMBEDDING_MODEL": "evaluator-embedding",
         }
     )
 
@@ -390,17 +380,22 @@ def test_owned_evaluator_refreshes_auth(monkeypatch, borrowed_credential):
         async with providers.evaluator_scope(
             config, credential=credential if borrowed_credential else None
         ) as evaluator:
-            assert await evaluator.call(evaluator.embeddings.aembed_text, "First") == [
-                1.0,
-                0.0,
-            ]
-            await evaluator.call(evaluator.embeddings.aembed_text, "Second")
+            metric = DiscreteMetric(name="auth_check", prompt="Judge {response}.")
+            first = await evaluator.call(
+                metric.ascore, llm=evaluator.llm, response="First"
+            )
+            assert first.value == "pass" and first.reason == "Supported."
+            await evaluator.call(metric.ascore, llm=evaluator.llm, response="Second")
             with pytest.raises(providers.EvalProviderError) as error:
-                await evaluator.call(evaluator.embeddings.aembed_text, "Auth failure")
+                await evaluator.call(
+                    metric.ascore, llm=evaluator.llm, response="Auth failure"
+                )
             assert error.value.code == "authentication"
             assert "secret-auth-detail" not in json.dumps(error.value.as_dict())
             with pytest.raises(providers.EvalProviderError, match="stopped"):
-                await evaluator.call(evaluator.embeddings.aembed_text, "Blocked")
+                await evaluator.call(
+                    metric.ascore, llm=evaluator.llm, response="Blocked"
+                )
             assert not credential.closed
         assert clients[0].is_closed()
 

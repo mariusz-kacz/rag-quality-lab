@@ -176,6 +176,52 @@ def test_chunk_source_page_is_deterministic(sample_source_page: SourcePage) -> N
     assert first_run == second_run
 
 
+def test_chunk_source_page_excludes_administrative_sections_only(
+    sample_source_page: SourcePage,
+) -> None:
+    from rag_quality_lab.corpus.chunking import chunk_source_page
+
+    markdown = """# Source snapshot
+
+Source metadata:
+- source_slug: rag-overview
+- license: MIT
+
+# Security guidance
+
+Retrieved chunks must retain source metadata for citations.
+
+## Content provenance, testing, governance, and incident disclosure
+
+Track content provenance to detect unauthorized changes.
+
+## Related frameworks and provenance
+
+Reference-list summary.
+
+## Related frameworks and references
+
+Another reference-list summary.
+
+## Related references and provenance
+
+Bibliography summary.
+
+# Mitigations
+
+Restrict tool permissions with application code.
+"""
+    chunks = chunk_source_page(sample_source_page, markdown)
+
+    assert [chunk.content for chunk in chunks] == [
+        "Retrieved chunks must retain source metadata for citations.",
+        "Track content provenance to detect unauthorized changes.",
+        "Restrict tool permissions with application code.",
+    ]
+    assert [chunk.ordinal for chunk in chunks] == [0, 1, 2]
+    assert all(chunk.provenance == sample_source_page.provenance for chunk in chunks)
+
+
 @pytest.fixture
 def sample_source_page(tmp_path: Path) -> SourcePage:
     local_ref = tmp_path / "corpus" / "sources" / "rag-overview.md"

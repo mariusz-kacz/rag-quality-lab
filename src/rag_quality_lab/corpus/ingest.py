@@ -100,8 +100,14 @@ def ingest_corpus(
             "No corpus chunks were generated; ingestion cannot continue"
         )
 
+    titles = {source.source_slug: source.title for source in manifest.sources}
+    embedding_texts = [
+        f"Title: {titles[chunk.source_slug]}\n"
+        f"Section: {' > '.join(chunk.section_path)}\n\n{chunk.content}"
+        for chunk in chunks
+    ]
     provider = embedding_provider or _create_embedding_provider()
-    embedding_response = provider.embed_texts([chunk.content for chunk in chunks])
+    embedding_response = provider.embed_texts(embedding_texts)
     vectors = _validate_vectors(embedding_response.vectors, expected_count=len(chunks))
 
     store = qdrant_store or _create_qdrant_store(collection=target_collection)
@@ -117,6 +123,7 @@ def ingest_corpus(
         vectors=vectors,
         index_fingerprint=_index_fingerprint(
             chunks,
+            embedding_texts=embedding_texts,
             max_chunk_tokens=max_chunk_tokens,
             deployment=provider.deployment,
             model=embedding_response.model or provider.deployment,
@@ -142,6 +149,7 @@ def ingest_corpus(
 def _index_fingerprint(
     chunks: Sequence[Chunk],
     *,
+    embedding_texts: Sequence[str],
     max_chunk_tokens: int,
     deployment: str,
     model: str,
@@ -150,10 +158,13 @@ def _index_fingerprint(
     """Identify the complete index inputs independently of manifest ordering."""
 
     inputs = {
-        "version": 1,
+        "version": 2,
         "chunks": [
-            chunk.model_dump(mode="json")
-            for chunk in sorted(chunks, key=lambda chunk: chunk.chunk_id)
+            {**chunk.model_dump(mode="json"), "embedding_text": text}
+            for chunk, text in sorted(
+                zip(chunks, embedding_texts, strict=True),
+                key=lambda pair: pair[0].chunk_id,
+            )
         ],
         "max_chunk_tokens": max_chunk_tokens,
         "deployment": deployment,

@@ -111,4 +111,25 @@ Inspect a persisted query trace.
 
 ## Evaluation status
 
-The legacy evaluation commands have been removed. The replacement Ragas CLI is not yet implemented.
+`raglab eval run --mode baseline-vector|routed-vector` captures the golden
+questions and scores them in a native Ragas experiment. Options: `--golden`,
+repeatable `--question-id`, `--artifacts-dir`, and `--json`.
+
+`eval run` is the only evaluation command. Each invocation generates and scores
+fresh answers; saved-run loading, rescoring, and automatic comparison are not supported.
+
+JSON success is one stdout object. Failure is one stderr JSON object containing
+`ok: false`, `stage`, `message`, `dataset_path`, and `results_path` (null when unavailable).
+Ragas progress goes to stderr. Incomplete evaluation exits 4; artifact errors
+exit 3; configuration errors exit 2. Low quality scores alone do not fail a run.
+The first reported metric is `answer_success`, a pass rate with scored/eligible
+coverage. Both answerable and no-answer questions are judged against grading notes.
+Faithfulness and source Hit/MRR follow as supporting metrics. Refusal detection is
+labeled diagnostic. JSON metric summaries contain `mean`, `scored_count`, and
+`eligible_count`; error and exclusion reasons remain in individual result rows.
+Evaluation configuration requires a judge model, not an evaluator embedding model.
+
+Index preflight failures use stage `retrieval` and exit 4. Missing fingerprint
+metadata, empty indexes, mixed fingerprints, and duplicate chunk IDs report
+actionable validation messages. Remote Qdrant failures report configuration checks
+without exposing raw provider exception details.

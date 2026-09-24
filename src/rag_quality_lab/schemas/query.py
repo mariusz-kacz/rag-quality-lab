@@ -33,6 +33,11 @@ class Question(SchemaModel):
     question_id: str | None = Field(default=None, min_length=1)
     expected_category: KnowledgeCategoryName | None = None
     expected_relevant_sources: list[str] = Field(default_factory=list)
+    grading_notes: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Evaluation criteria, never generation input.",
+    )
     answerability: Answerability = "answerable"
     case_type: CaseType = "answerable"
     expected_fallback_all_categories: bool | None = None

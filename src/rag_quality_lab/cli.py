@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from collections.abc import Callable
+from contextlib import redirect_stdout
 from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
@@ -87,9 +89,85 @@ corpus_app = typer.Typer(
     help="Inspect and ingest the curated corpus.", no_args_is_help=True
 )
 trace_app = typer.Typer(help="Inspect persisted query traces.", no_args_is_help=True)
+eval_app = typer.Typer(
+    help="Evaluate RAG answers with Ragas.",
+    no_args_is_help=True,
+)
 
 app.add_typer(corpus_app, name="corpus")
 app.add_typer(trace_app, name="trace")
+app.add_typer(eval_app, name="eval")
+
+
+def _evaluation_command(operation, json_output):
+    """Keep Ragas progress separate from one JSON result or error."""
+    try:
+        with redirect_stdout(sys.stderr):
+            result = operation()
+    except Exception as exc:
+        path = getattr(exc, "dataset_path", None)
+        results_path = getattr(exc, "results_path", None)
+        stage = getattr(exc, "stage", stage_for_error(exc))
+        payload = {
+            "ok": False,
+            "stage": stage,
+            "message": str(exc),
+            "dataset_path": str(path) if path else None,
+            "results_path": str(results_path) if results_path else None,
+        }
+        if json_output:
+            typer.echo(json.dumps(payload), err=True)
+        else:
+            typer.echo(
+                f"Error: {exc}" + (f"\nSaved run: {path}" if path else ""), err=True
+            )
+        code = {
+            "evaluation": ExitCode.PROVIDER,
+            "retrieval": ExitCode.PROVIDER,
+            "artifact": ExitCode.ARTIFACT,
+        }.get(stage, exit_code_for_error(exc))
+        raise typer.Exit(int(code)) from None
+    if json_output:
+        typer.echo(json.dumps(result, allow_nan=False))
+    else:
+        typer.echo(
+            f"Answers: {result['dataset_path']}\nResults: {result['results_path']}"
+        )
+        for name, metric in result["metrics"].items():
+            typer.echo(
+                f"{name}: {metric['mean']} ({metric['scored_count']}/{metric['eligible_count']} scored)"
+            )
+        typer.echo(f"Refusal detection (diagnostic): {result['diagnostics']}")
+
+
+@eval_app.callback()
+def eval_main():
+    """Evaluate RAG answers with Ragas."""
+
+
+@eval_app.command("run")
+def eval_run(
+    mode: Annotated[str, typer.Option("--mode")] = "baseline-vector",
+    golden: Annotated[Path, typer.Option("--golden")] = Path("golden/questions.json"),
+    artifacts_dir: Annotated[Path, typer.Option("--artifacts-dir")] = Path(
+        "artifacts/eval"
+    ),
+    question_ids: Annotated[list[str] | None, typer.Option("--question-id")] = None,
+    json_output: JsonOutputOption = False,
+) -> None:
+    """Capture answers with the lab pipeline, then score them with Ragas."""
+
+    def operation():
+        from rag_quality_lab.eval.runner import run_evaluation
+
+        return run_evaluation(
+            mode=mode,
+            golden_path=golden,
+            artifacts_dir=artifacts_dir,
+            question_ids=question_ids,
+        )
+
+    _evaluation_command(operation, json_output)
 
 
 @app.callback()

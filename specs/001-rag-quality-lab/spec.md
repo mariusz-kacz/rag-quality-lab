@@ -1,5 +1,7 @@
 # Feature Specification: RAG Quality Lab
 
+Evaluation scope is now defined by [SPEC-ragas-evaluation.md](../../SPEC-ragas-evaluation.md). The original evaluation/reporting tasks below are historical: the current CLI exposes `eval run` only, with native JSONL outputs and a terminal summary.
+
 **Feature Branch**: `[001-rag-quality-lab]`
 
 **Created**: 2026-07-02

@@ -83,7 +83,17 @@ uv run raglab --env-file .env.local corpus inspect
 uv run raglab --env-file .env.local corpus ingest
 ```
 
-Ingestion validates the manifest and snapshots, deterministically creates chunks, embeds them, creates the configured Qdrant collection if needed, and upserts the vectors. Each point stores an index fingerprint covering the complete chunk set and metadata, chunk-size setting, embedding deployment/model, and vector dimensions. Unchanged ingestion is repeatable; an existing point with a different or missing fingerprint blocks the write and directs you to `--recreate`. Use that flag to replace the disposable collection after changing index inputs or when upgrading a collection created without fingerprints.
+Ingestion validates the manifest and snapshots, deterministically creates chunks, embeds them, creates the configured Qdrant collection if needed, and upserts the vectors. Each point stores an index fingerprint covering the complete chunk set and metadata, exact embedding text, chunk-size setting, embedding deployment/model, and vector dimensions. Unchanged ingestion is repeatable; an existing point with a different or missing fingerprint blocks the write and directs you to `--recreate`. Use that flag to replace the disposable collection after changing index inputs or when upgrading a collection created without fingerprints.
+
+Corpus preparation excludes the normalized snapshots' administrative sections:
+`Source snapshot`, `Related frameworks and provenance`, `Related frameworks and references`,
+and `Related references and provenance`. These are exact heading matches, so
+substantive guidance about metadata or provenance remains searchable. The source
+files and provenance metadata are retained. Embedding input includes the manifest
+title and full section path before each passage; stored passage text and its token
+count remain unchanged. An index built with body-only embeddings needs rebuilding.
+To preserve an existing index, ingest with `--collection <new-name>` and set
+`RAGLAB_QDRANT_COLLECTION` to that name when querying or evaluating it.
 
 Ingest into a collection from one process at a time: the fingerprint check and upsert are separate operations, not a concurrency lock. The check runs after embeddings are generated. A model change hidden behind unchanged deployment/model identifiers and dimensions cannot be detected; explicitly rebuild in that case.
 
@@ -166,12 +176,104 @@ uv run raglab trace inspect artifacts/traces/<trace-id>.json
 uv run raglab trace inspect artifacts/traces/<trace-id>.json --json
 ```
 
-## Evaluation status
+## Evaluation
 
-The legacy evaluator, commands, reports, and automated tests have been removed.
-The benchmark cases and labels remain in `golden/questions.json`. Ragas
-configuration and provider adapters are present; the replacement evaluation
-workflow and CLI are not yet implemented. See [the evaluation plan](tasks/plan.md).
+Evaluation follows `rag_eval/evals.py`: save a dataset, run one Ragas experiment,
+and save its results. Start at [eval/runner.py](src/rag_quality_lab/eval/runner.py).
+
+Install `uv sync --locked --extra eval`, then set an explicit evaluator deployment
+in `.env.local`:
+
+```dotenv
+RAGLAB_EVAL_MODEL=your-judge-deployment
+```
+
+The endpoint and authentication default to your Foundry settings. For a separate
+endpoint, set `RAGLAB_EVAL_BASE_URL` and `RAGLAB_EVAL_API_KEY`. Judge requests use
+`max_completion_tokens=4096` without sampling parameters; only the SDK retries
+transport failures.
+
+```console
+uv run --extra eval raglab --env-file .env.local eval run --mode baseline-vector
+uv run --extra eval raglab --env-file .env.local eval run --mode routed-vector
+```
+
+Run accepts `--golden`, repeatable `--question-id`, and `--artifacts-dir`.
+It accepts `--json` and uses ordinary query runtime settings. `eval run` is the
+only evaluation command; each invocation generates and scores fresh answers.
+
+Each run writes two native Ragas files:
+
+- `datasets/answers.jsonl`: questions, answers, context, relevance labels, settings,
+  and diagnostics needed to calculate metrics.
+- `experiments/scores.jsonl`: those rows plus scores and evaluator settings.
+
+The existing query pipeline also writes its ordinary traces. There is no evaluation
+manifest, checksum, separate input snapshot, or saved summary. Summaries are
+calculated at the end of the run. Saved files are for inspecting individual answers,
+their evidence, and judge explanations. Interrupted generation can leave a partial
+dataset. To evaluate changes, run the command again; previous files remain intact.
+
+The primary metric is **answer_success**: a Ragas `DiscreteMetric` judges whether
+the answer satisfies the question's `grading_notes` and is supported by its
+actual generation context. It returns pass (1) or fail (0), with an explanation.
+The summary mean is the pass rate among successfully judged answers; coverage
+shows how many were scored. Query or judge errors stay unscored and make the run
+incomplete. A low pass rate is a valid evaluation result.
+
+Each of the 16 questions in [golden/questions.json](golden/questions.json) now has
+editable grading notes describing essential facts or the expected refusal.
+Requirements match what each question asks. Details marked optional do not affect
+completeness, but any claims included must still be correct and supported.
+Examples are alternatives, not an exhaustive checklist. A prohibition on false
+guarantees does not require an explicit caveat in an otherwise correct answer.
+For answerable cases, refusing or omitting required information fails even if
+retrieval supplied insufficient evidence. No-answer cases are judged too:
+a clear admission of insufficient evidence can pass without an exact phrase.
+
+Supporting metrics help explain failures:
+
+- **faithfulness**: native Ragas claim support against selected context; it does
+  not establish completeness. Skipped for expected no-answer cases, recognized
+  refusals, and empty context.
+- **source_hit_at_k / source_mrr_at_k**: `ir-measures` checks expected-source
+  coverage and the first matching chunk's rank. Source slugs expand to all their
+  indexed chunks; these scores do **not** establish passage relevance, evidence
+  completeness, or recall. Explicit chunk-ID labels are also accepted.
+  No-answer cases are excluded; an empty ranking on an answerable case scores zero.
+
+Routing-label matches, citation-source matches, citation validation, refusal
+phrase detection, and generation usage are diagnostics, not answer-quality
+scores. Citation matching does not prove that a citation supports its claim.
+
+The notes are a starting rubric, not human-validated ground truth. Before using
+the pass rate to select a system, review saved answers against the notes and
+context **before looking at the judge's verdict**. Record your pass/fail and a
+short reason by question ID in a separate review file, then inspect disagreements
+with `metrics.answer_success.reason`, especially judge passes you would reject.
+Include incomplete but grounded answers, hallucinations, alternate refusal
+wording, and injection attempts. Refine ambiguous notes, run evaluation again, and check
+agreement on held-out answers; simulated test verdicts do not validate the judge.
+
+This design follows the focused pass/fail metric and error-analysis loop in
+[Ragas's RAG evaluation guide](https://docs.ragas.io/en/stable/howtos/applications/evaluate-and-improve-rag/).
+
+When reviewing runs side by side, account for changes in questions, grading notes,
+index, model, and runtime settings. A small benchmark does not establish a
+universal quality claim.
+
+Low scores are successful execution. Partial failures exit nonzero and report
+available dataset/result paths. JSON success is one stdout object; error JSON and
+progress go to stderr. The summary contains metric means and scored/eligible
+counts, plus refusal diagnostics. Error and exclusion reasons remain in individual
+result rows. Saved-run loading, rescoring, and automatic comparison are not supported.
+
+If evaluation reports missing `index_fingerprint`, the collection may have been
+ingested before index provenance was added. Current ingestion writes this metadata.
+Create a new collection, or run
+`uv run raglab --env-file .env.local corpus ingest --recreate`
+to replace the configured collection, then retry evaluation. Rebuilding replaces
+the collection's existing points and makes embedding calls.
 
 ## Implementation
 
@@ -207,11 +309,11 @@ Only the complete refusal sentence required by the prompt (`NO_ANSWER_TEXT`) is 
 Run the full test suite:
 
 ```console
-uv run pytest
+uv run --locked --extra eval pytest
 ```
 
 The unit and integration tests use local fakes and the Qdrant client's local mode, so the test suite does not require live Foundry credentials or a Qdrant server. Ingestion regressions cover unchanged retries, incompatible updates, explicit rebuilds in memory, and fingerprint persistence after reopening disk storage. With qdrant-client 1.18.0 on Windows, local disk collection recreation can retain points; rebuild tests therefore use memory, while disk tests verify persistence. The application uses server-backed Qdrant via `QDRANT_URL`.
 
 ## Scope
 
-This is a bounded retrieval-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate providers, alternate vector stores, reranking, and production authentication. The narrow scope keeps retrieval behavior, evidence selection, token budgets, citations, and traces easy to inspect. Ragas answer-quality evaluation is planned separately.
+This is a bounded retrieval-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate vector stores, reranking, and production authentication. The scope keeps retrieval behavior, evidence selection, token budgets, citations, traces, and Ragas experiments inspectable.

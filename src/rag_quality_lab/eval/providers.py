@@ -98,27 +98,29 @@ def _provider_error(error: Exception) -> EvalProviderError:
     return EvalProviderError(code)
 
 
-def _build_adapters(config: EvalConfig, client: AsyncOpenAI) -> tuple[Any, Any]:
+def _build_llm(config: EvalConfig, client: AsyncOpenAI) -> Any:
     try:
-        from ragas.embeddings import OpenAIEmbeddings
         from ragas.llms import llm_factory
     except ImportError:
         raise EvalProviderError(
             "missing eval extra: uv sync --locked --extra eval", fatal=True
         ) from None
-    return (
-        llm_factory(
-            config.model, client=client, max_retries=config.structured_output_retries
-        ),
-        OpenAIEmbeddings(model=config.embedding_model, client=client),
+    llm = llm_factory(
+        config.model, client=client, max_retries=config.structured_output_retries
     )
+    # Azure deployment names do not reveal model capabilities to Ragas.
+    llm.model_args = {
+        "max_completion_tokens": 4096,
+        "max_retries": config.structured_output_retries,
+    }
+    return llm
 
 
 class EvaluatorProviders:
     """Borrowed adapters plus a sequential, fail-closed metric-call boundary."""
 
     def __init__(self, config: EvalConfig, client: AsyncOpenAI):
-        self.llm, self.embeddings = _build_adapters(config, client)
+        self.llm = _build_llm(config, client)
         self._lock = asyncio.Lock()
         self._stopped = False
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Sequence
 from contextlib import closing
@@ -22,8 +23,16 @@ pytestmark = pytest.mark.integration
 @pytest.mark.parametrize(
     "change",
     [
-        "content", "chunk_size", "source_removed", "metadata",
-        "model", "dimensions", "legacy",
+        "content",
+        "chunk_size",
+        "source_removed",
+        "metadata",
+        "model",
+        "dimensions",
+        "legacy",
+        "title",
+        "section_heading",
+        "body_only_index",
     ],
 )
 def test_ingestion_requires_explicit_rebuild_for_incompatible_index(
@@ -54,14 +63,48 @@ def test_ingestion_requires_explicit_rebuild_for_incompatible_index(
             source.write_text("# Changed\n\nReplacement content.\n", encoding="utf-8")
         elif change == "chunk_size":
             kwargs["max_chunk_tokens"] = 5
-        elif change in {"source_removed", "metadata"}:
+        elif change in {"source_removed", "metadata", "title"}:
             manifest_path = temporary_corpus["manifest"]
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             if change == "source_removed":
                 manifest["sources"].pop()
+            elif change == "title":
+                manifest["sources"][0]["title"] = "New source title"
             else:
                 manifest["sources"][0]["pinned_version"] = "changed-revision"
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        elif change == "section_heading":
+            source = temporary_corpus["sources"] / "source-01.md"
+            source.write_text(
+                source.read_text(encoding="utf-8").replace(
+                    "# Source 01", "# New heading"
+                ),
+                encoding="utf-8",
+            )
+        elif change == "body_only_index":
+            # The previous format embedded only bodies, even for identical chunks.
+            old_inputs = {
+                "version": 1,
+                "chunks": [
+                    chunk.model_dump(mode="json")
+                    for chunk in sorted(
+                        original.ingested_chunks, key=lambda c: c.chunk_id
+                    )
+                ],
+                "max_chunk_tokens": 500,
+                "deployment": fake_embedding_provider.deployment,
+                "model": original.embedding_model,
+                "vector_size": 3,
+            }
+            old_fingerprint = hashlib.sha256(
+                json.dumps(old_inputs, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            client.set_payload(
+                "rag_quality_lab",
+                payload={"index_fingerprint": old_fingerprint},
+                points=[point.id for point in original_points],
+                wait=True,
+            )
         elif change in {"model", "dimensions"}:
             embed_texts = fake_embedding_provider.embed_texts
 
@@ -73,7 +116,9 @@ def test_ingestion_requires_explicit_rebuild_for_incompatible_index(
                     response, vectors=[vector + [1.0] for vector in response.vectors]
                 )
 
-            monkeypatch.setattr(fake_embedding_provider, "embed_texts", changed_embeddings)
+            monkeypatch.setattr(
+                fake_embedding_provider, "embed_texts", changed_embeddings
+            )
         else:
             client.delete_payload(
                 "rag_quality_lab",
@@ -129,6 +174,13 @@ def test_clean_corpus_inspection_and_fake_qdrant_ingestion_workflow(
     inspect_corpus, ingest_corpus = _corpus_workflow_api()
     project_root = temporary_corpus["root"].parent
     qdrant_store = FakeQdrantStore()
+    (temporary_corpus["sources"] / "source-01.md").write_text(
+        "# Source snapshot\n\nSource metadata: administrative details.\n\n"
+        "# Mitigations\n\n## Least privilege\n\n"
+        "Restrict tool permissions with application code.\n\n"
+        "## Related references and provenance\n\nReference-list summary.\n",
+        encoding="utf-8",
+    )
 
     inspection = inspect_corpus(project_root=project_root)
 
@@ -175,7 +227,18 @@ def test_clean_corpus_inspection_and_fake_qdrant_ingestion_workflow(
 
     assert fake_foundry_client.embeddings.calls
     embedded_texts = fake_foundry_client.embeddings.calls[0]["input"]
-    assert embedded_texts == [chunk.content for chunk in ingestion.ingested_chunks]
+    assert embedded_texts[0] == (
+        "Title: Source 01\nSection: Mitigations > Least privilege\n\n"
+        "Restrict tool permissions with application code."
+    )
+    assert first_chunk.content == "Restrict tool permissions with application code."
+    assert len(embedded_texts) == ingestion.chunk_count
+    assert all(
+        text.endswith(chunk.content)
+        for text, chunk in zip(embedded_texts, ingestion.ingested_chunks, strict=True)
+    )
+    assert all("administrative details" not in text for text in embedded_texts)
+    assert all("Reference-list summary" not in text for text in embedded_texts)
 
     assert qdrant_store.operations == ["ensure_collection", "upsert_chunks"]
     assert qdrant_store.ensure_calls == [

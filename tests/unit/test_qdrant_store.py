@@ -1,17 +1,72 @@
 from __future__ import annotations
 
 import uuid
+from contextlib import closing
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from qdrant_client import models
 
-from rag_quality_lab.retrieval.qdrant_store import QdrantStore, QdrantStoreError
+from rag_quality_lab.retrieval.qdrant_store import (
+    IndexInventoryError,
+    QdrantStore,
+    QdrantStoreError,
+)
 from rag_quality_lab.schemas import Chunk, Provenance
 
 
 pytestmark = pytest.mark.unit
+
+
+@pytest.mark.parametrize(
+    "invalid", [None, "missing", "identity", "mixed", "duplicate", "empty"]
+)
+def test_inventory_reads_all_pages_and_requires_one_fingerprint(invalid):
+    from qdrant_client import QdrantClient
+
+    with closing(QdrantClient(":memory:")) as client:
+        store = QdrantStore(client=client)
+        store.ensure_collection(collection="inventory", vector_size=2)
+        payloads = [
+            {
+                "chunk_id": f"chunk-{i}",
+                "source_slug": "source",
+                "index_fingerprint": "fp",
+            }
+            for i in range(5)
+        ]
+        if invalid == "missing":
+            payloads[-1].pop("index_fingerprint")
+        elif invalid == "identity":
+            payloads[-1].pop("source_slug")
+        elif invalid == "mixed":
+            payloads[-1]["index_fingerprint"] = "other"
+        elif invalid == "duplicate":
+            payloads[-1]["chunk_id"] = "chunk-0"
+        if invalid != "empty":
+            client.upsert(
+                "inventory",
+                [
+                    models.PointStruct(id=i, vector=[1.0, 0.0], payload=payload)
+                    for i, payload in enumerate(payloads)
+                ],
+            )
+        if invalid:
+            expected = {
+                "missing": "index_fingerprint.*--recreate",
+                "identity": "source_slug",
+                "mixed": "mixed index fingerprints",
+                "duplicate": "duplicate chunk IDs",
+                "empty": "empty.*corpus ingest",
+            }[invalid]
+            with pytest.raises(IndexInventoryError, match=expected):
+                store.inventory(collection="inventory", page_size=2)
+        else:
+            inventory = store.inventory(collection="inventory", page_size=2)
+            assert inventory.index_fingerprint == "fp"
+            assert inventory.chunk_sources == {f"chunk-{i}": "source" for i in range(5)}
+            assert client.count("inventory", exact=True).count == 5
 
 
 @pytest.mark.parametrize("injected", [False, True])
@@ -21,7 +76,8 @@ def test_store_closes_only_owned_client(monkeypatch, injected):
     closed = []
     client = SimpleNamespace(close=lambda: closed.append(True))
     monkeypatch.setattr(
-        "rag_quality_lab.retrieval.qdrant_store.create_qdrant_client", lambda config: client
+        "rag_quality_lab.retrieval.qdrant_store.create_qdrant_client",
+        lambda config: client,
     )
     store = QdrantStore(
         QdrantConfig(url="http://localhost:6333", collection="test"),

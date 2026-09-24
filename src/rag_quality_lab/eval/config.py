@@ -52,7 +52,6 @@ class EvalConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     model: str = Field(min_length=1)
-    embedding_model: str = Field(min_length=1)
     base_url: str
     endpoint_source: Literal["explicit", "foundry"]
     auth_source: Literal["eval_api_key", "foundry_api_key", "entra"]
@@ -70,11 +69,7 @@ def load_eval_config(environ: Mapping[str, str] | None = None) -> EvalConfig:
     def read(name: str) -> str | None:
         return env.get(name, "").strip() or None
 
-    missing = [
-        name
-        for name in ("RAGLAB_EVAL_MODEL", "RAGLAB_EVAL_EMBEDDING_MODEL")
-        if not read(name)
-    ]
+    missing = [name for name in ("RAGLAB_EVAL_MODEL",) if not read(name)]
     endpoint = read("RAGLAB_EVAL_BASE_URL") or read("FOUNDRY_OPENAI_BASE_URL")
     if not endpoint:
         missing.append("RAGLAB_EVAL_BASE_URL")
@@ -94,7 +89,6 @@ def load_eval_config(environ: Mapping[str, str] | None = None) -> EvalConfig:
     try:
         return EvalConfig(
             model=read("RAGLAB_EVAL_MODEL"),
-            embedding_model=read("RAGLAB_EVAL_EMBEDDING_MODEL"),
             base_url=base_url,
             endpoint_source="explicit" if read("RAGLAB_EVAL_BASE_URL") else "foundry",
             auth_source=auth_source,
