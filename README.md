@@ -7,6 +7,52 @@ The lab uses a curated local corpus, Azure AI Foundry models through an OpenAI-c
 - `baseline-vector`: searches the full collection.
 - `routed-vector`: deterministically routes the question across five knowledge categories, then applies one or more category filters when routing confidence is high enough.
 
+## Evaluation Results
+
+The latest experiments favor retrieving 20 candidates, reranking locally, and
+selecting up to five chunks within a 1,000-token context budget. Five is now the
+shared chunk-limit default; reranking remains opt-in with `--rerank`.
+
+Recorded **2026-09-24** on 16 curated questions and a 285-chunk index built from
+26 source snapshots. All runs below use the same index, questions, grading rubric,
+generator/evaluator settings, 1,000-token context budget, and 500-token answer
+limit. Answer success is an LLM-judge verdict; faithfulness measures claim support
+against the selected context and excludes the two expected no-answer questions.
+
+| Search mode | Reranking | Chunk cap | Answer success | Mean faithfulness | Mean input tokens |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Baseline | Off | 3 | 14/16 | 0.866 | 829 |
+| Baseline | On, 20 candidates | 3 | 15/16 | 0.932 | 859 |
+| Baseline | On, 20 candidates | 5 | 16/16 | 0.909 | 1,179 |
+| Routed | Off | 3 | 14/16 | 0.889 | 848 |
+| Routed | On, 20 candidates | 3 | 13/16 | 0.928 | 898 |
+| Routed | On, 20 candidates | 5 | 15/16 | 0.961 | 1,149 |
+
+- **Reranking recovered missing evidence.** For `q-cross-category-005`, baseline
+  vector search placed the passage explaining context recall and precision at
+  rank 20. Reranking moved it to first place, and the answer passed with just three
+  selected chunks. This fixed the case without increasing the token budget.
+- **Five chunks improved the observed pass counts, with tradeoffs.** Compared
+  with three reranked chunks, mean generation input grew 37% in baseline and 28%
+  in routed mode. Baseline faithfulness fell slightly while routed faithfulness
+  rose. The token budget still limits some answers to three or four chunks.
+- **Routing did not consistently improve answer success.** Both modes remain
+  available for comparison. Routed search still fails `q-multi-category-002` at
+  five chunks. Both expected no-answer cases are correctly refused in every run.
+
+These are single runs on a small tuning set, not a held-out quality estimate.
+Baseline's final improvement includes a borderline judge pass on
+`q-multi-category-002`, so 16/16 does not establish that every answer is complete
+or that five will always outperform three. The no-reranking controls above use
+the earlier three-chunk setting; they do not measure the current five-chunk
+default without reranking. Local reranking also adds CPU work: the earlier
+three-chunk runs measured about 2.4 seconds per query after the first call, under
+concurrent execution rather than an isolated latency benchmark.
+
+See the [full analysis and reproduction commands](docs/reranking-review.md),
+[original comparison data](artifacts/reranking-review/summary.json), and
+[three-versus-five comparison with answers and judge reasons](artifacts/reranking-review/five-chunks/comparison.json).
+
 ## Repository Map
 
 - `src/rag_quality_lab/`: CLI, configuration, providers, retrieval, RAG, and evaluation code.
@@ -234,9 +280,13 @@ only evaluation command; each invocation generates and scores fresh answers.
 To evaluate reranking in both search modes:
 
 ```console
-uv run --extra eval --extra rerank raglab --env-file .env.local eval run --mode baseline-vector --rerank
-uv run --extra eval --extra rerank raglab --env-file .env.local eval run --mode routed-vector --rerank
+uv run --extra eval --extra rerank raglab --env-file .env.local eval run --mode baseline-vector --rerank --candidate-k 20 --top-k 5 --max-context-tokens 1000 --output-token-limit 500
+uv run --extra eval --extra rerank raglab --env-file .env.local eval run --mode routed-vector --rerank --candidate-k 20 --top-k 5 --max-context-tokens 1000 --output-token-limit 500
 ```
+
+Use `--top-k 3` for the earlier reranked configuration. To reproduce the original
+vector-search controls, also replace `--rerank` with `--no-rerank`. Explicit
+budget options keep these comparisons independent of local environment overrides.
 
 With reranking, source hit/MRR at `top_k` use the reranked list before token-budget
 selection. The original vector ranking is retained in diagnostics. These metrics
@@ -329,6 +379,7 @@ local corpus snapshots
 question
   -> baseline: global Qdrant retrieval (no category routing)
   -> routed: embedding-based category routing -> category-filtered Qdrant retrieval
+  -> optional local cross-encoder reranking (20 candidates by default)
   -> bounded context assembly
   -> Foundry Responses API answer generation
   -> citation validation and persisted trace
@@ -357,4 +408,4 @@ The unit and integration tests use local fakes and the Qdrant client's local mod
 
 ## Scope
 
-This is a bounded retrieval-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate vector stores, reranking, and production authentication. The scope keeps retrieval behavior, evidence selection, token budgets, citations, traces, and Ragas experiments inspectable.
+This is a bounded retrieval-quality engineering lab, not a production RAG platform. It intentionally excludes a web UI, agent loop, live crawling, alternate vector stores, and production authentication. The scope keeps retrieval behavior, optional local reranking, evidence selection, token budgets, citations, traces, and Ragas experiments inspectable.
